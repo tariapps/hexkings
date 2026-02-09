@@ -1,10 +1,27 @@
 
-first line: width height
+game only supports 24x24 or 36x36 maps, must pad data to those sizes!
+
+first line: dataHeight dataWidth
+these should be even numbers or the hexes will get at different positions than even width/height maps.
 
 left side = right on the game.
 top side = top on the game.
 
-values:
+all values (0-10for player 1):
+-1 = water
+0 = cross
+1 = empty
+2 = grass
+3 = tree
+4 = peasant
+5 = hut
+6 = knight
+7 = castle
+8 = horse
+9 = fortress
+10 = dragon
+
+map data values:
                              first 5 bits
 owner 0 = no owner.
 
