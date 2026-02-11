@@ -3977,6 +3977,7 @@ const ACTION = {
 	'settings_update': 124,		// ACTION.settings_update
 	'player_changed': 125,		// ACTION.player_changed
 	'game_over': 126,			// ACTION.game_over
+	'player_kicked': 127,		// ACTION.player_kicked
 
 	// handleClientData: (host receives these)
 	'pong': 200, 				// ACTION.pong
@@ -10166,12 +10167,24 @@ function updateGameUI() {
 		if (p.id === currentTurnPlayer?.id) {
 			item.classList.add('current-turn');
 		}
+		
+		item.dataset.peer = p.id;
+
+		if(p.id	!== localPlayer.id && !p.isAI){
+			item.classList.add("ai-player-item");	
+		}
+		
 		let color = p.textColor;
 		let specTag = "";
 		if(p.isSpectator){
 			color = "white";
 			specTag = "(spec)";
 		}
+
+		if(p.isAI){
+			specTag = "(AI)";
+		}
+		
 		if(!p.quitted){
 			item.innerHTML = `
 				<span class="player-turn-indicator"></span>
@@ -16123,6 +16136,16 @@ function handleHostData(data) {
 			//updateLocalPoolsInfo();
 		}
 		break;
+		case ACTION.player_kicked: {
+			if(localPlayer.id === data.playerId){
+				localPlayer.hasBeenKicked = true;
+				console.warn("you have been kicked from the game");
+				alert("you have been kicked from the game");
+				showPage("start");
+				return;
+			}
+		}
+		break;
 		case ACTION.game_over: {
 			// show popup of winning player, and popup for losers.
 			let winnerPlayerIndex = data.winnerPlayerIndex;
@@ -16523,7 +16546,7 @@ function addPlayer(player){
 
 
 // only used before game starts, and should be used only there.
-// if a player needs to be kicked during game, then he should be set as spectator.
+// if a player needs to be kicked during game, then he should be set as a spectator and possibly muted too.
 function removePlayer(peerId){
 	gameState.players = gameState.players.filter(player => player.id !== peerId);
 	rebuildPlayerIndexes();
@@ -16686,14 +16709,18 @@ function setupConnection(conn) {
 				}
 			}
 		} else {
-			// We were disconnected from host
-			//alert('Disconnected from host. Returning to start page.');
-			console.warn('Disconnected from host. Returning to start page.');
-			addSystemChatMessage(">>> Host has left the game. Game is now unplayable.", "#FFFF00");
-			if(!gameState.settings.gameOver){
-				playSound("quit"); // dont play annoying quit sound if game already was over.
+			if(!localPlayer.hasBeenKicked){
+				// We were disconnected from host
+				//alert('Disconnected from host. Returning to start page.');
+				console.warn('Disconnected from host. Returning to start page.');
+				addSystemChatMessage(">>> Host has left the game. Game is now unplayable.", "#FFFF00");
+				if(!gameState.settings.gameOver){
+					playSound("quit"); // dont play annoying quit sound if game already was over.
+				}else{
+					playSound("message");
+				}
 			}else{
-				playSound("message");
+				playSound("quit");
 			}
 
 		}
@@ -17023,22 +17050,76 @@ hostPlayerList.addEventListener('click', (event) => {
 	if (!item) return; // ignore clicks outside .ai-player-item
 
 	const peerId = item.dataset.peer;
+	
+	const confirmed = confirm("Are you sure you want to kick this player?");
+	if (!confirmed) return;
+
+	kickPlayer(peerId);
+});
+
+
+playerUIList.addEventListener('click', (event) => {
+	const item = event.target.closest('.ai-player-item');
+	if (!item) return; // ignore clicks outside .ai-player-item
+
+	const peerId = item.dataset.peer;
+	
+	const confirmed = confirm("Are you sure you want to kick this player?");
+	if (!confirmed) return;
+
 	kickPlayer(peerId);
 });
 
 
 
-
-
 function kickPlayer(peerId){
+	if(!isHost()) return;
+	
 	const allPlayers = document.querySelectorAll('.player-list-item');
 	allPlayers.forEach(playerElem => {
 		if (playerElem.dataset.peer === peerId) {
 			playerElem.remove(); // remove from DOM
 		}
 	});
-	//gameState.players = gameState.players.filter(player => player.id !== peerId);
-	removePlayer(peerId);
+	
+	// send kick message and close connection, if the player has connection (is not AI):
+	let conn = connections.get(peerId);
+	if (conn){
+		conn.send({ 
+			type: ACTION.player_kicked, 
+			playerId: peerId,
+		});
+		// disconnect player after one second,
+		//   so the kick message will be delivered before closing connection:
+		setTimeout(() => {
+			conn.close();
+			connections.delete(peerId);
+		}, 1000);
+	}
+
+	if(gameState.settings.gameStarted){
+		// if ingame, set as AI player when kicking.
+		let player = getPlayer(peerId);
+		let specflag = player.isSpectator ? " (spectator)" : "";
+		if(!player.isSpectator && !player.isDead){
+			player.isAI = true;
+			
+			addSystemChatMessage(`>>> ${player.name}${specflag} has been kicked and set as AI player.`, "#FFFF00");
+			
+			// let others play if quitter was in turn:
+			if(peerId == gameState.players[gameState.turn.currentPlayerIndex].id){
+				checkForAITurn(); // start AI turn if it is his turn.
+			}else{
+				updateGameUI();
+			}
+		}else if(player.isSpectator){
+			addSystemChatMessage(`>>> ${player.name}${specflag} has been kicked from the game.`, "#FFFF00");
+			updateGameUI();
+		}
+	}else{
+		removePlayer(peerId);
+	}
+
 	
 	broadcastLobbyState();
 }
@@ -17066,9 +17147,11 @@ function updateHostLobbyUI() {
 			const item = document.createElement('div');
 			item.className = 'player-list-item';
 			item.dataset.peer = p.id;
-			if(p.isAI){
+			//if(p.isAI){
+			if(p.id	!== localPlayer.id){
 				item.classList.add("ai-player-item");
 			}
+			//}
 			let specTag = p.isSpectator ? ' (spec)' : '';
 			item.style.color = p.isSpectator ? SPECTATOR_COLOR : p.textColor;
 			item.textContent = `${p.name}${specTag}`;
