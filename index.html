@@ -2353,6 +2353,9 @@ input.disabled {
 		</div>
 		
 		<div id="ui-right">
+			<div id="endgame-stats-wrapper" style="display: none; flex-direction: column; align-items: flex-end; gap: 0; ">
+				<button id="endgame-stats-btn" style="width: 60px; margin: 0; pointer-events:auto;">Stats</button>
+			</div>
 			<div class="ui-panel ui-panel-controls">
 				<div class="info-left" id="info-left" style="display:none">
 					<div class="top-row" id="ui-right-top-row-id">
@@ -5868,8 +5871,13 @@ const gameSettingsUiWrapper2 = document.getElementById('game-settings-ui-wrapper
 
 
 const closeEndgamePopupBtn = document.getElementById('close-endgame-popup-btn');
+const openEndgamePopupBtn = document.getElementById('endgame-stats-btn');
 const endgamePopupUi = document.getElementById('endgame-popup-ui');
 const endgamePopupUiWrapper2 = document.getElementById('endgame-popup-ui-wrapper2');
+
+const endgameStatsWrapper = document.getElementById('endgame-stats-wrapper');
+
+
 
 const endgamePopupTitle = document.getElementById('endgame-popup-title');
 const endgamePopupMessage = document.getElementById('endgame-popup-message');
@@ -5976,6 +5984,8 @@ function openEndgamePopup(fireworksEnabled){
 	
 	endgamePopupUi.style.display = "flex";
 	
+	endgameStatsWrapper.style.display = "none";
+	
 	if(fireworksEnabled){
 		fireworks.start();
 	}
@@ -5986,6 +5996,8 @@ function openEndgamePopup(fireworksEnabled){
 function closeEndgamePopup(){
 	endgamePopupUi.style.display = "none";
 	
+	endgameStatsWrapper.style.display = "flex";
+	
 	fireworks.stop();
 	
 	//removePopupState(endgamePopupUi);
@@ -5993,6 +6005,10 @@ function closeEndgamePopup(){
 
 closeEndgamePopupBtn.addEventListener("click", () => {
 	closeEndgamePopup();
+});
+
+openEndgamePopupBtn.addEventListener("click", () => {
+	openEndgamePopup();
 });
 
 
