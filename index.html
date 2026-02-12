@@ -6715,7 +6715,11 @@ function getTurnDate(type = 'day'){
 function addCurrentTurnChatMessage(){
 	let player = getCurrentTurnPlayer();
 	let turnDate = getTurnDate('week-day');
-	addSystemChatMessage(`${turnDate} - ${player.name}'s turn.`, player.textColor);
+	let tag = "";
+	if(player.isAI){
+		tag = " (AI)";
+	}
+	addSystemChatMessage(`${turnDate} - ${player.name}'s${tag} turn.`, player.textColor);
 	
 	if(isMyTurn()){
 		showTurnPopup();
@@ -7908,6 +7912,67 @@ function drawMapShading(type){
 }
 
 
+function drawPlayerTile(x, y, playerIndex){
+	let player = getPlayerByIndex(playerIndex);
+	
+	
+	ctx.save(); // needed for hex drawing.
+	
+	// Define the hex path
+	// for dirt hex.
+	drawHexagonPath(x, y);
+
+
+	let imageName = getDirtTileName();
+	let img = getImage(imageName);
+
+	// 4. If image is loaded, draw it clipped and scaled
+	if (img && img.complete && img.width > 0) {
+		ctx.clip(); // Apply clip to the hex path
+
+		// Calculate the "pointy-top" hex bounding box
+		const hexWidth = HEX_SIZE * SQRT3*GS;
+		const hexHeight = HEX_SIZE * 2;
+		
+		// Calculate "scale-to-fit" (contain) ratio
+		const ratio = Math.min(hexWidth / img.width, hexHeight / img.height);
+		const dWidth = img.width * ratio;
+		const dHeight = img.height * ratio;
+		
+		// Calculate centered destination (dx, dy)
+		const dx = x - dWidth / 2;
+		const dy = y - dHeight / 2;
+		
+		let textureType = 0;
+		
+		if(player.textureType !== undefined){
+			textureType = player.textureType;
+			// make sure wont read out of array if someone messed with textures changes:
+			if(textureType > landTextures.length-1){
+				textureType = landTextures.length-1;
+			}
+		}
+		
+		let textureName = landTextures[textureType];
+
+		let color = player.color;
+		
+		
+		drawImageMipped(ctx, textureName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
+
+		
+		// Multiply by player color
+		ctx.globalCompositeOperation = "multiply";
+		ctx.fillStyle = color; // e.g. "#ff0000"
+		ctx.fillRect(dx, dy, dWidth, dHeight);
+		ctx.globalCompositeOperation = "source-over";
+	}
+	
+	ctx.restore();
+}
+
+
+
 function drawDirtTile(x, y){
 
 	ctx.save(); // needed for hex drawing.
@@ -8094,7 +8159,16 @@ function drawMapTiles(){
 			if(tileAppearingPercent){
 				tileSizePad = -(1-tileAppearingPercent)*maxTileSize; // -40...0
 				
-				drawDirtTile(x, y);
+				let showPreviousOwner = false;
+				if(tile.powner !== undefined && tile.powner !== -1){
+					showPreviousOwner = true;
+				}
+				
+				if(showPreviousOwner){
+					drawPlayerTile(x, y, tile.powner);
+				}else{
+					drawDirtTile(x, y);
+				}
 			}else{
 				// remove keys so they wont be stored in tilesData anymore.
 				delete tile.isAppearing;
@@ -8105,6 +8179,8 @@ function drawMapTiles(){
 		
 		
 		ctx.save(); // needed for hex drawing.
+		
+
 		
 		// Define the hex path
 		if(tileDyingPercent){
@@ -8200,10 +8276,12 @@ function drawMapTiles(){
 						//if(player.isDead){
 						//	textureName = 'land-dead';
 						//}
+						let color = player.color;
+						
 						
 						drawImageMipped(ctx, textureName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
 
-						let color = player.color;
+						
 						
 						
 						
@@ -10104,6 +10182,9 @@ function setTileAt(q, r, tileData, allowCreation = true, state = null) {
 
 function setTileOwnerByIndex(tile, ownerIndex){
 	if(ownerIndex !== undefined && ownerIndex !== null){
+		// remember who was previous owner (for animations):
+		tile.powner = tile.ownerIndex;
+		// set new owner:
 		tile.ownerIndex = ownerIndex;
 	}else{
 		tile.ownerIndex = -1; // no owner, ownerIndex is not set.
@@ -14462,7 +14543,7 @@ async function executeAIMoveSequentially(player) {
 function executeAIMoveSequentially1(player) {
 	if (!isHost() || gameState.settings.gameOver) return;
 
-	// Double-check if it's still this AI's turn
+	// Double-check if it's still this AIs turn
 	const currentPlayer = gameState.players[gameState.turn.currentPlayerIndex];
 	if (!currentPlayer || currentPlayer.id !== player.id || !currentPlayer.isAI) {
 		return;
@@ -15069,6 +15150,17 @@ function killPlayerNow(playerIndex){
 }
 
 
+function remainingHumanPlayers(){
+	let remaining = [];
+	for(let i = 0; i < gameState.players.length; i++){
+		let player = gameState.players[i];
+		if(!player.isSpectator && !player.isDead && !player.isAI){
+			remaining.push(player);
+		}
+	}
+	return remaining.length;
+}
+
 
 function getLastRemainingPlayer(){
 	let remaining = [];
@@ -15193,12 +15285,10 @@ function executeEndTurn(playerIndex) {
 				// send ACTION.player_killed message and set player as dead:
 				batchActions.push(...killPlayer(player.playerIndex));
 				
-				let winner = getLastRemainingPlayer();
-				if(winner !== null){
-					let playerIndex = -1;
-					if(winner !== -1){
-						playerIndex = winner.playerIndex;
-					}
+				let remainingHumans = remainingHumanPlayers();
+				console.warn("remainingHumans = "+remainingHumans);
+
+				if(remainingHumans === 0){
 					gameState.settings.gameOver = true;
 					
 					let allStats = [];
@@ -15208,9 +15298,29 @@ function executeEndTurn(playerIndex) {
 					
 					batchActions.push({
 						type: ACTION.game_over,
-						winnerPlayerIndex: playerIndex,
+						winnerPlayerIndex: -1,
 						allStats: allStats,
 					});
+				}else{
+					let winner = getLastRemainingPlayer();
+					if(winner !== null){
+						let playerIndex = -1;
+						if(winner !== -1){
+							playerIndex = winner.playerIndex;
+						}
+						gameState.settings.gameOver = true;
+						
+						let allStats = [];
+						for(let i = 0; i < gameState.players.length; i++){
+							allStats.push(getPlayerStats(i));
+						}
+						
+						batchActions.push({
+							type: ACTION.game_over,
+							winnerPlayerIndex: playerIndex,
+							allStats: allStats,
+						});
+					}
 				}
 					
 				/*
@@ -16164,7 +16274,10 @@ function handleHostData(data) {
 		break;
 		case ACTION.game_over: {
 			// show popup of winning player, and popup for losers.
+
+			// winnerPlayerIndex is -1 if game was over when lost to an AI (no humans left in game): 
 			let winnerPlayerIndex = data.winnerPlayerIndex;
+
 			let myPlayer = getMyPlayer();
 			let myIndex = myPlayer.playerIndex;
 			gameState.settings.gameOver = true;
@@ -16197,9 +16310,6 @@ function handleHostData(data) {
 			endgamePopupStatsSoldiers.textContent = myStats.soldiers;
 			endgamePopupStatsWages.textContent = myStats.wages;
 			endgamePopupStatsMoney.textContent = formatPoolDecimal(myStats.money);
-			
-
-
 			
 			// wont work without this or requestAnimationFrame()
 			//setTimeout(function(){
