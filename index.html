@@ -3349,8 +3349,8 @@ let gameSounds = {
 	sea:          {filename: "sounds/sea.mp3",     gain: 1,   filter: false},
 	
 	// system sounds:
-	victory:      {filename: "sounds/victory.mp3", gain: 0.6,   filter: false},
-	defeat:       {filename: "sounds/defeat.mp3",  gain: 0.6,   filter: false},
+	victory:      {filename: "sounds/victory.mp3", gain: 0.15,   filter: false},
+	defeat:       {filename: "sounds/defeat.mp3",  gain: 0.4,   filter: false},
 	join:         {filename: "sounds/join.mp3",    gain: 0.6,   filter: false},
 	quit:         {filename: "sounds/quit.mp3",    gain: 0.6,   filter: false},
 	message:      {filename: "sounds/message.mp3", gain: 0.6,   filter: false},
@@ -4257,6 +4257,7 @@ const OTHER_UNITS_DATA = {
 
 
 // todo: use this array instead of 2 separate arrays for soldiers and castles.
+// let units = 
 const UNITS = {
 	ALL: {
 		...SOLDIER_DATA,
@@ -4821,6 +4822,7 @@ let dragStart = null;
 let isDragging = false;
 let selectedHex = null; // {q, r}
 let focusedHex = null;
+let focusedPoint = null;
 let selectedUnit = null;
 let placingUnit = null; // e.g., { type: 'Peasant', cost: 100 }
 let currentTurnActions = []; // For undo
@@ -4842,6 +4844,7 @@ function deselectUnit(){
 	//console.log("deselectUnit");
 	selectedUnit = null;
 	sellUnitBtn.disabled = true;
+	updateHighlights(); // makes sure validSeaMoveHexes will not be set.
 }
 
 let shakingUnits = []; // { id, endTime }
@@ -5986,7 +5989,7 @@ function openEndgamePopup(fireworksEnabled){
 	
 	endgameStatsWrapper.style.display = "none";
 	
-	if(fireworksEnabled){
+	if(fireworksEnabled || getMyPlayer().isWinner){
 		fireworks.start();
 	}
 	
@@ -6898,6 +6901,39 @@ function pixelToAxial(x, y) {
 }
 
 
+
+function pixelToAxialPrecise(x, y) {
+	// If first argument is an object, extract values
+	if (x !== null && typeof x === "object") {
+		y = x.y;
+		x = x.x; // must be set here or overwrites q before r.
+	}
+	if (typeof x !== "number" || typeof y !== "number") {
+		throw new TypeError("pixelToAxial expects (x, y) numbers or an object { x, y }");
+	}
+	// 1. undo translation
+	let vx = x - viewport.x;
+	let vy = y - viewport.y;
+
+	// 2. undo rotation
+	const sin = Math.sin(-viewport.rotation);
+	const cos = Math.cos(-viewport.rotation);
+
+	const rx = vx * cos - vy * sin;
+	const ry = vx * sin + vy * cos;
+
+	// 3. undo zoom
+	const viewX = rx / viewport.zoom;
+	const viewY = ry / viewport.zoom;
+
+	// 4. convert world coords → axial hex
+	const q = (2/3 * viewX) / HEX_SIZE;
+	const r = (-1/3 * viewX + SQRT3/3 * viewY) / HEX_SIZE;
+
+	return {q, r};
+}
+
+
 /*
 function pixelToAxial1(x, y) {
 	// Apply viewport inverse transform
@@ -6977,7 +7013,16 @@ function getHexDistance(q1, r1, q2, r2) {
 	return (Math.abs(dq) + Math.abs(dr) + Math.abs(ds)) / 2;
 }
 
+function getPointsDistance(p1, p2) {
+	const dx = p2.x - p1.x;
+	const dy = p2.y - p1.y;
+	return Math.sqrt(dx * dx + dy * dy);
+}
 
+function getHexPointDistance(hex, point){
+	let h2 = pixelToAxialPrecise(point.x, point.y);
+	return getHexDistance(hex.q, hex.r, h2.q, h2.r);
+}
 
 
 // =================================================================
@@ -9440,8 +9485,127 @@ let previewdraw = 0;
 
 let focusedHexEnabled = true;
 
+
+// rounds up the coordinate to nearest valid hex and shows only allowed hexes for boats/mines etc.
+function getNearestValidHex(point){
+	let closestHex = {q:0,r:0,dist:999999, found:false};
+
+	if(point === null){
+		return closestHex;
+	}
+	
+
+	let hex = pixelToAxial(point.x, point.y);
+	let tile = getTileAt(hex.q, hex.r);
+	
+	
+
+	if(selectedUnit && isTypeBoat(selectedUnit.type)){
+		closestHex.q = hex.q;
+		closestHex.r = hex.r;
+		closestHex.found = true;
+		return closestHex;
+	}
+	
+	if(placingUnit){
+		if(selectedUnit){
+			if(isTypeBoat(placingUnit.type)){
+				if(isHexNextToHex(selectedUnit, hex) && isTileWater(tile)){
+					closestHex.q = hex.q;
+					closestHex.r = hex.r;
+					closestHex.found = true;
+				}
+				return closestHex;
+			}else if(isTypeMine(placingUnit.type)){
+				if(isHexNextToHex(selectedUnit, hex) && isTileLand(tile)){
+					closestHex.q = hex.q;
+					closestHex.r = hex.r;
+					closestHex.found = true;
+				}
+				return closestHex;
+			}
+		}
+		if(isTypeSoldier(placingUnit.type)){
+			// if pointing on unit, just focus there instead of avoiding it.
+			if(getUnitAt(hex.q, hex.r)){
+				closestHex.q = hex.q;
+				closestHex.r = hex.r;
+				closestHex.found = true;
+				return closestHex;
+			}
+		}else if(isTypeCastle(placingUnit.type)){
+			// only allow building inside your pool:
+			for(let i = 0; i < highlightedPool.length; i++){
+				let validHex = highlightedPool[i];
+				if(isHexHex(validHex, hex)){
+					closestHex.q = hex.q;
+					closestHex.r = hex.r;
+					closestHex.found = true;
+					break;
+				}
+			}
+			return closestHex;
+		}
+	}else{
+		// not placingUnit.
+		if(getUnitAt(hex.q, hex.r)){
+			closestHex.q = hex.q;
+			closestHex.r = hex.r;
+			closestHex.found = true;
+			return closestHex;
+		}
+	}
+	
+	for(let i = 0; i < validMoveHexes.length; i++){
+		let validHex = validMoveHexes[i];
+		
+		let dist = getHexPointDistance(validHex, point);
+		if(dist < closestHex.dist){
+			closestHex.dist = dist;
+			closestHex.q = validHex.q;
+			closestHex.r = validHex.r;
+			closestHex.found = true;
+		}
+	}
+	// add selected unit in the search list so it wont try to move it when you click unit again.
+	if(selectedUnit){
+		let validHex = selectedUnit;
+		let dist = getHexPointDistance(validHex, point);
+		if(dist < closestHex.dist){
+			closestHex.dist = dist;
+			closestHex.q = validHex.q;
+			closestHex.r = validHex.r;
+			closestHex.found = true;
+		}
+	}
+	if(closestHex.dist > 1.6){
+		closestHex.found = false;
+	}
+	return closestHex;
+}
+
+
 function drawFocusedHex(){
 	if(focusedHex){
+		let nearestValidHex = null;
+		
+		
+		let overrideColor = null;
+
+		let closestHex = getNearestValidHex(focusedPoint);
+		if(closestHex.found){
+			focusedHex.q = closestHex.q;
+			focusedHex.r = closestHex.r;
+		}else{
+			if(placingUnit || selectedUnit){
+				overrideColor = "rgba(255, 0, 0, 1)";
+			}
+		}
+
+
+
+
+
 		const x = axialToPixelX(focusedHex.q, focusedHex.r);
 		const y = axialToPixelY(focusedHex.q, focusedHex.r);
 		
@@ -9451,8 +9615,8 @@ function drawFocusedHex(){
 			if(isTileWater(tile)){ // !tile || tile.type === 'water'){
 				drawHexagonPathLines(x, y, null, HEX_LINE_MULTI);
 				ctx.setLineDash([12.5, 15]);
-				ctx.strokeStyle = 'rgba(255,255,255, 0.4)';
-				ctx.lineWidth = 3;
+				ctx.strokeStyle = overrideColor ? overrideColor : 'rgba(255,255,255, 0.4)';
+				ctx.lineWidth = 4;
 				
 				ctx.lineCap = 'round';
 				ctx.stroke();
@@ -9464,11 +9628,15 @@ function drawFocusedHex(){
 				if(selectedUnit || placingUnit){
 					drawHexagonPathLines(x, y, null, HEX_LINE_MULTI);
 					ctx.setLineDash([12.5, 15]);
-					ctx.strokeStyle = 'rgba(255,255,0, 0.4)';
-					ctx.lineWidth = 3;
+					if(placingUnit){
+						ctx.strokeStyle = overrideColor ? overrideColor : 'rgba(255,255,255, 0.4)';
+					}else{
+						ctx.strokeStyle = overrideColor ? overrideColor : 'rgba(255,255,0, 0.4)';
+					}
+					ctx.lineWidth = 4;
 				}else{
 					drawHexagonPathLines(x, y, null, HEX_LINE_MULTI2);
-					ctx.strokeStyle = 'rgba(255,255,255, 0.4)';
+					ctx.strokeStyle = overrideColor ? overrideColor : 'rgba(255,255,255, 0.4)';
 					ctx.lineWidth = 2;
 				}
 				
@@ -9476,8 +9644,25 @@ function drawFocusedHex(){
 				ctx.stroke();
 				ctx.lineCap = 'butt'; // reset to default
 				ctx.setLineDash([]); // reset possible dash.
+			}else{
+				if(selectedUnit || placingUnit){
+					drawHexagonPathLines(x, y, null, HEX_LINE_MULTI);
+					ctx.setLineDash([12.5, 15]);
+					if(placingUnit){
+						ctx.strokeStyle = overrideColor ? overrideColor : 'rgba(255,255,255, 0.4)';
+					}else{
+						ctx.strokeStyle = overrideColor ? overrideColor : 'rgba(255,255,0, 0.4)';
+					}
+					ctx.lineWidth = 4;
+					
+					ctx.lineCap = 'round';
+					ctx.stroke();
+					ctx.lineCap = 'butt'; // reset to default
+					ctx.setLineDash([]); // reset possible dash.
+				}
 			}
 		}
+
 
 		
 	}
@@ -9851,6 +10036,7 @@ function handleCanvasMouseMove(e) {
 	lastMousePos.y = e.clientY;
 	
 	focusedHex = pixelToAxial(e.clientX, e.clientY);
+	focusedPoint = {x: e.clientX, y: e.clientY};
 
 	
 	if (dragStart && dragStart.canDrag) {
@@ -9902,7 +10088,13 @@ function handleCanvasMouseUp(e) {
 		const dist = Math.sqrt(dx*dx + dy*dy);
 		
 		if (dist < 5) { // It's a click, not a drag
-			handleHexClick(pixelToAxial(e.clientX, e.clientY));
+			if(e.button === 2){
+				// oncontextmenu contextmenu cancel build popup cancelbuildpopup
+				deselectUnit();
+				cancelBuildPopup();
+			}else if(e.button === 0){
+				handleHexClick({x: e.clientX, y: e.clientY});
+			}
 		}
 		isDragging = false;
 		dragStart = null;
@@ -10053,7 +10245,7 @@ function handleTouchEnd(e) {
 	
 	if (e.touches.length === 0 && touchStartPos && !isDragging) {
 		// This was a tap
-		handleHexClick(pixelToAxial(touchStartPos.x, touchStartPos.y));
+		handleHexClick({x: touchStartPos.x, y: touchStartPos.y});
 	}
 	
 	
@@ -10542,6 +10734,11 @@ function isHexNextToHex(hex1, hex2){
 	return isUnitNextToUnit(hex1, hex2);
 }
 
+// check if two hexes equal in q/r.
+function isHexHex(hex1, hex2){
+	return hex1.q === hex2.q && hex1.r === hex2.r;
+}
+
 function sendTileUpdate(hex){
 	console.warn("sendTileUpdate");
 	if(!localPlayer.isSpectator){
@@ -10558,8 +10755,10 @@ function sendTileUpdate(hex){
 
 let routeHighlight = [];
 
-function handleHexClick(hex) {
+function handleHexClick(point) {
 	if(REPLAY_ENABLED) return;
+	
+	let hex = pixelToAxial(point.x, point.y);
 	
 	
 	if(gameState.settings.editorEnabled){
@@ -10649,6 +10848,12 @@ function handleHexClick(hex) {
 		// --- PLACING A UNIT ---
 		if (placingUnit) {
 			
+			// find closest hex to move onto:
+			let closestHex = getNearestValidHex(point);
+			if(closestHex.found){
+				hex.q = closestHex.q;
+				hex.r = closestHex.r;
+			}
 			
 			let poolHex = getSelectedPoolHex();
 			console.log("handleHexClick: placingUnit poolHex:");
@@ -10770,6 +10975,13 @@ function handleHexClick(hex) {
 		if (selectedUnit) {
 	
 	
+			// find closest hex to move onto:
+			let closestHex = getNearestValidHex(point);
+			if(closestHex.found){
+				hex.q = closestHex.q;
+				hex.r = closestHex.r;
+			}
+			
 			console.log("handleHexClick: selectedUnit");
 			
 			
@@ -11445,6 +11657,7 @@ function updateHighlights() {
 		}
 	} else if (selectedHex) {
 		poolStartHex = selectedHex;
+		console.warn("poolStartHex",poolStartHex);
 	}
 
 	
@@ -11497,8 +11710,20 @@ function updateHighlights() {
 		}
 	}
 	
+	// todo: make highlight for build too.
+	// change selectedUnit to unit with custom values with level etc.
+	let unit = {level:-1};
+	if(selectedUnit){
+		unit.level = selectedUnit.level;
+	}
+	if(placingUnit){
+		unit.level = getUnitInfo(placingUnit.type).level;
+		console.log(unit.level);
+	}
+	
 	// --- 2. Highlight movement options (only if a unit is selected) ---
-	if (selectedUnit) {
+	//if (selectedUnit) {
+	if(unit.level !== -1){
 		const borderHexes = new Map(); // Use Map to avoid duplicates, key 'q,r'
 		
 		// Add all empty hexes *in* the pool as valid moves
@@ -11534,14 +11759,14 @@ function updateHighlights() {
 				if (targetUnit.ownerIndex === myPlayer.playerIndex){
 					continue; // Should be impossible
 				}
-				if (selectedUnit.level > shieldLevel && selectedUnit.level > targetUnit.level) {
+				if (unit.level > shieldLevel && unit.level > targetUnit.level) {
 					validMoveHexes.push(hex);
 				} else {
 					invalidMoveHexes.push(hex);
 				}
 			} else { // No target unit
 				if (toTile.ownerIndex !== -1) { // Enemy land
-					if (selectedUnit.level > shieldLevel) {
+					if (unit.level > shieldLevel) {
 						validMoveHexes.push(hex);
 					} else {
 						invalidMoveHexes.push(hex);
@@ -11669,6 +11894,7 @@ function openBuildPopup(type) {
 					cost: item.cost,
 					poolHex: getSelectedPoolHex(), // not needed here? called in  handleHexClick() also.
 				};
+				updateHighlights();
 				
 				playSound('startmove');
 
@@ -15284,40 +15510,34 @@ function executeEndTurn(playerIndex) {
 				console.warn("PLAYER HAS DIED: "+player.name);
 				// send ACTION.player_killed message and set player as dead:
 				batchActions.push(...killPlayer(player.playerIndex));
+			
+				let allStats = [];
+				for(let i = 0; i < gameState.players.length; i++){
+					allStats.push(getPlayerStats(i));
+				}
 				
 				let remainingHumans = remainingHumanPlayers();
-				console.warn("remainingHumans = "+remainingHumans);
 
 				if(remainingHumans === 0){
 					gameState.settings.gameOver = true;
-					
-					let allStats = [];
-					for(let i = 0; i < gameState.players.length; i++){
-						allStats.push(getPlayerStats(i));
-					}
-					
+
 					batchActions.push({
 						type: ACTION.game_over,
-						winnerPlayerIndex: -1,
+						winnerPlayerIndex: -1, // -1 = no winner, AI's won.
 						allStats: allStats,
 					});
 				}else{
 					let winner = getLastRemainingPlayer();
 					if(winner !== null){
-						let playerIndex = -1;
+						let winnerPlayerIndex = -1;
 						if(winner !== -1){
-							playerIndex = winner.playerIndex;
+							winnerPlayerIndex = winner.playerIndex;
 						}
 						gameState.settings.gameOver = true;
 						
-						let allStats = [];
-						for(let i = 0; i < gameState.players.length; i++){
-							allStats.push(getPlayerStats(i));
-						}
-						
 						batchActions.push({
 							type: ACTION.game_over,
-							winnerPlayerIndex: playerIndex,
+							winnerPlayerIndex: winnerPlayerIndex,
 							allStats: allStats,
 						});
 					}
@@ -16291,6 +16511,7 @@ function handleHostData(data) {
 				// play win sound.
 				fireworksEnabled = true;
 				playSound("victory");
+				myPlayer.isWinner = true;
 				endgamePopupTitle.textContent = "Victory!";
 				endgamePopupMessage.textContent = "You have won the game!";
 				endgamePopupTitle.style.color = "#FFFF00";
@@ -19666,6 +19887,10 @@ function getUint(str) {
 }
 
 
+// prevent contextmenu from appearing. oncontextmenu
+document.addEventListener('contextmenu', function(event) {
+	event.preventDefault();
+}, false);
 
 
 document.addEventListener('keydown', (event) => {
@@ -20139,10 +20364,16 @@ function loadSavedGame(roomKey){
 }
 
 
+
+
 // cancels building an unit and closes the popup
 function cancelBuildPopup(){
 	hideBuildPopup();
 	placingUnit = null;
+	// hide cancel texts:
+	buildOtherBtn.classList.remove("cancel");
+	buildSoldierBtn.classList.remove("cancel");
+	buildCastleBtn.classList.remove("cancel");
 }
 
 function hideBuildPopup(){
