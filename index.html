@@ -8998,12 +8998,16 @@ function drawUnitSelection(){
 		const x = axialToPixelX(selectedUnit.q, selectedUnit.r);
 		const y = axialToPixelY(selectedUnit.q, selectedUnit.r);
 
+
 		let scale = pulseScale(0.6, HEX_LINE_MULTI, PULSE_SPEED);
 		drawHexagonPathLines(x, y, null, scale);
 		
-
+		ctx.lineDashOffset = 8*scale;
+		let dashes = [16*scale, 24*scale];
+		
+		
 		// your pool highlight
-		ctx.setLineDash([12.5*scale, 15*scale]);
+		ctx.setLineDash(dashes);
 		ctx.strokeStyle = 'rgba(255,255,255, 1)';
 		ctx.lineWidth = 4*scale;
 		ctx.lineCap = 'round';
@@ -9585,6 +9589,7 @@ function getNearestValidHex(point){
 }
 
 
+
 function drawFocusedHex(){
 	if(focusedHex){
 		let nearestValidHex = null;
@@ -9601,11 +9606,34 @@ function drawFocusedHex(){
 				overrideColor = "rgba(255, 0, 0, 1)";
 			}
 		}
+		
+		let scale = pulseScale(0.6, HEX_LINE_MULTI, PULSE_SPEED);
+				
+
+		
+
+		
+		if(overrideColor){
+			scale = HEX_LINE_MULTI*0.9;
+		}
+		
+		ctx.lineDashOffset = 8*scale;
+		let dashes = [16*scale, 24*scale];
+
+/*
+		let scale = pulseScale(0.6, HEX_LINE_MULTI, PULSE_SPEED);
+		drawHexagonPathLines(x, y, null, scale);
+		
+
+		// your pool highlight
+		ctx.setLineDash([12.5*scale, 15*scale]);
+		ctx.strokeStyle = 'rgba(255,255,255, 1)';
+		ctx.lineWidth = 4*scale;
+*/
 
 
 
-
-
+		
 		const x = axialToPixelX(focusedHex.q, focusedHex.r);
 		const y = axialToPixelY(focusedHex.q, focusedHex.r);
 		
@@ -9613,10 +9641,10 @@ function drawFocusedHex(){
 		
 		if(placingUnit && isTypeBoat(placingUnit.type)){
 			if(isTileWater(tile)){ // !tile || tile.type === 'water'){
-				drawHexagonPathLines(x, y, null, HEX_LINE_MULTI);
-				ctx.setLineDash([12.5, 15]);
-				ctx.strokeStyle = overrideColor ? overrideColor : 'rgba(255,255,255, 0.4)';
-				ctx.lineWidth = 4;
+				drawHexagonPathLines(x, y, null, scale);
+				ctx.setLineDash(dashes);
+				ctx.strokeStyle = overrideColor ? overrideColor : 'rgba(255,255,255, 0.6)';
+				ctx.lineWidth = 4*scale;
 				
 				ctx.lineCap = 'round';
 				ctx.stroke();
@@ -9626,14 +9654,14 @@ function drawFocusedHex(){
 		}else{
 			if(!isTileWater(tile)){ // tile && tile.type !== 'water'){
 				if(selectedUnit || placingUnit){
-					drawHexagonPathLines(x, y, null, HEX_LINE_MULTI);
-					ctx.setLineDash([12.5, 15]);
+					drawHexagonPathLines(x, y, null, scale);
+					ctx.setLineDash(dashes);
 					if(placingUnit){
-						ctx.strokeStyle = overrideColor ? overrideColor : 'rgba(255,255,255, 0.4)';
+						ctx.strokeStyle = overrideColor ? overrideColor : 'rgba(255,255,255, 0.6)';
 					}else{
-						ctx.strokeStyle = overrideColor ? overrideColor : 'rgba(255,255,0, 0.4)';
+						ctx.strokeStyle = overrideColor ? overrideColor : 'rgba(255,255,0, 0.6)';
 					}
-					ctx.lineWidth = 4;
+					ctx.lineWidth = 4*scale;
 				}else{
 					drawHexagonPathLines(x, y, null, HEX_LINE_MULTI2);
 					ctx.strokeStyle = overrideColor ? overrideColor : 'rgba(255,255,255, 0.4)';
@@ -9646,14 +9674,14 @@ function drawFocusedHex(){
 				ctx.setLineDash([]); // reset possible dash.
 			}else{
 				if(selectedUnit || placingUnit){
-					drawHexagonPathLines(x, y, null, HEX_LINE_MULTI);
-					ctx.setLineDash([12.5, 15]);
+					drawHexagonPathLines(x, y, null, scale);
+					ctx.setLineDash(dashes);
 					if(placingUnit){
-						ctx.strokeStyle = overrideColor ? overrideColor : 'rgba(255,255,255, 0.4)';
+						ctx.strokeStyle = overrideColor ? overrideColor : 'rgba(255,255,255, 0.6)';
 					}else{
-						ctx.strokeStyle = overrideColor ? overrideColor : 'rgba(255,255,0, 0.4)';
+						ctx.strokeStyle = overrideColor ? overrideColor : 'rgba(255,255,0, 0.6)';
 					}
-					ctx.lineWidth = 4;
+					ctx.lineWidth = 4*scale;
 					
 					ctx.lineCap = 'round';
 					ctx.stroke();
