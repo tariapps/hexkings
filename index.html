@@ -4565,12 +4565,14 @@ function getPlayerStats(playerIndex = -1){
 	
 	let pools = findEconomyPools(playerIndex);
 	
-	for(let i = 0; i < pools.length; i++){
-		let pool = pools[i];
-		stats.hexes += pool.hexes.length;
-		stats.soldiers += pool.soldiers.length;
-		stats.wages += pool.totalWages;
-		stats.money += pool.totalSavings;
+	if(pools){
+		for(let i = 0; i < pools.length; i++){
+			let pool = pools[i];
+			stats.hexes += pool.hexes.length;
+			stats.soldiers += pool.soldiers.length;
+			stats.wages += pool.totalWages;
+			stats.money += pool.totalSavings;
+		}
 	}
 
 	return stats;
@@ -5993,6 +5995,12 @@ function openEndgamePopup(fireworksEnabled){
 		fireworks.start();
 	}
 	
+	if(fireworksEnabled){
+		playSound("victory");
+	}else{
+		playSound("defeat");
+	}
+	
 	//addPopupState(endgamePopupUi);
 }
 
@@ -6011,7 +6019,8 @@ closeEndgamePopupBtn.addEventListener("click", () => {
 });
 
 openEndgamePopupBtn.addEventListener("click", () => {
-	openEndgamePopup();
+	let fireworksEnabled = getMyPlayer().isWinner;
+	openEndgamePopup(fireworksEnabled);
 });
 
 
@@ -8183,7 +8192,7 @@ function drawMapTiles(){
 		let tileAppearingPercent = 0;
 		
 		
-		if(tile.isDying){
+		if(tile.isDying && !tile.isAppearing){
 			let timeDiff = performance.now() - tile.deadStartTime;
 			let tileAnimationLen = 3000;
 			let maxTileSize = 80; // 80 makes it negative (backwards). for hex_pad (tileSizePad)
@@ -16434,6 +16443,11 @@ function handleHostData(data) {
 					tile.isAppearing = true;
 					tile.appearStartTime = performance.now();
 					
+					// delete dying animations, or else that would be rendered instead of claiming animation:
+					delete tile.isDying;
+					delete tile.deadStartTime;
+					delete tile.deadOwnerIndex;
+					
 					// cant delete here because undo would fuck it up for not remembering the list of owners.
 					//delete tile.objectOwnerIndexes;
 
@@ -16611,41 +16625,44 @@ function handleHostData(data) {
 			
 			console.warn("ACTION.game_over");
 			
-			let fireworksEnabled = false;
+			if(!REPLAY_ENABLED){
 			
-			if(winnerPlayerIndex === myIndex){
-				// you have won the game!
-				// play win sound.
-				fireworksEnabled = true;
-				playSound("victory");
-				myPlayer.isWinner = true;
-				endgamePopupTitle.textContent = "Victory!";
-				endgamePopupMessage.textContent = "You have won the game!";
-				endgamePopupTitle.style.color = "#FFFF00";
-			}else{
-				// you have lost the game!
-				// play lose sound.
-				fireworksEnabled = false;
-				playSound("defeat");
-				endgamePopupTitle.textContent = "Defeat!";
-				endgamePopupMessage.textContent = "You have been defeated!";
-				endgamePopupTitle.style.color = "#FF0000";
+				let fireworksEnabled = false;
+				
+				if(winnerPlayerIndex === myIndex){
+					// you have won the game!
+					// play win sound.
+					fireworksEnabled = true;
+					//playSound("victory");
+					myPlayer.isWinner = true;
+					endgamePopupTitle.textContent = "Victory!";
+					endgamePopupMessage.textContent = "You have won the game!";
+					endgamePopupTitle.style.color = "#FFFF00";
+				}else{
+					// you have lost the game!
+					// play lose sound.
+					fireworksEnabled = false;
+					//playSound("defeat");
+					endgamePopupTitle.textContent = "Defeat!";
+					endgamePopupMessage.textContent = "You have been defeated!";
+					endgamePopupTitle.style.color = "#FF0000";
+				}
+				
+				// update stats:
+				let myStats = data.allStats[myIndex]; // getPlayerStats(myIndex);
+				endgamePopupStatsHexes.textContent = myStats.hexes;
+				endgamePopupStatsSoldiers.textContent = myStats.soldiers;
+				endgamePopupStatsWages.textContent = myStats.wages;
+				endgamePopupStatsMoney.textContent = formatPoolDecimal(myStats.money);
+				
+				// wont work without this or requestAnimationFrame()
+				//setTimeout(function(){
+				//	openEndgamePopup();
+				//}, 1);
+				requestAnimationFrame(() => {
+					openEndgamePopup(fireworksEnabled);
+				});
 			}
-			
-			// update stats:
-			let myStats = data.allStats[myIndex]; // getPlayerStats(myIndex);
-			endgamePopupStatsHexes.textContent = myStats.hexes;
-			endgamePopupStatsSoldiers.textContent = myStats.soldiers;
-			endgamePopupStatsWages.textContent = myStats.wages;
-			endgamePopupStatsMoney.textContent = formatPoolDecimal(myStats.money);
-			
-			// wont work without this or requestAnimationFrame()
-			//setTimeout(function(){
-			//	openEndgamePopup();
-			//}, 1);
-			requestAnimationFrame(() => {
-				openEndgamePopup(fireworksEnabled);
-			});
 			
 			updateGameUI();
 		}
@@ -16837,6 +16854,13 @@ function handleHostData(data) {
 				//console.warn("XXYY: "+JSON.stringify(data));
 				
 				addNetworkHistory(data);
+				
+				// save game one last time when game ends:
+				if(data.type === ACTION.game_over){
+					if(gameSettings.autosave){
+						saveGameToDB(gameState);
+					}
+				}
 				//NETWORK_HISTORY.push({...data, _TS: new Date()});
 			}
 			break;
