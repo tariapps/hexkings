@@ -6595,7 +6595,12 @@ function pushLobbySystemChatMessage(message, color = '#FFF') {
 }
 
 
-
+function getHHii() {
+	const now = new Date();
+	const hours = String(now.getHours()).padStart(2, '0');
+	const minutes = String(now.getMinutes()).padStart(2, '0');
+	return `${hours}:${minutes}`;
+}
 
 function pushChatMessage(from, message, isSpectator, color = '#FFF') {
 	
@@ -6617,10 +6622,12 @@ function pushChatMessage(from, message, isSpectator, color = '#FFF') {
 	}
 
 	const item = document.createElement('div');
-	item.innerHTML = `<strong style="color: ${color};" class="msgfromtext"></strong><span class="msgtext"></span>`;
+	item.innerHTML = `<span style="color: ${color};" class="msgtime"></span><strong style="color: ${color};" class="msgfromtext"></strong><span class="msgtext"></span>`;
 
+	const safeMsgTime = document.createTextNode(getHHii()+" "); // "23:45 "
 	const safeMsgFrom = document.createTextNode(nameStr);
 	const safeMsg = document.createTextNode(` ${message}`);
+	item.querySelector(".msgtime").appendChild(safeMsgTime);
 	item.querySelector(".msgfromtext").appendChild(safeMsgFrom);
 	item.querySelector(".msgtext").appendChild(safeMsg);
 
@@ -8800,8 +8807,22 @@ function drawUnitsByInternalType(unitType){
 function drawUnitsRoutes(){
 	ctx.save();
 	for (const unit of gameState.units) {
+		// draw boat routes:
 		if(unit.route){
 			drawRouteLines(unit.route, "rgba(255, 255, 255, 0.4)", true);
+		}
+		// draw soldier routes:
+		if(unit.pq !== undefined){
+			if(focusedHex){
+				if(unit.q === focusedHex.q && unit.r === focusedHex.r){
+					let route = [
+						{q: unit.pq, r: unit.pr}, 
+						{q: unit.q, r: unit.r},
+					];
+					drawRouteLines(route, "rgba(255, 255, 0, 0.6)", true);
+				}
+			}
+
 		}
 	}
 	ctx.restore();
@@ -8810,6 +8831,7 @@ function drawUnitsRoutes(){
 // renderunits render units
 function drawUnits(){
 	
+	// drawboatroutes draw boat routes draw unit routes drawunitroutes
 	drawUnitsRoutes();
 	
 	// draw all units, castles first:
@@ -9620,18 +9642,6 @@ function drawFocusedHex(){
 		ctx.lineDashOffset = 8*scale;
 		let dashes = [16*scale, 24*scale];
 
-/*
-		let scale = pulseScale(0.6, HEX_LINE_MULTI, PULSE_SPEED);
-		drawHexagonPathLines(x, y, null, scale);
-		
-
-		// your pool highlight
-		ctx.setLineDash([12.5*scale, 15*scale]);
-		ctx.strokeStyle = 'rgba(255,255,255, 1)';
-		ctx.lineWidth = 4*scale;
-*/
-
-
 
 		
 		const x = axialToPixelX(focusedHex.q, focusedHex.r);
@@ -9699,6 +9709,7 @@ function drawFocusedHex(){
 
 let lastActionHexes = [];
 
+
 // used to remove actionhex when player uses undo
 function removeLastActionHex(id){
 	lastActionHexes = lastActionHexes.filter(a => a.id !== id);
@@ -9730,6 +9741,80 @@ function pushLastActionHexCheckParams(ownerIndex, wasUndo, q, r, id, color){
 let lastActionMulti = 1; // later could modify this from game settings in-game.
 let lastActionStartScale = 40; // later could modify this from game settings in-game.
 
+
+
+let lastMovesTriggerTime = performance.now();
+
+function drawLastActionMoves(){
+	let myPlayer = getMyPlayer();
+	let now = performance.now();
+	let timeDiff = now - lastMovesTriggerTime;
+	let alphaTime = 2500*lastActionMulti; // fade out start time
+	let alphaLen = 1000*lastActionMulti; // fade out length
+	
+	// show for 4 seconds after triggering the positions visible:
+	if(timeDiff < 3500){
+		
+		for(let i = 0; i < gameState.units.length; i++){
+			let unit = gameState.units[i];
+			// only show enemies markers:
+			if(unit.ownerIndex !== myPlayer.playerIndex){
+				
+				// if has previous position:
+				if(unit.pq !== undefined){
+					// if prev pos != new pos:
+					if(unit.pq !== unit.q || unit.pr !== unit.r){
+						let hex = {q: unit.q, r: unit.r};
+						
+						let scale = 1;
+						
+						const x = axialToPixelX(hex);
+						const y = axialToPixelY(hex);
+						
+						// Determine rotation (in radians)
+						let rotation = (now - lastMovesTriggerTime) * 0.005; // example: rotates over time
+
+						ctx.save(); // Save the current state
+						ctx.translate(x, y); // Move origin to hex center
+						ctx.rotate(rotation); // Apply rotation
+						
+						ctx.lineCap = 'round';
+						ctx.setLineDash([12.5, 15]);
+						
+						let alpha = 1;
+						if(timeDiff > alphaTime){
+							alpha = 1-((timeDiff-alphaTime)/alphaLen);
+						}
+						if(alpha < 0) alpha = 0;
+
+						ctx.globalAlpha = alpha;
+						
+						drawHexagonPathLines(0, 0, null, scale);
+						
+						ctx.strokeStyle = 'rgba(255,255,255, 1)';
+						ctx.lineWidth = 5;
+						ctx.stroke();
+						
+						ctx.lineCap = 'butt'; // reset to default
+						ctx.setLineDash([]); // reset possible dash.
+				
+						ctx.restore(); // Restore original state
+
+						// draw unit routes:
+						let route = [
+							{q: unit.pq, r: unit.pr}, 
+							{q: unit.q, r: unit.r},
+						];
+						drawRouteLines(route, "rgba(255, 255, 255, 0.6)", true);
+					}
+				}
+			}
+		}
+
+	}
+}
+
+
 function drawLastActionHexes(){
 	let dashed = true;
 	let now = performance.now();
@@ -9743,7 +9828,7 @@ function drawLastActionHexes(){
 
 	ctx.lineCap = 'round';
 	ctx.setLineDash([12.5, 15]);
-			
+
 	for(let i = lastActionHexes.length-1; i >= 0; i--) {
 		let hex = lastActionHexes[i];
 		let unitId = hex.id;
@@ -9776,26 +9861,7 @@ function drawLastActionHexes(){
 
 			ctx.globalAlpha = alpha;
 			
-
 			drawHexagonPathLines(0, 0, null, scale);
-			
-			/*
-			ctx.beginPath();
-			let px = 0;
-			let py = 0;
-			let r = HEX_SIZE * scale;
-			ctx.moveTo(
-				px + r * HEX_CORNERS[0].x, 
-				py + r * HEX_CORNERS[0].y
-			);
-			for (let ival = 1; ival < 6; ival++) {
-				ctx.lineTo(
-					px + r * HEX_CORNERS[ival].x, 
-					py + r * HEX_CORNERS[ival].y
-				);
-			}
-			ctx.closePath();
-			*/
 			
 			ctx.strokeStyle = hex.color;//'rgba(255,255,0, 1)';
 			ctx.lineWidth = 5;
@@ -10037,6 +10103,7 @@ function render() {
 	drawTextParticles();
 	
 	drawLastActionHexes();
+	drawLastActionMoves();
 	
 	ctx.restore();
 	
@@ -10116,10 +10183,15 @@ function handleCanvasMouseUp(e) {
 		const dist = Math.sqrt(dx*dx + dy*dy);
 		
 		if (dist < 5) { // It's a click, not a drag
+			// right click:
 			if(e.button === 2){
 				// oncontextmenu contextmenu cancel build popup cancelbuildpopup
+				deselectHex();
 				deselectUnit();
 				cancelBuildPopup();
+				updateHighlights();
+				selectedPool = null;
+				updateSelectedPoolUi();
 			}else if(e.button === 0){
 				handleHexClick({x: e.clientX, y: e.clientY});
 			}
@@ -12702,9 +12774,15 @@ function executeAction(playerId, action) {
 			console.log("poolHex");
 			console.log(poolHex);
 			
+			
+			
 			const unit = gameState.units.find(u => u.id === unitId);
 			let unitCopy = {...unit}; // used when killing current unit.
 			if (!unit || unit.ownerIndex !== playerIndex) return;
+			
+			let pq = unit.q;
+			let pr = unit.r;
+			
 			
 			const moveCheck = isMoveValid(unit, { q: toQ, r: toR }, player);
 			
@@ -12788,10 +12866,11 @@ function executeAction(playerId, action) {
 					//console.warn(actionForUndo);
 					
 					// Move unit
+					
 					unit.q = toQ;
 					unit.r = toR;
 					unit.hasMoved = 1;
-					updates.push({ type: ACTION.unit_moved, unitId: unit.id, q: toQ, r: toR, hasMoved: 1 });
+					updates.push({ type: ACTION.unit_moved, unitId: unit.id, q: toQ, r: toR, pq: pq, pr: pr, hasMoved: 1 });
 					
 					let allowHexClaim = true;
 					
@@ -16629,7 +16708,18 @@ function handleHostData(data) {
 					}
 					console.warn("unit.route");
 					console.warn(unit.route);
+				}else{
+					// store previous position for seeing from where they moved:
+					if(data.pq !== undefined){
+						unit.pq = data.pq;
+						unit.pr = data.pr;
+					}else{
+						//delete unit.pq;
+						//delete unit.pr;
+					}
 				}
+	
+				// set new position:
 				unit.q = data.q;
 				unit.r = data.r;
 				unit.hasMoved = data.hasMoved;
@@ -19512,6 +19602,7 @@ async function replayHistory(history) {
 
 		let delay = (curr._T - prev._T) * DELAY_MULTI;
 		if (delay < 0) delay = 0; // in case of bugged time values...
+		if(delay > 1000) delay = 1000; // limit delay to one second.
 		
 		await new Promise(res => setTimeout(res, delay));
 
@@ -19930,7 +20021,7 @@ document.addEventListener('keydown', (event) => {
 		if(gameStarted()){
 			if (key === 'Enter') { // event.key matches enter and numpad enter.
 				toggleUiTopLeft();
-			}else if(code === 'KeyQ') {
+			}else if(code === 'KeyQ') { // q "q" 'q'
 				if(!event.shiftKey){
 					rotateLeftSnapped();
 				}else{
@@ -19944,6 +20035,8 @@ document.addEventListener('keydown', (event) => {
 				}
 			}else if(code === 'KeyW') {
 				rotateAroundScreenCenter(-viewport.rotation);
+			}else if(code === 'Space'){
+				lastMovesTriggerTime = performance.now();
 			}
 		}
 	}
