@@ -1768,9 +1768,11 @@ input.disabled {
 				<div class="settings-title">
 					Keyboard shortcuts:
 				</div>
-				<div><span style="color:yellow">Q</span> = rotate counterclockwise</div>
-				<div><span style="color:yellow">E</span> = rotate clockwise</div>
-				<div><span style="color:yellow">W</span> = reset rotation</div>
+				<div><span style="color:yellow">Q</span> = Rotate counterclockwise</div>
+				<div><span style="color:yellow">E</span> = Rotate clockwise</div>
+				<div><span style="color:yellow">W</span> = Reset rotation</div>
+				<div><span style="color:yellow">Space</span> = Show previous moves of soldiers</div>
+				<div><span style="color:yellow">Right Click</span> = Cancel selections</div>
 				
 			</div>
 			
@@ -8828,7 +8830,7 @@ function drawUnitsRoutes(){
 						{q: unit.pq, r: unit.pr}, 
 						{q: unit.q, r: unit.r},
 					];
-					drawRouteLines(route, "rgba(255, 255, 0, 0.6)", true);
+					drawRouteLines(route, "rgba(255, 255, 0, 0.6)", true, 3);
 				}
 			}
 
@@ -9788,7 +9790,8 @@ function drawLastActionMoves(){
 						ctx.rotate(rotation); // Apply rotation
 						
 						ctx.lineCap = 'round';
-						ctx.setLineDash([12.5, 15]);
+						ctx.lineDashOffset = 8;
+						ctx.setLineDash([16, 24]);
 						
 						let alpha = 1;
 						if(timeDiff > alphaTime){
@@ -9814,7 +9817,7 @@ function drawLastActionMoves(){
 							{q: unit.pq, r: unit.pr}, 
 							{q: unit.q, r: unit.r},
 						];
-						drawRouteLines(route, "rgba(255, 255, 255, 0.6)", true);
+						drawRouteLines(route, "rgba(255, 255, 255, 0.6)", true, 3, alpha);
 					}
 				}
 			}
@@ -9834,9 +9837,12 @@ function drawLastActionHexes(){
 	let alphaTime = 2500*lastActionMulti; // fade out start time
 	let alphaLen = 1000*lastActionMulti; // fade out length
 	
-
+	
 	ctx.lineCap = 'round';
-	ctx.setLineDash([12.5, 15]);
+	ctx.lineDashOffset = 8;
+	ctx.setLineDash([16, 24]);
+	
+
 
 	for(let i = lastActionHexes.length-1; i >= 0; i--) {
 		let hex = lastActionHexes[i];
@@ -9869,6 +9875,9 @@ function drawLastActionHexes(){
 			if(alpha < 0) alpha = 0;
 
 			ctx.globalAlpha = alpha;
+			
+			//ctx.lineDashOffset = 8*scale;
+			//let dashes = [16*scale, 24*scale];
 			
 			drawHexagonPathLines(0, 0, null, scale);
 			
@@ -9915,13 +9924,14 @@ function startZoom2(){
 
 
 
-function drawRouteLines(route, color = "#FFFFFF", dashed = false){
+function drawRouteLines(route, color = "#FFFFFF", dashed = false, speedMulti = 1, globalAlpha = 1){
 	ctx.beginPath();
 	ctx.strokeStyle = color;
+	ctx.globalAlpha = globalAlpha;
 	if(dashed){
 		let time = performance.now()/50;
 		ctx.setLineDash([10, 18]);
-		ctx.lineDashOffset = -time; // todo finish.
+		ctx.lineDashOffset = -time*speedMulti;
 	}
 	ctx.lineWidth = 5.5;
 	ctx.lineCap = 'round';
@@ -9943,6 +9953,7 @@ function drawRouteLines(route, color = "#FFFFFF", dashed = false){
 		ctx.setLineDash([]);
 		ctx.lineDashOffset = 0;
 	}
+	ctx.globalAlpha = 1;
 }
 
 
