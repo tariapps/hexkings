@@ -3474,10 +3474,12 @@ let gameSounds = {
 	sea:          {filename: "sounds/sea.mp3",     gain: 1,   filter: false},
 	
 	// system sounds:
-	victory:      {filename: "sounds/victory.mp3", gain: 0.15,   filter: false},
+	victory:      {filename: "sounds/victory.mp3", gain: 0.15,  filter: false},
 	defeat:       {filename: "sounds/defeat.mp3",  gain: 0.4,   filter: false},
 	join:         {filename: "sounds/join.mp3",    gain: 0.6,   filter: false},
-	quit:         {filename: "sounds/quit.mp3",    gain: 0.6,   filter: false},
+	//quit:         {filename: "sounds/quit.mp3",    gain: 0.6,   filter: false},
+	quit:         {filename: "sounds/end-call.mp3",gain: 0.6,   filter: false},
+	
 	message:      {filename: "sounds/message.mp3", gain: 0.6,   filter: false},
 	
 	// need one sound per castle level so the explosion animation gets chosen correctly.
@@ -6029,6 +6031,40 @@ editorBrushType.addEventListener("change", function () {
 });
 
 
+function hasLandNeighbors(q, r){
+	let neigh = getHexNeighbors(q, r);
+	for(let i = 0; i < neigh.length; i++){
+		let n = neigh[i];
+		let tile = getTileAt(n.q, n.r);
+		if(!isTileWater(tile)){
+			return true;
+		}
+	}
+	return false;
+}
+
+function clearWaterTiles(){
+	//let removableTiles = [];
+	
+	for(const [key, tileIndex] of Object.entries(gameState.map.tiles)){
+		let tile = gameState.map.tilesData[tileIndex];
+		if(isTileWater(tile) && !hasLandNeighbors(tile.q, tile.r)){
+			//removableTiles.push({q: tile.q, r: tile.r, key: key, tileIndex: tileIndex});
+			// mark as none so the shores wont be rendered.
+			tile.type = "none";
+		}
+	}
+	
+	//for(let i = 0; i < removableTiles.length; i++){
+	//	let item = removableTiles[i];
+	//	let tile = gameState.map.tilesData[item.tileIndex];
+	//	tile.type = "none";
+	//	//delete gameState.map.tiles[item.key];
+	//}
+	
+}
+
+
 function setEditorTile(hex, newType){
 	let tileSet = false;
 	
@@ -7763,7 +7799,10 @@ function drawObject(ctx, x, y, objectName, tile = null){
 			if(tile.animationFinished){
 				animate = false;
 			}
+			
 			if(tile.creationTime && animate){
+				//console.log(JSON.stringify(tile));
+				
 				let timeDiff = msNowFloor() - tile.creationTime;
 				let animationEnded = false;
 				
@@ -8111,7 +8150,8 @@ function drawMapShading(type){
 		// draw shadows/shading for land tiles next to water:
 		// draw map outlines:
 		// renderoutlines render outlines
-		if(getTileType(tile) !== 'water'){
+		//if(getTileType(tile) !== 'water'){
+		if(!isTileWater(tile)){
 			if(tile.outline){
 				let player = getPlayerByIndex(tile.ownerIndex);
 				let color;
@@ -8134,6 +8174,9 @@ function drawMapShading(type){
 		}else{
 			if(type === 1){ // shore shading
 			
+				if(tile.type === "none"){
+					continue;
+				}
 				// draw shores with lighter water by transparent hex:
 				const r = viewport.rotation;
 
@@ -8309,7 +8352,8 @@ function drawMapTiles(){
 		const y = axialToPixelY(q, r);
 
 		// all water tiles are actually shores, no water tiles are included after saving map.
-		if (getTileType(tile) === 'water') {
+		//if (getTileType(tile) === 'water') {
+		if(isTileWater(tile)){
 			//if(useInfiniteWater){
 				continue; // skip water tiles.
 			//}
@@ -8328,7 +8372,8 @@ function drawMapTiles(){
 
 		// 2. Draw the fallback background color (or owner color)
 		let fallbackColor = LAND_COLOR;
-		if(getTileType(tile) === 'water'){
+		//if(getTileType(tile) === 'water'){
+		if(isTileWater(tile)){ // unreachabe atm.
 			fallbackColor = WATER_COLOR;
 			if(!drawWaterTiles){
 				drawTile = false;
@@ -8461,7 +8506,8 @@ function drawMapTiles(){
 				img = getImage(imageName);
 			}else{
 				// no owner, use dirt image:
-				if(getTileType(tile) === 'water') {
+				//if(getTileType(tile) === 'water') {
+				if(isTileWater(tile)){
 					imageName = 'water';
 					img = getImage(imageName);
 				}else{
@@ -8628,7 +8674,8 @@ function drawHighlights(){
 		const x = axialToPixelX(q, r);
 		const y = axialToPixelY(q, r);
 
-		if (getTileType(tile) === 'water') {
+		//if (getTileType(tile) === 'water') {
+		if(isTileWater(tile)){
 			if(useInfiniteWater){
 				continue; // skip water tiles.
 			}
@@ -9842,7 +9889,7 @@ function drawFocusedHex(){
 		let tile = getTileAt(focusedHex.q, focusedHex.r);
 		
 		if(placingUnit && isTypeBoat(placingUnit.type)){
-			if(isTileWater(tile)){ // !tile || tile.type === 'water'){
+			if(isTileWater(tile)){
 				drawHexagonPathLines(x, y, null, scale);
 				ctx.setLineDash(dashes);
 				ctx.strokeStyle = overrideColor ? overrideColor : 'rgba(255,255,255, 0.6)';
@@ -9854,7 +9901,7 @@ function drawFocusedHex(){
 				ctx.setLineDash([]); // reset possible dash.
 			}
 		}else{
-			if(!isTileWater(tile)){ // tile && tile.type !== 'water'){
+			if(!isTileWater(tile)){
 				if(selectedUnit || placingUnit){
 					drawHexagonPathLines(x, y, null, scale);
 					ctx.setLineDash(dashes);
@@ -10742,9 +10789,15 @@ function setTileOwnerByIndex(tile, ownerIndex){
 // will set water outline to the tile, or if doesnt exist yet, adds new tile with that info.
 function setOutlineAt(q, r, lines, allowCreation = true, state = null) {
 	let tile = {outline: lines};
+	let oldTile = getTileAt(q, r, state);
 	
-	if(!getTileAt(q,r, state)){
+	if(!oldTile){
 		tile = {...tile, type: "water", ownerIndex: -1, object: null, savings: 0};
+	}else{
+		// fix for type "none" so the shores will be visible:
+		if(oldTile.type === "none"){
+			tile.type = "water";
+		}
 	}
 	setTileAt(q, r, tile, allowCreation, state);
 }
@@ -10930,7 +10983,7 @@ function isHexLand(q, r){
 function isTileWater(tile){
 	if(!tile){ // out of bounds, mark as water:
 		return true;
-	}else if(tile.type === "water"){
+	}else if(tile.type === "water" || tile.type === "none"){
 		return true;
 	}
 	return false;
@@ -16401,7 +16454,7 @@ function killPlayerTiles(playerIndex){
 function handleHostData(data) {
 	let needsUIUpdate = false;
 	
-	//console.log("handleHostData: data.type = "+data.type);
+	console.log("handleHostData: data.type = "+data.type);
 	
 	switch (data.type) {
 		case ACTION.ping: {
@@ -16527,6 +16580,9 @@ function handleHostData(data) {
 				
 				//alert("Game in progress. Joining as spectator.");
 			}
+			
+			cleanAnimations(); // needs to be called in lobby_update as well, since its sent after full_state ...
+			
 			showPage('game');
 			
 			startZoomPos = centerFirstUnit();
@@ -16570,6 +16626,7 @@ function handleHostData(data) {
 			gameState.map = data.map;
 			lobbyLoadedMapImg.src = data.map.imageData;
 			
+			cleanAnimations();
 			
 			updateSettingsInputs();
 
@@ -16731,6 +16788,7 @@ function handleHostData(data) {
 				}
 			}
 
+			clearWaterTiles();
 			
 			
 			
@@ -17209,6 +17267,37 @@ function updateLocalPoolsInfo(){
 
 
 
+function cleanAnimations(){
+	for(let i = 0; i < gameState.map.tilesData.length; i++){
+		let tile = gameState.map.tilesData[i];
+
+		let show = 0;
+		if(tile.animationFinished !== undefined){
+			show = 1;
+			//console.log(JSON.stringify(tile));
+		}
+	
+		
+		// for object animations:
+		delete tile.animationFinished;
+		delete tile.animationStyle;
+		delete tile.creationTime;
+		// for hex dying animations:
+		delete tile.isDying;
+		delete tile.deadStartTime;
+		delete tile.deadOwnerIndex;
+		// for hex appearing animations:
+		delete tile.isAppearing;
+		delete tile.appearStartTime;
+	
+		if(show){
+			//console.warn(JSON.stringify(tile));
+		}
+	}
+			//	tile.creationTime
+			//if(tile.animationFinished){
+}
+
 //
 // HOST-SIDE: Received data from a client
 //
@@ -17482,16 +17571,29 @@ function setupConnection(conn) {
 						playSound("message");
 					}
 					
-					// set quitted player as AI:
-					gameState.players = gameState.players.map(p =>
-						//p.id === conn.peer ? { ...p, isSpectator: true, quitted: true } : p
-						p.id === conn.peer ? { ...p, isSpectator: false, quitted: false, isAI: true } : p
-					);
+					let checkAiTurn = false;
+					
+					if(!player.isSpectator){
+						// set quitted player as AI:
+						gameState.players = gameState.players.map(p =>
+							//p.id === conn.peer ? { ...p, isSpectator: true, quitted: true } : p
+							p.id === conn.peer ? { ...p, isSpectator: false, quitted: false, isAI: true } : p
+						);
+						checkAiTurn = true;
+					}else{
+						// spectator quitted:
+						gameState.players = gameState.players.map(p =>
+							//p.id === conn.peer ? { ...p, isSpectator: true, quitted: true } : p
+							p.id === conn.peer ? { ...p, isSpectator: true, quitted: true, isDead: true } : p
+						);
+					}
 					// let others play if quitter was in turn:
 					if(conn.peer == gameState.players[gameState.turn.currentPlayerIndex].id){
 						addSystemChatMessage(`>>> ${player.name}${specflag} has been set as AI player.`, "#FFFF00");
 						//advanceToNextPlayer();
-						checkForAITurn(); // start AI turn if it is his turn.
+						if(checkAiTurn){
+							checkForAITurn(); // start AI turn if it is his turn.
+						}
 					}else{
 						updateGameUI();
 					}
@@ -17560,11 +17662,20 @@ function checkPlayersTimeouts(){
 				// removed because it kinda sucks if the player units disappears... makes it too easy.
 				//batchActions.push(...killPlayer(player.playerIndex));
 				
+				let checkAiTurn = false;
+				
 				//player.isDead = true;
-				player.isAI = true;
+				if(!player.isSpectator){
+					player.isAI = true;
+					checkAiTurn = true;
+				}else{
+					player.isDead = true;
+				}
 				//player.disconnected = true;
 				if(gameState.turn.currentPlayerIndex === player.playerIndex){
-					checkForAITurn();
+					if(checkAiTurn){
+						checkForAITurn();
+					}
 				}
 				
 
@@ -18397,7 +18508,8 @@ function prepareSavedGameState(state){
 	//for(let i = 0; i < state.map.tilesData.length; i++){
 	for(let i = state.map.tilesData.length-1; i >= 0; i--){
 		let tile = state.map.tilesData[i];
-		if(tile.type === 'water'){
+		//if(tile.type === 'water'){
+		if(isTileWater(tile)){
 			// remove all water tiles:
 			state.map.tilesData.splice(i, 1);
 			continue;
@@ -19500,7 +19612,8 @@ function updateTileOutlines(q, r, allowCreation = true, state = null){
 		const nTile = getTileAt(n.q, n.r, state);
 		let addline = 0;
 		
-		if (getTileType(nTile) === "water") {
+		//if (getTileType(nTile) === "water") {
+		if (isTileWater(nTile)) {
 			addline = 1;
 		}
 		
