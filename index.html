@@ -585,6 +585,25 @@ label {
 	width:282px;
 }
 
+.info-editor {
+	flex: 1 1 auto;     /* grow to fill remaining space */
+	min-width: 0;       /* allows flex children to shrink correctly */
+	display: block;
+	width:390px;
+}
+
+.info-editor > .button-row {
+    flex-direction: row;
+    display: flex;
+    gap: 5px;
+}
+
+#ui-editor {
+    position: absolute;
+    right: 0;
+    top: 0;
+}
+
 
 
 
@@ -1401,6 +1420,10 @@ input.disabled {
 }
 
 
+.btn-settings {
+	background-image: url('images/ui/settings-icon.png');
+}
+
 
 #toggle-ui-btn {
 	background-image: url('images/ui/chat.png');
@@ -1784,6 +1807,16 @@ input.disabled {
 				<div>
 					<label class="inline">
 						<input type="checkbox" id="game-settings-autosave" checked>
+						Enable
+					</label>
+				</div>
+				
+				<div class="settings-title">
+					Editor:
+				</div>
+				<div>
+					<label class="inline">
+						<input type="checkbox" id="game-settings-editor">
 						Enable
 					</label>
 				</div>
@@ -2421,6 +2454,74 @@ input.disabled {
 						<button id="game-settings-btn2" class="gamebutton" title="Settings"></button>
 						<button id="quick-settings-btn" class="gamebutton" title="Settings" style="display:none"></button>
 						<button id="toggle-ui-btn" class="gamebutton" title="Open chat"></button>
+					</div>
+				</div>
+			</div>
+		</div>
+		
+		
+		
+		<div id="ui-editor" style="display:none">
+			<div class="ui-panel ui-panel-controls" style="border-top-left-radius: 0; border-bottom-left-radius: 10px;">
+				
+				<div class="info-editor" id="info-editor">
+					<div class="button-row">
+						<select id="editor-land-owner" style="padding: 0; height: 44px;">
+							<option>No player</option>
+							<option>PL1</option>
+							<option>PL2</option>
+							<option>PL3</option>
+							<option>PL4</option>
+							<option>PL5</option>
+							<option>PL6</option>
+						</select>
+						
+						<button id="editor-btn12" class="gamebutton" title="" style="background-color: #45723d">Land</button>
+						<button id="editor-btn11" class="gamebutton primary" title="">Water</button>
+						<button id="editor-btn13" class="gamebutton redbutton" title="">Cliff</button>
+						
+						<select id="editor-brush-size" style="padding: 0; height: 44px;">
+							<option>Size</option>
+							<option>1</option>
+							<option>2</option>
+							<option>3</option>
+							<option>4</option>
+							<option>5</option>
+							<option>6</option>
+							<option>12</option>
+							<option>16</option>
+							<option>32</option>
+							<option>64</option>
+							<option>128</option>
+							<option>256</option>
+							<option>512</option>
+						</select>
+					</div>
+					<div class="button-row">
+						<button id="editor-btn14" class="gamebutton" title="">Rock</button>
+						<button id="editor-btn15" class="gamebutton" title="">Mine</button>
+						<button id="editor-btn16" class="gamebutton" title="">Tree</button>
+						
+						<button id="editor-btn25" class="gamebutton btn-settings" title=""></button>
+						<button id="editor-btn25" class="gamebutton" title="">Move</button>
+				
+					</div>
+					<div class="button-row">
+						<button id="editor-btn26" class="gamebutton" title="">Soldier</button>
+						<select id="editor-soldier-type" style="padding: 0; height: 44px;">
+							<option>Peasant</option>
+							<option>Knight</option>
+							<option>Horse</option>
+							<option>Dragon</option>
+						</select>
+						<button id="editor-btn26" class="gamebutton" title="">Castle</button>
+						<select id="editor-castle-type" style="padding: 0; height: 44px;">
+							<option>Hut</option>
+							<option>Castle</option>
+							<option>Fortress</option>
+						</select>
+						<button id="editor-btn26" class="gamebutton" title="">Boat</button>
+						
 					</div>
 				</div>
 			</div>
@@ -5877,6 +5978,8 @@ const gameSettingsUiWrapper2 = document.getElementById('game-settings-ui-wrapper
 
 
 
+const uiEditor = document.getElementById('ui-editor');
+
 const closeEndgamePopupBtn = document.getElementById('close-endgame-popup-btn');
 const openEndgamePopupBtn = document.getElementById('endgame-stats-btn');
 const endgamePopupUi = document.getElementById('endgame-popup-ui');
@@ -8193,7 +8296,8 @@ function drawMapTiles(){
 		let drawAppearingAnim = false;
 		let tileAppearingPercent = 0;
 		
-		
+		// not sure if !tile.isAppearing is necessary anymore since isDying etc are deleted if claiming a tile.
+		// this was to prevent isDying taking over the rendering.
 		if(tile.isDying && !tile.isAppearing){
 			let timeDiff = performance.now() - tile.deadStartTime;
 			let tileAnimationLen = 3000;
@@ -9756,6 +9860,18 @@ let lastActionStartScale = 40; // later could modify this from game settings in-
 
 let lastMovesTriggerTime = performance.now();
 
+
+// unsynced clearing of pq/pr, used when that player turn starts.
+function clearLastActionMoves(playerIndex){
+	for(let i = 0; i < gameState.units.length; i++){
+		let unit = gameState.units[i];
+		if(unit.ownerIndex === playerIndex){
+			delete unit.pq;
+			delete unit.pr;
+		}
+	}
+}
+
 function drawLastActionMoves(){
 	let myPlayer = getMyPlayer();
 	let now = performance.now();
@@ -10144,32 +10260,46 @@ let lastMousePos = { x: 0, y: 0 };
 
 let lastpos = { x: 0, y: 0 };
 
+let isDrawing = false; // for editor.
+let currentTileType = "land";
+
 function handleCanvasMouseMove(e) {
 	//console.log("handleCanvasMouseMove");
 	
-	lastMousePos.x = e.clientX;
-	lastMousePos.y = e.clientY;
-	
-	focusedHex = pixelToAxial(e.clientX, e.clientY);
-	focusedPoint = {x: e.clientX, y: e.clientY};
-
-	
-	if (dragStart && dragStart.canDrag) {
-		const dx = e.clientX - lastpos.x;
-		const dy = e.clientY - lastpos.y;
+	if(isDrawing && e.ctrlKey){
+		if(gameState.settings.editorEnabled){
+			
+			
+			let hex = pixelToAxial(e.clientX, e.clientY);
 		
-		if (!isDragging && Math.hypot(dx, dy) > 5) {
-			isDragging = true;
+			sendTileUpdate(hex);
 		}
+	}else{
 		
-		if (isDragging) {
-			viewport.x += dx;
-			viewport.y += dy;
-			//dragStart.x = e.clientX;
-			//dragStart.y = e.clientY;
-					
-			lastpos.x = e.clientX;
-			lastpos.y = e.clientY;
+		lastMousePos.x = e.clientX;
+		lastMousePos.y = e.clientY;
+		
+		focusedHex = pixelToAxial(e.clientX, e.clientY);
+		focusedPoint = {x: e.clientX, y: e.clientY};
+
+		
+		if (dragStart && dragStart.canDrag) {
+			const dx = e.clientX - lastpos.x;
+			const dy = e.clientY - lastpos.y;
+			
+			if (!isDragging && Math.hypot(dx, dy) > 5) {
+				isDragging = true;
+			}
+			
+			if (isDragging) {
+				viewport.x += dx;
+				viewport.y += dy;
+				//dragStart.x = e.clientX;
+				//dragStart.y = e.clientY;
+						
+				lastpos.x = e.clientX;
+				lastpos.y = e.clientY;
+			}
 		}
 	}
 }
@@ -10182,6 +10312,24 @@ function handleCanvasMouseDown(e) {
 	lastpos.x = e.clientX;
 	lastpos.y = e.clientY;
 
+
+	
+	if(gameState.settings.editorEnabled && e.ctrlKey){
+		isDrawing = true;
+		
+		let hex = pixelToAxial(e.clientX, e.clientY);
+	
+		let tile = getTileAt(hex.q, hex.r);
+		if(isTileWater(tile)){
+			currentTileType = "land";
+		}else{
+			currentTileType = "water";
+		}
+		
+		console.warn("currentTileType", currentTileType);
+		
+		sendTileUpdate(hex);
+	}
 	
 	//const clickedHex = pixelToAxial(e.clientX, e.clientY);
 	//const unitOnHex = getUnitAt(clickedHex.q, clickedHex.r);
@@ -10195,8 +10343,15 @@ function handleCanvasMouseDown(e) {
 }
 
 
+function handleCanvasMouseLeave(e) {
+	isDrawing = false;
+}
+
+
 // seems to be only for desktop mode.
 function handleCanvasMouseUp(e) {
+	isDrawing = false;
+	
 	if(dragStart){
 		const dx = e.clientX - dragStart.x;
 		const dy = e.clientY - dragStart.y;
@@ -10859,12 +11014,14 @@ function isHexHex(hex1, hex2){
 	return hex1.q === hex2.q && hex1.r === hex2.r;
 }
 
+
 function sendTileUpdate(hex){
 	console.warn("sendTileUpdate");
 	if(!localPlayer.isSpectator){
 		sendToHost({
 			type: ACTION.action_edit_tile,
 			hex: hex,
+			tileType: currentTileType,
 			//playerIndex: localPlayer.playerIndex,
 		});
 	}
@@ -10884,7 +11041,7 @@ function handleHexClick(point) {
 	if(gameState.settings.editorEnabled){
 		
 		
-		sendTileUpdate(hex);
+		//sendTileUpdate(hex);
 		
 		
 	}else{
@@ -13246,7 +13403,7 @@ function executeAction(playerId, action) {
 			
 			console.warn("action_edit_tile");
 			if(!player.isSpectator){
-				updates.push({ type: ACTION.tile_edited, hex: action.hex, playerIndex: playerIndex});
+				updates.push({ type: ACTION.tile_edited, hex: action.hex, tileType: action.tileType, playerIndex: playerIndex});
 			}
 		}
 		break;
@@ -16427,11 +16584,13 @@ function handleHostData(data) {
 		case ACTION.tile_edited: {
 			console.warn("tile_edited");
 			let hex = data.hex;
+			let type = data.tileType;
+			
 			if(!getTileAt(hex.q, hex.r)){
-				setTileAt(hex.q, hex.r, {type:"land", ownerIndex: -1, object: null, savings: 0});
+				setTileAt(hex.q, hex.r, {type:type, ownerIndex: -1, object: null, savings: 0});
 			}else{
 				let tile = getTileAt(hex.q, hex.r);
-				tile.type = tile.type === "water" ? "land" : "water";
+				tile.type = type;//tile.type === "water" ? "land" : "water";
 				tile.ownerIndex = -1;
 				tile.object = null;
 				tile.savings = 0;
@@ -16770,6 +16929,8 @@ function handleHostData(data) {
 		case ACTION.turn_changed: {
 			gameState.turn.currentPlayerIndex = data.currentPlayerIndex;
 			gameState.turn.turnNumber = data.turnNumber;
+			
+			clearLastActionMoves(gameState.turn.currentPlayerIndex);
 
 			deselectUnit();
 			//deselectHex();
@@ -20109,6 +20270,8 @@ let settingsElems = {
 	'game-settings-autosave':				{key: 'autosave', type: 'checkbox'},
 
 	// gamestate settings:
+	'game-settings-editor':					{gameStateKey: 'editorEnabled', type: 'checkbox', allowIngame: true},
+	
 	'game-settings-use-boats':				{gameStateKey: 'useBoats', type: 'checkbox'},
 	'game-settings-use-landmines':			{gameStateKey: 'useLandmines', type: 'checkbox'},
 	
@@ -20144,13 +20307,21 @@ Object.keys(settingsElems).forEach(id => {
 		setting.elem.addEventListener("change", () => {
 			// dont allow changing setting when game has already started:
 			// only allow host to change gameState settings.
-			if(!gameStarted() && isHost()){
+			let allowChange = setting.allowIngame || !gameStarted();
+			if(allowChange && isHost()){
 				if(setting.type === 'checkbox'){
 					gameState.settings[setting.gameStateKey] = setting.elem.checked;
 				}else if(setting.type === 'number'){
 					gameState.settings[setting.gameStateKey] = Number(setting.elem.value);
 				}else{
 					gameState.settings[setting.gameStateKey] = setting.elem.value;
+				}
+				if(setting.gameStateKey === 'editorEnabled'){
+					if(setting.elem.checked){
+						openEditor();
+					}else{
+						closeEditor();
+					}
 				}
 				broadcastSettings();
 			}
@@ -20160,8 +20331,12 @@ Object.keys(settingsElems).forEach(id => {
 
 
 
-
-
+function openEditor(){
+	uiEditor.style.display = "block";
+}
+function closeEditor(){
+	uiEditor.style.display = "none";
+}
 
 
 let mouseDownInsidePopup = false;
@@ -20811,6 +20986,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 	canvas.addEventListener('mousedown', handleCanvasMouseDown);
 	canvas.addEventListener('mousemove', handleCanvasMouseMove);
 	canvas.addEventListener('mouseup', handleCanvasMouseUp);
+	canvas.addEventListener('mouseleave', handleCanvasMouseLeave);
 	canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
 	
 	canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
