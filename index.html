@@ -17347,6 +17347,7 @@ function handleClientData(peerId, data) {
 			
 			if(gameStarted()){
 				addSystemChatMessage(`${player.name} has joined${specflag}.`, "#AAAAFF");
+				playSound("message");
 			}else{
 				broadcast({
 					type: ACTION.lobby_chat,
