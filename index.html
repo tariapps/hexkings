@@ -2466,7 +2466,7 @@ input.disabled {
 				
 				<div class="info-editor" id="info-editor">
 					<div class="button-row">
-						<select id="editor-land-owner" style="padding: 0; height: 44px;">
+						<select id="editor-tile-owner" style="padding: 0; height: 44px;">
 							<option>No player</option>
 							<option>PL1</option>
 							<option>PL2</option>
@@ -2476,51 +2476,73 @@ input.disabled {
 							<option>PL6</option>
 						</select>
 						
-						<button id="editor-btn12" class="gamebutton" title="" style="background-color: #45723d">Land</button>
-						<button id="editor-btn11" class="gamebutton primary" title="">Water</button>
-						<button id="editor-btn13" class="gamebutton redbutton" title="">Cliff</button>
+						<button id="editor-tile-auto" class="gamebutton" title="">Auto</button>
+						<button id="editor-tile-land" class="gamebutton" title="" style="background-color: #45723d">Land</button>
+						<button id="editor-tile-water" class="gamebutton primary" title="">Water</button>
+						<button id="editor-tile-cliff" class="gamebutton redbutton" title="">Cliff</button>
 						
-						<select id="editor-brush-size" style="padding: 0; height: 44px;">
-							<option>Size</option>
+						<button id="editor-movetoggle-move" class="gamebutton" title="">Move</button>
+						<button id="editor-movetoggle-grab" class="gamebutton" title="" style="display:none">Draw</button>
+						
+						
+					</div>
+					<div class="button-row">
+						<select id="editor-brush-size" style="padding: 0; height: 44px;" title="Brush size">
+							<option value="0">Radius</option>
+							<option>0</option>
 							<option>1</option>
 							<option>2</option>
 							<option>3</option>
 							<option>4</option>
 							<option>5</option>
 							<option>6</option>
+							<option>7</option>
+							<option>8</option>
+							<option>9</option>
+							<option>10</option>
+							<option>11</option>
 							<option>12</option>
+							<option>14</option>
 							<option>16</option>
-							<option>32</option>
-							<option>64</option>
-							<option>128</option>
-							<option>256</option>
-							<option>512</option>
+							<option>18</option>
+							<option>20</option>
+							<option>22</option>
+							<option>24</option>
 						</select>
-					</div>
-					<div class="button-row">
-						<button id="editor-btn14" class="gamebutton" title="">Rock</button>
-						<button id="editor-btn15" class="gamebutton" title="">Mine</button>
-						<button id="editor-btn16" class="gamebutton" title="">Tree</button>
+						<select id="editor-brush-type" style="padding: 0; height: 44px;" title="Brush style">
+							<option value="0">Style</option>
+							<option value="0">Hex</option>
+							<option value="1">Round</option>
+						</select>
 						
-						<button id="editor-btn25" class="gamebutton btn-settings" title=""></button>
-						<button id="editor-btn25" class="gamebutton" title="">Move</button>
+						<button id="editor-object" class="gamebutton" title="">Object</button>
+						<select id="editor-object-type" style="padding: 0; height: 44px;" title="Object">
+							<option value="0">Object</option>
+							<option value="0">Rock</option>
+							<option value="1">Mine</option>
+							<option value="2">Tree</option>
+						</select>
+						
+						
+						<button id="editor-settings" class="gamebutton btn-settings" title=""></button>
+						
 				
 					</div>
 					<div class="button-row">
-						<button id="editor-btn26" class="gamebutton" title="">Soldier</button>
+						<button id="editor-soldier" class="gamebutton" title="">Soldier</button>
 						<select id="editor-soldier-type" style="padding: 0; height: 44px;">
 							<option>Peasant</option>
 							<option>Knight</option>
 							<option>Horse</option>
 							<option>Dragon</option>
 						</select>
-						<button id="editor-btn26" class="gamebutton" title="">Castle</button>
+						<button id="editor-castle" class="gamebutton" title="">Castle</button>
 						<select id="editor-castle-type" style="padding: 0; height: 44px;">
 							<option>Hut</option>
 							<option>Castle</option>
 							<option>Fortress</option>
 						</select>
-						<button id="editor-btn26" class="gamebutton" title="">Boat</button>
+						<button id="editor-boat" class="gamebutton" title="">Boat</button>
 						
 					</div>
 				</div>
@@ -5979,6 +6001,61 @@ const gameSettingsUiWrapper2 = document.getElementById('game-settings-ui-wrapper
 
 
 const uiEditor = document.getElementById('ui-editor');
+
+
+
+
+let editor = {
+	isDrawing: false,
+	currentTileType: "land",
+	brushSize: 0,
+	brushType: 0, // 0 = hex, 1 = circle
+};
+
+
+
+const editorBrushSize = document.getElementById("editor-brush-size");
+const editorBrushType = document.getElementById("editor-brush-type");
+
+
+editorBrushSize.addEventListener("change", function () {
+	editor.brushSize = Number(this.value);
+	console.log("editor.brushSize:", editor.brushSize);
+});
+
+editorBrushType.addEventListener("change", function () {
+	editor.brushType = Number(this.value);
+	console.log("editor.brushType:", editor.brushType);
+});
+
+
+function setEditorTile(hex, newType){
+	let tileSet = false;
+	
+	if(!getTileAt(hex.q, hex.r)){ // water
+		// dont create create empty tiles:
+		if(newType !== 'water'){
+			setTileAt(hex.q, hex.r, {type:newType, ownerIndex: -1, object: null, savings: 0});
+			tileSet = true;
+		}
+	}else{
+		let tile = getTileAt(hex.q, hex.r);
+		tile.type = newType;//tile.type === "water" ? "land" : "water";
+		tile.ownerIndex = -1;
+		tile.object = null;
+		tile.savings = 0;
+		tileSet = true;
+	}
+	//console.log("clicked hex: ");
+	//console.log(hex);
+	//console.log(getTileAt(hex.q, hex.r));
+
+	if(tileSet){
+		updateTileAndNeighbourOutlines(hex.q, hex.r);
+	}
+}
+
+
 
 const closeEndgamePopupBtn = document.getElementById('close-endgame-popup-btn');
 const openEndgamePopupBtn = document.getElementById('endgame-stats-btn');
@@ -10260,13 +10337,12 @@ let lastMousePos = { x: 0, y: 0 };
 
 let lastpos = { x: 0, y: 0 };
 
-let isDrawing = false; // for editor.
-let currentTileType = "land";
+
 
 function handleCanvasMouseMove(e) {
 	//console.log("handleCanvasMouseMove");
 	
-	if(isDrawing && e.ctrlKey){
+	if(editor.isDrawing && e.ctrlKey){
 		if(gameState.settings.editorEnabled){
 			
 			
@@ -10315,18 +10391,18 @@ function handleCanvasMouseDown(e) {
 
 	
 	if(gameState.settings.editorEnabled && e.ctrlKey){
-		isDrawing = true;
+		editor.isDrawing = true;
 		
 		let hex = pixelToAxial(e.clientX, e.clientY);
 	
 		let tile = getTileAt(hex.q, hex.r);
 		if(isTileWater(tile)){
-			currentTileType = "land";
+			editor.currentTileType = "land";
 		}else{
-			currentTileType = "water";
+			editor.currentTileType = "water";
 		}
 		
-		console.warn("currentTileType", currentTileType);
+		console.warn("editor.currentTileType", editor.currentTileType);
 		
 		sendTileUpdate(hex);
 	}
@@ -10344,13 +10420,13 @@ function handleCanvasMouseDown(e) {
 
 
 function handleCanvasMouseLeave(e) {
-	isDrawing = false;
+	editor.isDrawing = false;
 }
 
 
 // seems to be only for desktop mode.
 function handleCanvasMouseUp(e) {
-	isDrawing = false;
+	editor.isDrawing = false;
 	
 	if(dragStart){
 		const dx = e.clientX - dragStart.x;
@@ -11016,14 +11092,33 @@ function isHexHex(hex1, hex2){
 
 
 function sendTileUpdate(hex){
-	console.warn("sendTileUpdate");
+	//console.warn("sendTileUpdate");
 	if(!localPlayer.isSpectator){
-		sendToHost({
-			type: ACTION.action_edit_tile,
-			hex: hex,
-			tileType: currentTileType,
-			//playerIndex: localPlayer.playerIndex,
-		});
+		let tile = getTileAt(hex.q, hex.r);
+		let override = editor.brushSize > 0;
+		
+		let allowEdit = false;
+		if(!tile || tile.type !== editor.currentTileType){
+			if(isTileWater(tile) && editor.currentTileType === "water"){
+				// dont try to change null tile (water) to water.
+			}else{
+				allowEdit = true;
+			}
+		}
+		
+		if(override){
+			allowEdit = true;
+		}
+		
+		if(allowEdit){
+			sendToHost({
+				type: ACTION.action_edit_tile,
+				hex: hex,
+				tileType: editor.currentTileType,
+				brushSize: editor.brushSize,
+				//playerIndex: localPlayer.playerIndex,
+			});
+		}
 	}
 }
 
@@ -13401,9 +13496,15 @@ function executeAction(playerId, action) {
 		case ACTION.action_edit_tile: {
 			if(gameState.settings.gameOver) return;
 			
-			console.warn("action_edit_tile");
+			//console.warn("action_edit_tile");
 			if(!player.isSpectator){
-				updates.push({ type: ACTION.tile_edited, hex: action.hex, tileType: action.tileType, playerIndex: playerIndex});
+				updates.push({
+					type: ACTION.tile_edited, 
+					hex: action.hex, 
+					tileType: action.tileType, 
+					brushSize: action.brushSize,
+					playerIndex: playerIndex,
+				});
 			}
 		}
 		break;
@@ -14465,7 +14566,7 @@ function updatePlayerSavings(playerIndex) {
 	}
 	
 	if(logallowed){
-		console.log("updatePlayerSavings");
+		//console.log("updatePlayerSavings");
 	}
 	
 	const newPools = findEconomyPools(playerIndex);
@@ -14487,8 +14588,8 @@ function updatePlayerSavings(playerIndex) {
 	//newPools.forEach(pool => newTotalSavings += pool.totalSavings);
 	
 	if(logallowed){
-		console.log("poolsInfo:");
-		console.log(poolsInfo);
+		//console.log("poolsInfo:");
+		//console.log(poolsInfo);
 	}
 	
 	sendToPlayer(getPlayerId(playerIndex), { 
@@ -16582,24 +16683,57 @@ function handleHostData(data) {
 		}
 		break;
 		case ACTION.tile_edited: {
-			console.warn("tile_edited");
-			let hex = data.hex;
-			let type = data.tileType;
+			//console.warn("tile_edited");
+			let centerHex = data.hex;
+			let newType = data.tileType;
+			let radius = data.brushSize;
 			
-			if(!getTileAt(hex.q, hex.r)){
-				setTileAt(hex.q, hex.r, {type:type, ownerIndex: -1, object: null, savings: 0});
-			}else{
-				let tile = getTileAt(hex.q, hex.r);
-				tile.type = type;//tile.type === "water" ? "land" : "water";
-				tile.ownerIndex = -1;
-				tile.object = null;
-				tile.savings = 0;
-			}
-			console.log("clicked hex: ");
-			console.log(hex);
-			console.log(getTileAt(hex.q, hex.r));
+			const cq = centerHex.q;
+			const cr = centerHex.r;
+			
+			// hexagonal brush:
+			if(editor.brushType === 0){
+				for (let dq = -radius; dq <= radius; dq++) {
+					// These bounds are the trick that makes it a hex instead of a square
+					const minR = Math.max(-radius, -dq - radius);
+					const maxR = Math.min(radius, -dq + radius);
 
-			updateTileAndNeighbourOutlines(hex.q, hex.r);
+					for (let dr = minR; dr <= maxR; dr++) {
+						const q = cq + dq;
+						const r = cr + dr;
+						setEditorTile({q, r}, newType);
+					}
+				}
+			}else{
+				// circular brush:
+
+				const center = axialToPixel(centerHex.q, centerHex.r);
+				radius+=1; // fix so 0 and 1 wont be same size.
+				const pixelRadius = radius * HEX_SIZE+5; // +5 to avoid precision errors on edges.
+
+				for (let dq = -radius; dq <= radius; dq++) {
+					for (let dr = -radius; dr <= radius; dr++) {
+
+						const q = centerHex.q + dq;
+						const r = centerHex.r + dr;
+
+						const pos = axialToPixel(q, r);
+
+						const dx = pos.x - center.x;
+						const dy = pos.y - center.y;
+
+						const distance = Math.sqrt(dx * dx + dy * dy);
+
+						if (distance <= pixelRadius) {
+							setEditorTile({q, r}, newType);
+						}
+					}
+				}
+			}
+
+			
+			
+			
 		}
 		break;
 		case ACTION.tile_changed: {
@@ -16969,10 +17103,10 @@ function handleHostData(data) {
 			
 			//console.warn("##############################################################################");
 			//console.warn("##############################################################################");
-			console.warn("## savings_update:");
+			//console.warn("## savings_update:");
 			//console.warn("##############################################################################");
 			//console.warn("##############################################################################");
-			console.warn(data);
+			//console.warn(data);
 		
 			// update local player pools for being able to select a pool and display its pool info:
 			// todo: make sure the poolsInfo array matches with localPlayerPools array... could get glitchy if it was updated between send/receice commands??
@@ -16988,10 +17122,10 @@ function handleHostData(data) {
 			selectedPool = findSelectedPool(selectedHex);
 			updateSelectedPoolUi();
 			
-			console.log("localPlayerPools:");
-			console.log(localPlayerPools);
-			console.log("selectedPool:");
-			console.log(selectedPool);
+			//console.log("localPlayerPools:");
+			//console.log(localPlayerPools);
+			//console.log("selectedPool:");
+			//console.log(selectedPool);
 		}
 		break;
 		case ACTION.start_game_check: {
@@ -17020,6 +17154,7 @@ function handleHostData(data) {
 			case ACTION.player_killed:
 			case ACTION.player_changed:
 			case ACTION.game_over:
+			case ACTION.tile_edited:
 			//case ACTION.turn_changed: 
 			case ACTION.sound: {
 				//console.warn("XXYY: handleHostData:");
