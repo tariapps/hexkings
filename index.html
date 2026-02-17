@@ -218,6 +218,10 @@ button[disabled] {
 	background-color:#45723d;
 }
 
+select.active {
+	background-color:#45723d;
+}
+
 .tab-button {
 	padding:4px;
 	
@@ -346,6 +350,11 @@ label {
 }
 .settings-title-nopad {
 	margin-bottom:0;
+}
+
+
+.space {
+	height: 20px;
 }
 
 .player-list {
@@ -1789,7 +1798,7 @@ input.disabled {
 			
 			<div class="tab tab-keys">
 				<div class="settings-title">
-					Keyboard shortcuts:
+					Keys:
 				</div>
 				<div><span style="color:yellow">Q</span> = Rotate counterclockwise (+shift = slower)</div>
 				<div><span style="color:yellow">E</span> = Rotate clockwise (+shift = slower)</div>
@@ -1797,7 +1806,18 @@ input.disabled {
 				<div><span style="color:yellow">A,S,D,W</span> = Move screen (+shift = slower)</div>
 				
 				<div><span style="color:yellow">Space</span> = Show previous moves of soldiers</div>
+				<div><span style="color:yellow">Left Click</span> = Drag</div>
 				<div><span style="color:yellow">Right Click</span> = Cancel selections</div>
+				
+				<div class="space"></div>
+				
+				<div class="settings-title">
+					Editor:
+				</div>
+				<div><span style="color:yellow">CTRL + Left Click</span> = Draw (if "Move" enabled)</div>
+				<div><span style="color:yellow">Left Click</span> = Draw (if "Draw" enabled)</div>
+				<div><span style="color:yellow">Left Click</span> = Drag (if "Move" enabled)</div>
+				<div><span style="color:yellow">Right Click</span> = Drag (if "Draw" enabled)</div>
 				
 			</div>
 			
@@ -2348,7 +2368,7 @@ input.disabled {
 <div id="game-page" class="page">
 	<canvas id="game-canvas"></canvas>
 	
-	<div id="debug-info" style="background-color:black;z-index: 1; position: absolute; left: 0; top: 0;background-color: rgba(0, 0, 0, 0.5);padding: 5px;margin-top: 206px;">
+	<div id="debug-info" style="display:none; background-color:black;z-index: 1; position: absolute; left: 0; top: 0;background-color: rgba(0, 0, 0, 0.5);padding: 5px;margin-top: 206px;">
 	
 	</div>
 	
@@ -2482,13 +2502,17 @@ input.disabled {
 							<option value="5">PL6</option>
 						</select>
 						
-						<button id="editor-tile-auto" class="gamebutton" title="">Auto</button>
-						<button id="editor-tile-land" class="gamebutton" title="" style="background-color: #45723d">Land</button>
-						<button id="editor-tile-water" class="gamebutton primary" title="">Water</button>
-						<button id="editor-tile-cliff" class="gamebutton redbutton" title="">Cliff</button>
+						<select id="editor-tile-type" style="padding: 0; height: 44px;">
+							<option value="0">Tile type</option>
+							<option value="0">Opposite</option>
+							<option value="1">Land</option>
+							<option value="2">Water</option>
+							<option value="3">Cliff</option>
+						</select>
+						
 						
 						<button id="editor-movetoggle-move" class="gamebutton" title="">Move</button>
-						<button id="editor-movetoggle-draw" class="gamebutton" title="" style="background-color:#444; display:none">Draw</button>
+						<button id="editor-movetoggle-draw" class="gamebutton" title="" style="background-color:#45723d; display:none">Draw</button>
 						
 						
 					</div>
@@ -2523,10 +2547,9 @@ input.disabled {
 						
 						<button id="editor-object" class="gamebutton" title="">Object</button>
 						<select id="editor-object-type" style="padding: 0; height: 44px;" title="Object">
-							<option value="0">Object</option>
-							<option value="0">Rock</option>
-							<option value="1">Mine</option>
-							<option value="2">Tree</option>
+							<option value="1">Rock</option>
+							<option value="2">Mine</option>
+							<option value="3">Tree</option>
 						</select>
 						
 						
@@ -2537,16 +2560,16 @@ input.disabled {
 					<div class="button-row">
 						<button id="editor-soldier" class="gamebutton" title="">Soldier</button>
 						<select id="editor-soldier-type" style="padding: 0; height: 44px;">
-							<option>Peasant</option>
-							<option>Knight</option>
-							<option>Horse</option>
-							<option>Dragon</option>
+							<option value="1">Peasant</option>
+							<option value="2">Knight</option>
+							<option value="3">Horse</option>
+							<option value="4">Dragon</option>
 						</select>
 						<button id="editor-castle" class="gamebutton" title="">Castle</button>
 						<select id="editor-castle-type" style="padding: 0; height: 44px;">
-							<option>Hut</option>
-							<option>Castle</option>
-							<option>Fortress</option>
+							<option value="1">Hut</option>
+							<option value="2">Castle</option>
+							<option value="3">Fortress</option>
 						</select>
 						<button id="editor-boat" class="gamebutton" title="">Boat</button>
 						
@@ -6031,6 +6054,11 @@ let editor = {
 	brushType: 0, // 0 = hex, 1 = circle
 	forceDraw: 0, // 0 = move, 1 = draw
 	tileOwner: -1, // -1 = nobody, 0-5 = player indexes
+	tileType: 0,
+	
+	objectType: 0, // 0 = disabled, 1.. = place these types
+	soldierType: 0, // 0 = disabled, 1.. = place these types
+	castleType: 0, // 0 = disabled, 1.. = place these types
 };
 
 
@@ -6041,6 +6069,17 @@ const editorMovetoggleMove = document.getElementById("editor-movetoggle-move");
 const editorMovetoggleDraw = document.getElementById("editor-movetoggle-draw");
 
 const editorTileOwner = document.getElementById("editor-tile-owner");
+
+const editorTileType = document.getElementById("editor-tile-type");
+
+const editorObject = document.getElementById("editor-object");
+const editorObjectType = document.getElementById("editor-object-type");
+
+const editorSoldier = document.getElementById("editor-soldier");
+const editorSoldierType = document.getElementById("editor-soldier-type");
+
+const editorCastle = document.getElementById("editor-castle");
+const editorCastleType = document.getElementById("editor-castle-type");
 
 
 const editorCloseBtn = document.getElementById('editor-close-btn');
@@ -6084,6 +6123,142 @@ editorTileOwner.addEventListener("change", function(){
 	console.log("editor.tileOwner:", editor.tileOwner);
 });
 
+editorTileType.addEventListener("change", function(){
+	editor.tileType = Number(this.value);
+	console.log("editor.tileType:", editor.tileType);
+});
+
+
+
+editorObject.addEventListener("click", function(){
+	// disable every placement type first:
+	editor.objectType = 0;
+	editor.soldierType = 0;
+	editor.castleType = 0;
+	
+	if(editorObject.classList.contains("active")){
+		editorObject.classList.remove("active");
+		editorObjectType.classList.remove("active");
+	}else{
+		// activate this, unactivate others:
+		editorObject.classList.add("active");
+		editorSoldier.classList.remove("active");
+		editorCastle.classList.remove("active");
+		
+		editorObjectType.classList.add("active");
+		editorSoldierType.classList.remove("active");
+		editorCastleType.classList.remove("active");
+		
+		editor.objectType = Number(editorObjectType.value);
+	}
+});
+
+editorObjectType.addEventListener("change", function(){
+	// disable every placement type first:
+	editor.objectType = 0;
+	editor.soldierType = 0;
+	editor.castleType = 0;
+	
+	editor.objectType = Number(this.value);
+	
+	editorObject.classList.add("active");
+	editorSoldier.classList.remove("active");
+	editorCastle.classList.remove("active");
+	
+	editorObjectType.classList.add("active");
+	editorSoldierType.classList.remove("active");
+	editorCastleType.classList.remove("active");
+	
+	console.log("editor.objectType:", editor.objectType);
+});
+
+
+editorSoldier.addEventListener("click", function(){
+	// disable every placement type first:
+	editor.objectType = 0;
+	editor.soldierType = 0;
+	editor.castleType = 0;
+	
+	if(editorSoldier.classList.contains("active")){
+		editorSoldier.classList.remove("active");
+		editorSoldierType.classList.remove("active");
+	}else{
+		// activate this, unactivate others:
+		editorObject.classList.remove("active");
+		editorSoldier.classList.add("active");
+		editorCastle.classList.remove("active");
+		
+		editorObjectType.classList.remove("active");
+		editorSoldierType.classList.add("active");
+		editorCastleType.classList.remove("active");
+		
+		editor.soldierType = Number(editorSoldierType.value);
+	}
+});
+
+editorSoldierType.addEventListener("change", function(){
+	// disable every placement type first:
+	editor.objectType = 0;
+	editor.soldierType = 0;
+	editor.castleType = 0;
+	
+	editor.soldierType = Number(this.value);
+	
+	editorObject.classList.remove("active");
+	editorSoldier.classList.add("active");
+	editorCastle.classList.remove("active");
+	
+	editorObjectType.classList.remove("active");
+	editorSoldierType.classList.add("active");
+	editorCastleType.classList.remove("active");
+	
+	console.log("editor.soldierType:", editor.soldierType);
+});
+
+
+
+editorCastle.addEventListener("click", function(){
+	// disable every placement type first:
+	editor.objectType = 0;
+	editor.soldierType = 0;
+	editor.castleType = 0;
+	
+	if(editorCastle.classList.contains("active")){
+		editorCastle.classList.remove("active");
+		editorCastleType.classList.remove("active");
+	}else{
+		// activate this, unactivate others:
+		editorObject.classList.remove("active");
+		editorSoldier.classList.remove("active");
+		editorCastle.classList.add("active");
+		
+		editorObjectType.classList.remove("active");
+		editorSoldierType.classList.remove("active");
+		editorCastleType.classList.add("active");
+		
+		editor.castleType = Number(editorCastleType.value);
+	}
+});
+
+editorCastleType.addEventListener("change", function(){
+	// disable every placement type first:
+	editor.objectType = 0;
+	editor.soldierType = 0;
+	editor.castleType = 0;
+	
+	editor.castleType = Number(this.value);
+	
+	editorObject.classList.remove("active");
+	editorSoldier.classList.remove("active");
+	editorCastle.classList.add("active");
+	
+	editorObjectType.classList.remove("active");
+	editorSoldierType.classList.remove("active");
+	editorCastleType.classList.add("active");
+	
+	console.log("editor.castleType:", editor.castleType);
+});
+
 
 
 
@@ -6123,6 +6298,20 @@ function clearWaterTiles(){
 
 function setEditorTile(hex, tileInfo){
 	let tileSet = false;
+	let object = null;
+	if(tileInfo.object){
+		switch(tileInfo.object){
+			case 1:
+				object = "rock2";
+			break;
+			case 2:
+				object = "mine1";
+			break;
+			case 3:
+				object = "tree";
+			break;
+		}
+	}
 	
 	if(!getTileAt(hex.q, hex.r)){ // water
 		// dont create create empty tiles:
@@ -6131,7 +6320,7 @@ function setEditorTile(hex, tileInfo){
 			if(tileInfo.type !== 'land'){
 				ownerIndex = -1;
 			}
-			setTileAt(hex.q, hex.r, {type:tileInfo.type, ownerIndex: ownerIndex, object: null, savings: 0});
+			setTileAt(hex.q, hex.r, {type:tileInfo.type, ownerIndex: ownerIndex, object: object, savings: 0});
 			tileSet = true;
 		}
 	}else{
@@ -6142,7 +6331,7 @@ function setEditorTile(hex, tileInfo){
 		}else{
 			tile.ownerIndex = -1;
 		}
-		tile.object = null;
+		tile.object = object;
 		tile.savings = 0;
 		tileSet = true;
 	}
@@ -10603,6 +10792,7 @@ function updateDebugInfo(){
 	Object.keys(debugVars).forEach(key => {
 		str += `<div><span>${key}</span> = <span>${debugVars[key]}</span></div>\r\n`;
 	});
+	debugInfo.style.display = "block";
 	debugInfo.innerHTML = str;
 }
 
@@ -11607,14 +11797,35 @@ function sendTileUpdate(hex){
 			allowEdit = false;
 		}
 		
+		let tileType = editor.currentTileType;
+		// if not automatic tile type (0 value) setting:
+		if(editor.tileType){
+			switch(editor.tileType){
+				case 1:
+					tileType = "land";
+				break;
+				case 2:
+					tileType = "water";
+				break;
+				case 3:
+					tileType = "cliff";
+				break;
+			}
+		}
+		
+		// if placing object, force land tile:
+		if(editor.objectType){
+			tileType = "land";
+		}
 		
 		if(allowEdit){
 			sendToHost({
 				type: ACTION.action_edit_tile,
 				hex: hex,
-				tileType: editor.currentTileType,
+				tileType: tileType,
 				brushSize: editor.brushSize,
 				tileOwner: editor.tileOwner,
+				objectType: editor.objectType,
 				//playerIndex: localPlayer.playerIndex,
 			});
 		}
@@ -14003,6 +14214,7 @@ function executeAction(playerId, action) {
 					tileType: action.tileType, 
 					brushSize: action.brushSize,
 					tileOwner: action.tileOwner,
+					objectType: action.objectType,
 					playerIndex: playerIndex,
 				});
 			}
@@ -17192,9 +17404,16 @@ function handleHostData(data) {
 			let newType = data.tileType;
 			let radius = data.brushSize;
 			let tileOwner = data.tileOwner;
+			let objectType = data.objectType;
 			
 			const cq = centerHex.q;
 			const cr = centerHex.r;
+			
+			let tileInfo = {
+				type: newType, 
+				ownerIndex: tileOwner, 
+				object: objectType,
+			};
 			
 			// hexagonal brush:
 			if(editor.brushType === 0){
@@ -17206,7 +17425,7 @@ function handleHostData(data) {
 					for (let dr = minR; dr <= maxR; dr++) {
 						const q = cq + dq;
 						const r = cr + dr;
-						setEditorTile({q, r}, {type: newType, ownerIndex: tileOwner});
+						setEditorTile({q, r}, tileInfo);
 					}
 				}
 			}else{
@@ -17230,7 +17449,7 @@ function handleHostData(data) {
 						const distance = Math.sqrt(dx * dx + dy * dy);
 
 						if (distance <= pixelRadius) {
-							setEditorTile({q, r}, {type: newType, ownerIndex: tileOwner});
+							setEditorTile({q, r}, tileInfo);
 						}
 					}
 				}
