@@ -10590,7 +10590,22 @@ function isBuildPopupOpen(){
 	return buildPopup.style.display !== 'none';
 }
 
-/*
+let lastTwoFingerTouch = null;
+
+let debugVars = {};
+
+let debugTimeout = null;
+
+function updateDebugInfo(){
+	let str = "";
+	Object.keys(debugVars).forEach(key => {
+		str += `<div><span>${key}</span> = <span>${debugVars[key]}</span></div>\r\n`;
+	});
+	debugInfo.innerHTML = str;
+}
+
+
+
 function handleTouchStart(e) {
 	//console.log("handleTouchStart");
 
@@ -10656,6 +10671,12 @@ function handleTouchStart(e) {
 			e.touches[0].clientY - e.touches[1].clientY
 		);
 		
+		// Initialize Two-Finger Pan Tracking
+		lastTwoFingerTouch = {
+			x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+			y: (e.touches[0].clientY + e.touches[1].clientY) / 2
+		};
+		
 		// only rotate if chat box is open:
 		if(showTopLeftUi){
 			// rotation:
@@ -10710,12 +10731,32 @@ function handleTouchMove(e) {
 				e.touches[0].clientX - e.touches[1].clientX,
 				e.touches[0].clientY - e.touches[1].clientY
 			);
-			
-			const zoomFactor = newDist / lastDist;
+		
 			
 			// Get center of pinch
 			const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
 			const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+			
+			// 2. Handle Panning (Moving the screen)
+			if (lastTwoFingerTouch) {
+				const dx = midX - lastTwoFingerTouch.x;
+				const dy = midY - lastTwoFingerTouch.y;
+
+				// If moved significantly, mark as dragging
+				if (!isDragging && Math.hypot(dx, dy) > 1) { 
+					isDragging = true; 
+				}
+
+				if (isDragging) {
+					viewport.x += dx;
+					viewport.y += dy;
+				}
+			}
+			// Update last position for next frame
+			lastTwoFingerTouch = { x: midX, y: midY };
+			
+			const zoomFactor = newDist / lastDist;
+			
 
 			zoomAtPoint(midX, midY, zoomFactor);
 
@@ -10758,6 +10799,7 @@ function handleTouchEnd(e) {
 	
 	if (e.touches.length < 2) {
 		lastDist = null; // Stop zooming
+		lastTwoFingerTouch = null; // Stop two-finger panning
 		
 		if(showTopLeftUi){
 			isRotating = false;
@@ -10770,23 +10812,10 @@ function handleTouchEnd(e) {
 	}
 }
 
-*/
 
-// Add this variable to your global scope (where lastDist and lastTouch are defined)
-let lastTwoFingerTouch = null;
 
-let debugVars = {};
 
-let debugTimeout = null;
-
-function updateDebugInfo(){
-	let str = "";
-	Object.keys(debugVars).forEach(key => {
-		str += `<div><span>${key}</span> = <span>${debugVars[key]}</span></div>\r\n`;
-	});
-	debugInfo.innerHTML = str;
-}
-
+/*
 function handleTouchStart(e) {
 	//console.log("handleTouchStart");
 
@@ -11061,6 +11090,8 @@ function handleTouchEnd(e) {
 		updateDebugInfo();
 	}, 3000);
 }
+*/
+
 
 
 function getZoomMipLevel(multiplier){
