@@ -10731,7 +10731,7 @@ function handleTouchMove(e) {
 				e.touches[0].clientX - e.touches[1].clientX,
 				e.touches[0].clientY - e.touches[1].clientY
 			);
-		
+			
 			
 			// Get center of pinch
 			const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
@@ -10743,7 +10743,7 @@ function handleTouchMove(e) {
 				const dy = midY - lastTwoFingerTouch.y;
 
 				// If moved significantly, mark as dragging
-				if (!isDragging && Math.hypot(dx, dy) > 1) { 
+				if (!isDragging && Math.hypot(dx, dy) > 6) { 
 					isDragging = true; 
 				}
 
