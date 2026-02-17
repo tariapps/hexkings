@@ -1791,9 +1791,11 @@ input.disabled {
 				<div class="settings-title">
 					Keyboard shortcuts:
 				</div>
-				<div><span style="color:yellow">Q</span> = Rotate counterclockwise</div>
-				<div><span style="color:yellow">E</span> = Rotate clockwise</div>
-				<div><span style="color:yellow">W</span> = Reset rotation</div>
+				<div><span style="color:yellow">Q</span> = Rotate counterclockwise (+shift = slower)</div>
+				<div><span style="color:yellow">E</span> = Rotate clockwise (+shift = slower)</div>
+				
+				<div><span style="color:yellow">A,S,D,W</span> = Move screen (+shift = slower)</div>
+				
 				<div><span style="color:yellow">Space</span> = Show previous moves of soldiers</div>
 				<div><span style="color:yellow">Right Click</span> = Cancel selections</div>
 				
@@ -2482,7 +2484,7 @@ input.disabled {
 						<button id="editor-tile-cliff" class="gamebutton redbutton" title="">Cliff</button>
 						
 						<button id="editor-movetoggle-move" class="gamebutton" title="">Move</button>
-						<button id="editor-movetoggle-grab" class="gamebutton" title="" style="display:none">Draw</button>
+						<button id="editor-movetoggle-draw" class="gamebutton" title="" style="background-color:#444; display:none">Draw</button>
 						
 						
 					</div>
@@ -2546,6 +2548,9 @@ input.disabled {
 						
 					</div>
 				</div>
+			</div>
+			<div id="editor-close-wrapper" style="display: flex; flex-direction: column; align-items: flex-end; gap: 0; ">
+				<button id="editor-close-btn" style="width: 60px; margin: 0; pointer-events:auto; border-radius: 20px; border-top-left-radius: 0; border-top-right-radius: 0; padding-top: 6px;">Close</button>
 			</div>
 		</div>
 		
@@ -4132,6 +4137,9 @@ const ACTION = {
 	
 };
 
+function actionToText(code){
+	return Object.keys(ACTION).find(key => ACTION[key] === code) || "(unknown code: "+code+")";
+}
 
 
 
@@ -6012,12 +6020,36 @@ let editor = {
 	currentTileType: "land",
 	brushSize: 0,
 	brushType: 0, // 0 = hex, 1 = circle
+	forceDraw: 0, // 0 = move, 1 = draw
 };
 
 
 
 const editorBrushSize = document.getElementById("editor-brush-size");
 const editorBrushType = document.getElementById("editor-brush-type");
+const editorMovetoggleMove = document.getElementById("editor-movetoggle-move");
+const editorMovetoggleDraw = document.getElementById("editor-movetoggle-draw");
+
+const editorCloseBtn = document.getElementById('editor-close-btn');
+//const editorCloseWrapper = document.getElementById('editor-close-wrapper');
+
+editorCloseBtn.addEventListener("click", () => {
+	closeEditor();
+});
+
+
+
+editorMovetoggleMove.addEventListener("click", function () {
+	editor.forceDraw = 1;
+	editorMovetoggleMove.style.display = "none";
+	editorMovetoggleDraw.style.display = "block";
+});
+
+editorMovetoggleDraw.addEventListener("click", function () {
+	editor.forceDraw = 0;
+	editorMovetoggleMove.style.display = "block";
+	editorMovetoggleDraw.style.display = "none";
+});
 
 
 editorBrushSize.addEventListener("change", function () {
@@ -6087,6 +6119,11 @@ function setEditorTile(hex, newType){
 	//console.log(getTileAt(hex.q, hex.r));
 
 	if(tileSet){
+		let unit = getUnitAt(hex.q, hex.r);
+		if(unit){
+			let tile = getTileAt(hex.q, hex.r);
+			tile.ownerIndex = unit.ownerIndex;
+		}
 		updateTileAndNeighbourOutlines(hex.q, hex.r);
 	}
 }
@@ -6095,10 +6132,12 @@ function setEditorTile(hex, newType){
 
 const closeEndgamePopupBtn = document.getElementById('close-endgame-popup-btn');
 const openEndgamePopupBtn = document.getElementById('endgame-stats-btn');
+const endgameStatsWrapper = document.getElementById('endgame-stats-wrapper');
+
+
 const endgamePopupUi = document.getElementById('endgame-popup-ui');
 const endgamePopupUiWrapper2 = document.getElementById('endgame-popup-ui-wrapper2');
 
-const endgameStatsWrapper = document.getElementById('endgame-stats-wrapper');
 
 
 
@@ -8157,7 +8196,7 @@ function drawMapShading(type){
 				let color;
 				if(player){
 					//color = hexToRgba(darkenHexColor(player.color, 0.8), 0.8);
-					color = darkenHexColor(player.color, 0.8);
+					color = darkenHexColor(player.color, 0.7);
 				}else{
 					//color = hexToRgba(darkenHexColor("#705F4B", 0.8), 0.8);
 					color = "#16181C";
@@ -10389,9 +10428,10 @@ let lastpos = { x: 0, y: 0 };
 function handleCanvasMouseMove(e) {
 	//console.log("handleCanvasMouseMove");
 	
-	if(editor.isDrawing && e.ctrlKey){
+	if(editor.isDrawing && e.button === 0 && (e.ctrlKey || editor.forceDraw)){
 		if(gameState.settings.editorEnabled){
 			
+			mousePosCurrent = { x: e.clientX, y: e.clientY };
 			
 			let hex = pixelToAxial(e.clientX, e.clientY);
 		
@@ -10427,6 +10467,9 @@ function handleCanvasMouseMove(e) {
 	}
 }
 
+let mousePosCurrent = {x:0,y:0};
+
+
 function handleCanvasMouseDown(e) {
 	//console.log("handleCanvasMouseDown");
 	
@@ -10435,10 +10478,12 @@ function handleCanvasMouseDown(e) {
 	lastpos.x = e.clientX;
 	lastpos.y = e.clientY;
 
-
 	
-	if(gameState.settings.editorEnabled && e.ctrlKey){
+	
+	if(gameState.settings.editorEnabled && e.button === 0 && (e.ctrlKey || editor.forceDraw)){
 		editor.isDrawing = true;
+		
+		mousePosCurrent = { x: e.clientX, y: e.clientY };
 		
 		let hex = pixelToAxial(e.clientX, e.clientY);
 	
@@ -16454,7 +16499,7 @@ function killPlayerTiles(playerIndex){
 function handleHostData(data) {
 	let needsUIUpdate = false;
 	
-	console.log("handleHostData: data.type = "+data.type);
+	console.log("handleHostData: data.type = "+actionToText(data.type));
 	
 	switch (data.type) {
 		case ACTION.ping: {
@@ -17303,7 +17348,7 @@ function cleanAnimations(){
 //
 // NOTE: MUST use playerId (peerId) here, players array is not built yet when using this.
 function handleClientData(peerId, data) {
-	console.log("handleClientData");
+	console.log("handleClientData: data.type = "+actionToText(data.type));
 
 	const player = getPlayer(peerId);
 	if (!player) return;
@@ -20466,7 +20511,9 @@ document.addEventListener('keydown', (event) => {
 		if(gameStarted()){
 			if (key === 'Enter') { // event.key matches enter and numpad enter.
 				toggleUiTopLeft();
-			}else if(code === 'KeyQ') { // q "q" 'q'
+			}
+			
+			if(code === 'KeyQ') { // q "q" 'q'
 				if(!event.shiftKey){
 					rotateLeftSnapped();
 				}else{
@@ -20478,10 +20525,47 @@ document.addEventListener('keydown', (event) => {
 				}else{
 					rotateAroundScreenCenter(0.03);
 				}
-			}else if(code === 'KeyW') {
-				rotateAroundScreenCenter(-viewport.rotation);
+			//}
+			//else if(code === 'KeyW') {
+			//	rotateAroundScreenCenter(-viewport.rotation);
 			}else if(code === 'Space'){
 				lastMovesTriggerTime = performance.now();
+			}else if(code === 'KeyW') {
+				if(!event.shiftKey){
+					viewport.y += 40;
+				}else{
+					viewport.y += 10;
+				}
+				if(editor.isDrawing){
+					sendTileUpdate(pixelToAxial(mousePosCurrent.x, mousePosCurrent.y));
+				}
+			}else if(code === 'KeyS') {
+				if(!event.shiftKey){
+					viewport.y -= 40;
+				}else{
+					viewport.y -= 10;
+				}
+				if(editor.isDrawing){
+					sendTileUpdate(pixelToAxial(mousePosCurrent.x, mousePosCurrent.y));
+				}
+			}else if(code === 'KeyA') {
+				if(!event.shiftKey){
+					viewport.x += 40;
+				}else{
+					viewport.x += 10;
+				}
+				if(editor.isDrawing){
+					sendTileUpdate(pixelToAxial(mousePosCurrent.x, mousePosCurrent.y));
+				}
+			}else if(code === 'KeyD') {
+				if(!event.shiftKey){
+					viewport.x -= 40;
+				}else{
+					viewport.x -= 10;
+				}
+				if(editor.isDrawing){
+					sendTileUpdate(pixelToAxial(mousePosCurrent.x, mousePosCurrent.y));
+				}
 			}
 		}
 	}
@@ -20580,10 +20664,15 @@ Object.keys(settingsElems).forEach(id => {
 
 
 
+
 function openEditor(){
+	settingsElems['game-settings-editor'].elem.checked = true;
+	gameState.settings.editorEnabled = true;
 	uiEditor.style.display = "block";
 }
 function closeEditor(){
+	settingsElems['game-settings-editor'].elem.checked = false;
+	gameState.settings.editorEnabled = false;
 	uiEditor.style.display = "none";
 }
 
