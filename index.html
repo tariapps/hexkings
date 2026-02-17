@@ -2348,6 +2348,10 @@ input.disabled {
 <div id="game-page" class="page">
 	<canvas id="game-canvas"></canvas>
 	
+	<div id="debug-info" style="background-color:black;z-index: 1; position: absolute; left: 0; top: 0;background-color: rgba(0, 0, 0, 0.5);padding: 5px;margin-top: 206px;">
+	
+	</div>
+	
 	<div id="top-float-ui">
 		<div id="top-float-ui-messages"></div>
 	</div>
@@ -5962,6 +5966,11 @@ const clientLobbyChatInput = document.getElementById('client-lobby-chat-input');
 
 //ctx.imageSmoothingEnabled = true;
 //ctx.imageSmoothingQuality = 'high';
+
+
+const debugInfo = document.getElementById('debug-info');
+
+
 
 const chatInput = document.getElementById('chat-input');
 const turnInfo = document.getElementById('turn-info');
@@ -10764,7 +10773,17 @@ function handleTouchEnd(e) {
 */
 
 // Add this variable to your global scope (where lastDist and lastTouch are defined)
-let lastTwoFingerTouch = null; 
+let lastTwoFingerTouch = null;
+
+let debugVars = {};
+
+function updateDebugInfo(){
+	let str = "";
+	Object.keys(debugVars).forEach(key => {
+		str += `<div><span>${key}</span> = <span>${debugVars[key]}</span></div>\r\n`;
+	});
+	debugInfo.innerHTML = str;
+}
 
 function handleTouchStart(e) {
 	//console.log("handleTouchStart");
@@ -10775,9 +10794,18 @@ function handleTouchStart(e) {
 	const touch = e.touches[0];
 	const target = document.elementFromPoint(touch.clientX, touch.clientY);
 	
+	debugVars = {...debugVars,
+		'touches.length': e.touches.length,
+	};
+	
+	
 	if(e.touches.length === 1) {
 		if(gameState.settings.editorEnabled && editor.forceDraw){
 			editor.isDrawing = true;
+			
+			debugVars = {...debugVars,
+				'draw_started': 1,
+			};
 			
 			mousePosCurrent = { x: touch.clientX, y: touch.clientY };
 			
@@ -10813,6 +10841,11 @@ function handleTouchStart(e) {
 		//console.log("e.touches.length === 1");
 		isDragging = false;
 		touchStartPos = { x: touch.clientX, y: touch.clientY };
+		
+		debugVars = {...debugVars,
+			'isDragging': 0,
+			'canDrag': 1,
+		};
 
 		const clickedHex = pixelToAxial(touch.clientX, touch.clientY);
 		// const unitOnHex = getUnitAt(clickedHex.q, clickedHex.r); // Unused in snippet
@@ -10836,6 +10869,11 @@ function handleTouchStart(e) {
 			y: (e.touches[0].clientY + e.touches[1].clientY) / 2
 		};
 		
+		debugVars = {...debugVars,
+			'isDragging': 0,
+			'lastTwoFingerTouch': lastTwoFingerTouch.x+","+lastTwoFingerTouch.y,
+		};
+		
 		// Reset dragging state initially, but it will flip to true in TouchMove
 		isDragging = false;
 		touchStartPos = null;
@@ -10851,12 +10889,19 @@ function handleTouchStart(e) {
 			isRotating = true;
 		}
 	}
+	
+	
+	updateDebugInfo();
 }
 
 function handleTouchMove(e) {
 	//console.log("handleTouchMove");
 	if(editor.isDrawing && editor.forceDraw){
 		if(gameState.settings.editorEnabled){
+			
+			debugVars = {...debugVars,
+				'forceDraw && sendTileUpdate': 1,
+			};
 			
 			mousePosCurrent = { x: e.touches[0].clientX, y: e.touches[0].clientY };
 			
@@ -10877,6 +10922,10 @@ function handleTouchMove(e) {
 			if (!isDragging && Math.hypot(touch.clientX - touchStartPos.x, touch.clientY - touchStartPos.y) > 5) {
 				isDragging = true; // Started dragging
 			}
+			
+			debugVars = {...debugVars,
+				'isDragging': isDragging,
+			};
 			
 			if (isDragging) {
 				viewport.x += dx;
@@ -10909,6 +10958,12 @@ function handleTouchMove(e) {
 			}
 			// Update last position for next frame
 			lastTwoFingerTouch = { x: midX, y: midY };
+			
+			
+			debugVars = {...debugVars,
+				'isDragging': isDragging,
+				'lastTwoFingerTouch': lastTwoFingerTouch.x+","+lastTwoFingerTouch.y,
+			};
 
 			// 3. Handle Zooming
 			const newDist = Math.hypot(
@@ -10939,6 +10994,7 @@ function handleTouchMove(e) {
 			}
 		}
 	}
+	updateDebugInfo();
 }
 
 function handleTouchEnd(e) {
@@ -10946,14 +11002,28 @@ function handleTouchEnd(e) {
 	
 	editor.isDrawing = false;
 	
+	debugVars = {...debugVars,
+		'isDrawing': isDrawing,
+		'isDragging': isDragging,
+		'touches.length': e.touches.length,
+	};
+	
 	if (e.touches.length === 0 && touchStartPos && !isDragging) {
 		// This was a tap
+		debugVars = {...debugVars,
+			'handleHexClick': 1,
+		};
+	
 		handleHexClick({x: touchStartPos.x, y: touchStartPos.y});
 	}
 	
 	if (e.touches.length < 2) {
 		lastDist = null; // Stop zooming
 		lastTwoFingerTouch = null; // Stop two-finger panning
+		
+		debugVars = {...debugVars,
+			'lastTwoFingerTouch': 0,
+		};
 		
 		if(showTopLeftUi){
 			isRotating = false;
@@ -10963,7 +11033,12 @@ function handleTouchEnd(e) {
 		isDragging = false; // Stop dragging
 		touchStartPos = null;
 		lastTouch = null;
+		
+		debugVars = {...debugVars,
+			'isDragging': 0,
+		};
 	}
+	updateDebugInfo();
 }
 
 
