@@ -10596,6 +10596,8 @@ let debugVars = {};
 
 let debugTimeout = null;
 
+let twofingers = false;
+
 function updateDebugInfo(){
 	let str = "";
 	Object.keys(debugVars).forEach(key => {
@@ -10615,7 +10617,7 @@ function handleTouchStart(e) {
 	const touch = e.touches[0];
 	const target = document.elementFromPoint(touch.clientX, touch.clientY);
 	
-	if(gameState.settings.editorEnabled && editor.forceDraw){
+	if(gameState.settings.editorEnabled && editor.forceDraw && e.touches.length === 1){
 		editor.isDrawing = true;
 		
 		mousePosCurrent = { x: touch.clientX, y: touch.clientY };
@@ -10660,6 +10662,8 @@ function handleTouchStart(e) {
 		//touchStartPos.canDrag = !placingUnit;
 		lastTouch = { x: touch.clientX, y: touch.clientY };
 		lastDist = null;
+		
+		twofingers = false;
 
 	} else if (e.touches.length === 2) {
 		//console.log("e.touches.length === 2");
@@ -10676,6 +10680,8 @@ function handleTouchStart(e) {
 			x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
 			y: (e.touches[0].clientY + e.touches[1].clientY) / 2
 		};
+		
+		twofingers = true;
 		
 		// only rotate if chat box is open:
 		if(showTopLeftUi){
@@ -10695,7 +10701,7 @@ function handleTouchStart(e) {
 
 function handleTouchMove(e) {
 	//console.log("handleTouchMove");
-	if(editor.isDrawing && editor.forceDraw){
+	if(editor.isDrawing && editor.forceDraw && !twofingers){
 		if(gameState.settings.editorEnabled){
 			
 			mousePosCurrent = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -10724,6 +10730,8 @@ function handleTouchMove(e) {
 			}
 			lastTouch.x = touch.clientX;
 			lastTouch.y = touch.clientY;
+			
+			twofingers = false;
 
 		} else if (e.touches.length === 2 && lastDist) {
 			// Pinch-zoom
@@ -10757,6 +10765,7 @@ function handleTouchMove(e) {
 			
 			const zoomFactor = newDist / lastDist;
 			
+			twofingers = true;
 
 			zoomAtPoint(midX, midY, zoomFactor);
 
@@ -10789,7 +10798,7 @@ function handleTouchEnd(e) {
 	//console.log("handleTouchEnd");
 	
 	editor.isDrawing = false;
-	
+	twofingers = false;
 	
 	if (e.touches.length === 0 && touchStartPos && !isDragging) {
 		// This was a tap
