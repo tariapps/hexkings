@@ -10763,168 +10763,207 @@ function handleTouchEnd(e) {
 
 */
 
-
-// 1. DEFINE THIS OUTSIDE (Alongside your other global vars like lastDist, viewport, etc.)
-let lastTwoFingerCenter = null; 
-
+// Add this variable to your global scope (where lastDist and lastTouch are defined)
+let lastTwoFingerTouch = null; 
 
 function handleTouchStart(e) {
-    // unfocus chatinput:
-    if (chatInput) chatInput.blur();
+	//console.log("handleTouchStart");
 
-    const touch = e.touches[0];
-    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+	// unfocus chatinput:
+	chatInput.blur();
 
-    // ... (Your existing Editor/Building logic here) ...
-    if(gameState.settings.editorEnabled && editor.forceDraw){
-        editor.isDrawing = true;
-        mousePosCurrent = { x: touch.clientX, y: touch.clientY };
-        let hex = pixelToAxial(mousePosCurrent.x, mousePosCurrent.y);
-        let tile = getTileAt(hex.q, hex.r);
-        editor.currentTileType = isTileWater(tile) ? "land" : "water";
-        sendTileUpdate(hex);
-    }
-    
-    if(!placingUnit){
-        const touchedOutside = !buildPopup.contains(target) &&
-            !buildOtherBtn.contains(target) &&
-            !buildSoldierBtn.contains(target) &&
-            !buildCastleBtn.contains(target);
-        if (touchedOutside && isBuildPopupOpen()) cancelBuildPopup();
-    }
-    // ... (End Editor/Building logic) ...
+	const touch = e.touches[0];
+	const target = document.elementFromPoint(touch.clientX, touch.clientY);
+	
+	if(e.touches.length === 1) {
+		if(gameState.settings.editorEnabled && editor.forceDraw){
+			editor.isDrawing = true;
+			
+			mousePosCurrent = { x: touch.clientX, y: touch.clientY };
+			
+			let hex = pixelToAxial(mousePosCurrent.x, mousePosCurrent.y);
+			
+			let tile = getTileAt(hex.q, hex.r);
+			if(isTileWater(tile)){
+				editor.currentTileType = "land";
+			}else{
+				editor.currentTileType = "water";
+			}
+			
+			console.warn("editor.currentTileType touch", editor.currentTileType);
+			
+			sendTileUpdate(hex);
+		}
+	}
 
+	if(!placingUnit){
+		// close build popup if clicked outside while not building an unit:
+		const touchedOutside =
+			!buildPopup.contains(target) &&
+			!buildOtherBtn.contains(target) &&
+			!buildSoldierBtn.contains(target) &&
+			!buildCastleBtn.contains(target);
 
-    if (e.touches.length === 1) {
-        isDragging = false;
-        touchStartPos = { x: touch.clientX, y: touch.clientY };
-        touchStartPos.canDrag = true;
-        
-        lastTouch = { x: touch.clientX, y: touch.clientY };
-        lastDist = null;
-        lastTwoFingerCenter = null; // Reset 2-finger tracking
+		if (touchedOutside && isBuildPopupOpen()) {
+			cancelBuildPopup();
+		}
+	}
 
-    } else if (e.touches.length === 2) {
-        isDragging = false;
-        touchStartPos = null;
+	if (e.touches.length === 1) {
+		//console.log("e.touches.length === 1");
+		isDragging = false;
+		touchStartPos = { x: touch.clientX, y: touch.clientY };
 
-        // 2. Initialize Zoom Distance
-        lastDist = Math.hypot(
-            e.touches[0].clientX - e.touches[1].clientX,
-            e.touches[0].clientY - e.touches[1].clientY
-        );
+		const clickedHex = pixelToAxial(touch.clientX, touch.clientY);
+		// const unitOnHex = getUnitAt(clickedHex.q, clickedHex.r); // Unused in snippet
 
-        // 3. Initialize Pan Center (Average of two fingers)
-        lastTwoFingerCenter = {
-            x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
-            y: (e.touches[0].clientY + e.touches[1].clientY) / 2
-        };
+		touchStartPos.canDrag = true; 
+		lastTouch = { x: touch.clientX, y: touch.clientY };
+		lastDist = null;
 
-        if(showTopLeftUi){
-            const [t1, t2] = e.touches;
-            initialAngle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX);
-            isRotating = true;
-        }
-    }
+	} else if (e.touches.length === 2) {
+		//console.log("e.touches.length === 2");
+		
+		// Initialize Zoom Tracking
+		lastDist = Math.hypot(
+			e.touches[0].clientX - e.touches[1].clientX,
+			e.touches[0].clientY - e.touches[1].clientY
+		);
+
+		// Initialize Two-Finger Pan Tracking
+		lastTwoFingerTouch = {
+			x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+			y: (e.touches[0].clientY + e.touches[1].clientY) / 2
+		};
+		
+		// Reset dragging state initially, but it will flip to true in TouchMove
+		isDragging = false;
+		touchStartPos = null;
+
+		// only rotate if chat box is open:
+		if(showTopLeftUi){
+			// rotation:
+			const [t1, t2] = e.touches;
+			initialAngle = Math.atan2(
+				t2.clientY - t1.clientY,
+				t2.clientX - t1.clientX
+			);
+			isRotating = true;
+		}
+	}
 }
-
 
 function handleTouchMove(e) {
-    if(editor.isDrawing && editor.forceDraw && gameState.settings.editorEnabled){
-        mousePosCurrent = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-        let hex = pixelToAxial(mousePosCurrent.x, mousePosCurrent.y);
-        sendTileUpdate(hex);
-    } else {
-        lastMousePos.x = e.touches[0].clientX;
-        lastMousePos.y = e.touches[0].clientY;
+	//console.log("handleTouchMove");
+	if(editor.isDrawing && editor.forceDraw){
+		if(gameState.settings.editorEnabled){
+			
+			mousePosCurrent = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+			
+			let hex = pixelToAxial(mousePosCurrent.x, mousePosCurrent.y);
+		
+			sendTileUpdate(hex);
+		}
+	}else{
+		lastMousePos.x = e.touches[0].clientX; // for placement cursor
+		lastMousePos.y = e.touches[0].clientY;
 
-        // --- 1 Finger Drag ---
-        if (e.touches.length === 1 && touchStartPos && touchStartPos.canDrag) {
-            const touch = e.touches[0];
-            const dx = touch.clientX - lastTouch.x;
-            const dy = touch.clientY - lastTouch.y;
-            
-            if (!isDragging && Math.hypot(touch.clientX - touchStartPos.x, touch.clientY - touchStartPos.y) > 5) {
-                isDragging = true;
-            }
-            
-            if (isDragging) {
-                viewport.x += dx;
-                viewport.y += dy;
-            }
-            lastTouch.x = touch.clientX;
-            lastTouch.y = touch.clientY;
+		if (e.touches.length === 1 && touchStartPos && touchStartPos.canDrag) {
+			// --- Single Finger Dragging ---
+			const touch = e.touches[0];
+			const dx = touch.clientX - lastTouch.x;
+			const dy = touch.clientY - lastTouch.y;
+			
+			if (!isDragging && Math.hypot(touch.clientX - touchStartPos.x, touch.clientY - touchStartPos.y) > 5) {
+				isDragging = true; // Started dragging
+			}
+			
+			if (isDragging) {
+				viewport.x += dx;
+				viewport.y += dy;
+			}
+			lastTouch.x = touch.clientX;
+			lastTouch.y = touch.clientY;
 
-        // --- 2 Finger Pan & Zoom ---
-        } else if (e.touches.length === 2) {
-            
-            // Calculate current center of the two fingers
-            const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-            const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+		} else if (e.touches.length === 2 && lastDist) {
+			// --- Two Finger Actions (Zoom + Pan + Rotate) ---
+			
+			// 1. Calculate the center of the two fingers
+			const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+			const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
 
-            // A. PANNING (Move Screen)
-            if (lastTwoFingerCenter) {
-                const dx = midX - lastTwoFingerCenter.x;
-                const dy = midY - lastTwoFingerCenter.y;
-                
-                // Move viewport immediately
-                viewport.x += dx;
-                viewport.y += dy;
+			// 2. Handle Panning (Moving the screen)
+			if (lastTwoFingerTouch) {
+				const dx = midX - lastTwoFingerTouch.x;
+				const dy = midY - lastTwoFingerTouch.y;
 
-                // Force dragging to true so we don't 'click' when we let go
-                isDragging = true; 
-            }
-            
-            // Update the last center for the next frame
-            lastTwoFingerCenter = { x: midX, y: midY };
+				// If moved significantly, mark as dragging
+				if (!isDragging && Math.hypot(dx, dy) > 1) { 
+					isDragging = true; 
+				}
 
+				if (isDragging) {
+					viewport.x += dx;
+					viewport.y += dy;
+				}
+			}
+			// Update last position for next frame
+			lastTwoFingerTouch = { x: midX, y: midY };
 
-            // B. ZOOMING
-            if (lastDist) {
-                const newDist = Math.hypot(
-                    e.touches[0].clientX - e.touches[1].clientX,
-                    e.touches[0].clientY - e.touches[1].clientY
-                );
-                
-                // Only zoom if the distance changed slightly to prevent jitter
-                if (Math.abs(newDist - lastDist) > 1) {
-                   const zoomFactor = newDist / lastDist;
-                   zoomAtPoint(midX, midY, zoomFactor);
-                   lastDist = newDist;
-                }
-            }
-            
-            // C. ROTATING
-            if(showTopLeftUi && isRotating){
-                const [t1, t2] = e.touches;
-                const newAngle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX);
-                const deltaAngle = newAngle - initialAngle;
-                rotateAroundScreenCenter(deltaAngle);
-                initialAngle = newAngle;
-            }
-        }
-    }
+			// 3. Handle Zooming
+			const newDist = Math.hypot(
+				e.touches[0].clientX - e.touches[1].clientX,
+				e.touches[0].clientY - e.touches[1].clientY
+			);
+			
+			const zoomFactor = newDist / lastDist;
+			zoomAtPoint(midX, midY, zoomFactor);
+			lastDist = newDist;
+			
+			// 4. Handle Rotation (only if chat box is open)
+			if(showTopLeftUi){
+				if (!isRotating || e.touches.length !== 2){
+					
+				}else{
+					const [t1, t2] = e.touches;
+					const newAngle = Math.atan2(
+						t2.clientY - t1.clientY,
+						t2.clientX - t1.clientX
+					);
+					const deltaAngle = newAngle - initialAngle;
+
+					rotateAroundScreenCenter(deltaAngle);
+					
+					initialAngle = newAngle; // update for next frame
+				}
+			}
+		}
+	}
 }
 
-
 function handleTouchEnd(e) {
-    editor.isDrawing = false;
-
-    if (e.touches.length === 0 && touchStartPos && !isDragging) {
-        handleHexClick({x: touchStartPos.x, y: touchStartPos.y});
-    }
-
-    if (e.touches.length < 2) {
-        lastDist = null; 
-        lastTwoFingerCenter = null; // Stop 2-finger panning
-        if(showTopLeftUi) isRotating = false;
-    }
-    
-    if (e.touches.length < 1) {
-        isDragging = false;
-        touchStartPos = null;
-        lastTouch = null;
-    }
+	//console.log("handleTouchEnd");
+	
+	editor.isDrawing = false;
+	
+	if (e.touches.length === 0 && touchStartPos && !isDragging) {
+		// This was a tap
+		handleHexClick({x: touchStartPos.x, y: touchStartPos.y});
+	}
+	
+	if (e.touches.length < 2) {
+		lastDist = null; // Stop zooming
+		lastTwoFingerTouch = null; // Stop two-finger panning
+		
+		if(showTopLeftUi){
+			isRotating = false;
+		}
+	}
+	if (e.touches.length < 1) {
+		isDragging = false; // Stop dragging
+		touchStartPos = null;
+		lastTouch = null;
+	}
 }
 
 
