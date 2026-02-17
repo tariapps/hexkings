@@ -10456,7 +10456,7 @@ function handleCanvasMouseMove(e) {
 			
 			mousePosCurrent = { x: e.clientX, y: e.clientY };
 			
-			let hex = pixelToAxial(e.clientX, e.clientY);
+			let hex = pixelToAxial(mousePosCurrent.x, mousePosCurrent.y);
 		
 			sendTileUpdate(hex);
 		}
@@ -10590,6 +10590,25 @@ function handleTouchStart(e) {
 
 	const touch = e.touches[0];
 	const target = document.elementFromPoint(touch.clientX, touch.clientY);
+	
+	if(gameState.settings.editorEnabled && editor.forceDraw){
+		editor.isDrawing = true;
+		
+		mousePosCurrent = { x: touch.clientX, y: touch.clientY };
+		
+		let hex = pixelToAxial(mousePosCurrent.x, mousePosCurrent.y);
+	
+		let tile = getTileAt(hex.q, hex.r);
+		if(isTileWater(tile)){
+			editor.currentTileType = "land";
+		}else{
+			editor.currentTileType = "water";
+		}
+		
+		console.warn("editor.currentTileType touch", editor.currentTileType);
+		
+		sendTileUpdate(hex);
+	}
 
 	if(!placingUnit){
 		// close build popup if clicked outside while not building an unit:
@@ -10646,60 +10665,70 @@ function handleTouchStart(e) {
 
 function handleTouchMove(e) {
 	//console.log("handleTouchMove");
-		
-	lastMousePos.x = e.touches[0].clientX; // for placement cursor
-	lastMousePos.y = e.touches[0].clientY;
-
-	if (e.touches.length === 1 && touchStartPos && touchStartPos.canDrag) {
-		// Dragging
-		const touch = e.touches[0];
-		const dx = touch.clientX - lastTouch.x;
-		const dy = touch.clientY - lastTouch.y;
-		
-		if (!isDragging && Math.hypot(touch.clientX - touchStartPos.x, touch.clientY - touchStartPos.y) > 5) {
-			isDragging = true; // Started dragging
-		}
-		
-		if (isDragging) {
-			viewport.x += dx;
-			viewport.y += dy;
-		}
-		lastTouch.x = touch.clientX;
-		lastTouch.y = touch.clientY;
-
-	} else if (e.touches.length === 2 && lastDist) {
-		// Pinch-zoom
-		const newDist = Math.hypot(
-			e.touches[0].clientX - e.touches[1].clientX,
-			e.touches[0].clientY - e.touches[1].clientY
-		);
-		
-		const zoomFactor = newDist / lastDist;
-		
-		// Get center of pinch
-		const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-		const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-
-		zoomAtPoint(midX, midY, zoomFactor);
-
-		lastDist = newDist;
-	}
-	
-	// only rotate if chat box is open:
-	if(showTopLeftUi){
-		if (!isRotating || e.touches.length !== 2){
+	if(editor.isDrawing && editor.forceDraw){
+		if(gameState.settings.editorEnabled){
 			
-		}else{
-			const [t1, t2] = e.touches;
-			const newAngle = Math.atan2(
-				t2.clientY - t1.clientY, 
-				t2.clientX - t1.clientX
+			mousePosCurrent = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+			
+			let hex = pixelToAxial(mousePosCurrent.x, mousePosCurrent.y);
+		
+			sendTileUpdate(hex);
+		}
+	}else{
+		lastMousePos.x = e.touches[0].clientX; // for placement cursor
+		lastMousePos.y = e.touches[0].clientY;
+
+		if (e.touches.length === 1 && touchStartPos && touchStartPos.canDrag) {
+			// Dragging
+			const touch = e.touches[0];
+			const dx = touch.clientX - lastTouch.x;
+			const dy = touch.clientY - lastTouch.y;
+			
+			if (!isDragging && Math.hypot(touch.clientX - touchStartPos.x, touch.clientY - touchStartPos.y) > 5) {
+				isDragging = true; // Started dragging
+			}
+			
+			if (isDragging) {
+				viewport.x += dx;
+				viewport.y += dy;
+			}
+			lastTouch.x = touch.clientX;
+			lastTouch.y = touch.clientY;
+
+		} else if (e.touches.length === 2 && lastDist) {
+			// Pinch-zoom
+			const newDist = Math.hypot(
+				e.touches[0].clientX - e.touches[1].clientX,
+				e.touches[0].clientY - e.touches[1].clientY
 			);
-			const deltaAngle = newAngle - initialAngle;
-
-			rotateAroundScreenCenter(deltaAngle);
 			
-			initialAngle = newAngle; // update for next frame
+			const zoomFactor = newDist / lastDist;
+			
+			// Get center of pinch
+			const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+			const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+
+			zoomAtPoint(midX, midY, zoomFactor);
+
+			lastDist = newDist;
+		}
+		
+		// only rotate if chat box is open:
+		if(showTopLeftUi){
+			if (!isRotating || e.touches.length !== 2){
+				
+			}else{
+				const [t1, t2] = e.touches;
+				const newAngle = Math.atan2(
+					t2.clientY - t1.clientY, 
+					t2.clientX - t1.clientX
+				);
+				const deltaAngle = newAngle - initialAngle;
+
+				rotateAroundScreenCenter(deltaAngle);
+				
+				initialAngle = newAngle; // update for next frame
+			}
 		}
 	}
 }
@@ -10708,6 +10737,9 @@ function handleTouchMove(e) {
 // only for mobile?
 function handleTouchEnd(e) {
 	//console.log("handleTouchEnd");
+	
+	editor.isDrawing = false;
+	
 	
 	if (e.touches.length === 0 && touchStartPos && !isDragging) {
 		// This was a tap
@@ -20602,6 +20634,7 @@ document.addEventListener('keydown', (event) => {
 		}
 	}
 });
+
 
 
 
