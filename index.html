@@ -10777,6 +10777,8 @@ let lastTwoFingerTouch = null;
 
 let debugVars = {};
 
+let debugTimeout = null;
+
 function updateDebugInfo(){
 	let str = "";
 	Object.keys(debugVars).forEach(key => {
@@ -10795,6 +10797,7 @@ function handleTouchStart(e) {
 	const target = document.elementFromPoint(touch.clientX, touch.clientY);
 	
 	debugVars = {...debugVars,
+		'handleTouchStart': 1,
 		'touches.length': e.touches.length,
 	};
 	
@@ -10895,6 +10898,11 @@ function handleTouchStart(e) {
 }
 
 function handleTouchMove(e) {
+
+	debugVars = {...debugVars,
+		'handleTouchMove': 1,
+	};
+	
 	//console.log("handleTouchMove");
 	if(editor.isDrawing && editor.forceDraw){
 		if(gameState.settings.editorEnabled){
@@ -10995,15 +11003,19 @@ function handleTouchMove(e) {
 		}
 	}
 	updateDebugInfo();
+	
+
 }
 
 function handleTouchEnd(e) {
 	//console.log("handleTouchEnd");
+
 	
 	editor.isDrawing = false;
 	
 	debugVars = {...debugVars,
-		'isDrawing': isDrawing,
+		'handleTouchEnd': 1,
+		'isDrawing': editor.isDrawing,
 		'isDragging': isDragging,
 		'touches.length': e.touches.length,
 	};
@@ -11039,6 +11051,15 @@ function handleTouchEnd(e) {
 		};
 	}
 	updateDebugInfo();
+	
+	if(debugTimeout){
+		clearTimeout(debugTimeout);
+	}
+	
+	debugTimeout = setTimeout(function(){
+		debugVars = {};
+		updateDebugInfo();
+	}, 3000);
 }
 
 
