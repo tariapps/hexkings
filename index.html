@@ -10904,7 +10904,7 @@ function handleTouchMove(e) {
 	};
 	
 	//console.log("handleTouchMove");
-	if(editor.isDrawing && editor.forceDraw){
+	if(editor.isDrawing && editor.forceDraw && e.touches.length === 1){
 		if(gameState.settings.editorEnabled){
 			
 			debugVars = {...debugVars,
