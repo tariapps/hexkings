@@ -2469,13 +2469,13 @@ input.disabled {
 				<div class="info-editor" id="info-editor">
 					<div class="button-row">
 						<select id="editor-tile-owner" style="padding: 0; height: 44px;">
-							<option>No player</option>
-							<option>PL1</option>
-							<option>PL2</option>
-							<option>PL3</option>
-							<option>PL4</option>
-							<option>PL5</option>
-							<option>PL6</option>
+							<option value="-1">No player</option>
+							<option value="0">PL1</option>
+							<option value="1">PL2</option>
+							<option value="2">PL3</option>
+							<option value="3">PL4</option>
+							<option value="4">PL5</option>
+							<option value="5">PL6</option>
 						</select>
 						
 						<button id="editor-tile-auto" class="gamebutton" title="">Auto</button>
@@ -6021,6 +6021,7 @@ let editor = {
 	brushSize: 0,
 	brushType: 0, // 0 = hex, 1 = circle
 	forceDraw: 0, // 0 = move, 1 = draw
+	tileOwner: -1, // -1 = nobody, 0-5 = player indexes
 };
 
 
@@ -6030,8 +6031,15 @@ const editorBrushType = document.getElementById("editor-brush-type");
 const editorMovetoggleMove = document.getElementById("editor-movetoggle-move");
 const editorMovetoggleDraw = document.getElementById("editor-movetoggle-draw");
 
+const editorTileOwner = document.getElementById("editor-tile-owner");
+
+
 const editorCloseBtn = document.getElementById('editor-close-btn');
 //const editorCloseWrapper = document.getElementById('editor-close-wrapper');
+
+
+
+
 
 editorCloseBtn.addEventListener("click", () => {
 	closeEditor();
@@ -6039,28 +6047,35 @@ editorCloseBtn.addEventListener("click", () => {
 
 
 
-editorMovetoggleMove.addEventListener("click", function () {
+editorMovetoggleMove.addEventListener("click", function(){
 	editor.forceDraw = 1;
 	editorMovetoggleMove.style.display = "none";
 	editorMovetoggleDraw.style.display = "block";
 });
 
-editorMovetoggleDraw.addEventListener("click", function () {
+editorMovetoggleDraw.addEventListener("click", function(){
 	editor.forceDraw = 0;
 	editorMovetoggleMove.style.display = "block";
 	editorMovetoggleDraw.style.display = "none";
 });
 
 
-editorBrushSize.addEventListener("change", function () {
+editorBrushSize.addEventListener("change", function(){
 	editor.brushSize = Number(this.value);
 	console.log("editor.brushSize:", editor.brushSize);
 });
 
-editorBrushType.addEventListener("change", function () {
+editorBrushType.addEventListener("change", function(){
 	editor.brushType = Number(this.value);
 	console.log("editor.brushType:", editor.brushType);
 });
+
+editorTileOwner.addEventListener("change", function(){
+	editor.tileOwner = Number(this.value);
+	console.log("editor.tileOwner:", editor.tileOwner);
+});
+
+
 
 
 function hasLandNeighbors(q, r){
@@ -6097,19 +6112,27 @@ function clearWaterTiles(){
 }
 
 
-function setEditorTile(hex, newType){
+function setEditorTile(hex, tileInfo){
 	let tileSet = false;
 	
 	if(!getTileAt(hex.q, hex.r)){ // water
 		// dont create create empty tiles:
-		if(newType !== 'water'){
-			setTileAt(hex.q, hex.r, {type:newType, ownerIndex: -1, object: null, savings: 0});
+		if(tileInfo.type !== 'water'){
+			let ownerIndex = tileInfo.ownerIndex;
+			if(tileInfo.type !== 'land'){
+				ownerIndex = -1;
+			}
+			setTileAt(hex.q, hex.r, {type:tileInfo.type, ownerIndex: ownerIndex, object: null, savings: 0});
 			tileSet = true;
 		}
 	}else{
 		let tile = getTileAt(hex.q, hex.r);
-		tile.type = newType;//tile.type === "water" ? "land" : "water";
-		tile.ownerIndex = -1;
+		tile.type = tileInfo.type;//tile.type === "water" ? "land" : "water";
+		if(tile.type === 'land'){
+			tile.ownerIndex = tileInfo.ownerIndex;
+		}else{
+			tile.ownerIndex = -1;
+		}
 		tile.object = null;
 		tile.savings = 0;
 		tileSet = true;
@@ -11193,7 +11216,7 @@ function sendTileUpdate(hex){
 	//console.warn("sendTileUpdate");
 	if(!localPlayer.isSpectator){
 		let tile = getTileAt(hex.q, hex.r);
-		let override = editor.brushSize > 0;
+		let override = true;//editor.tileOwner !== -1;
 		
 		let allowEdit = false;
 		if(!tile || tile.type !== editor.currentTileType){
@@ -11208,12 +11231,19 @@ function sendTileUpdate(hex){
 			allowEdit = true;
 		}
 		
+		// prevent making ownerIndexes out of bounds:
+		if(editor.tileOwner > gameState.players.length-1){
+			allowEdit = false;
+		}
+		
+		
 		if(allowEdit){
 			sendToHost({
 				type: ACTION.action_edit_tile,
 				hex: hex,
 				tileType: editor.currentTileType,
 				brushSize: editor.brushSize,
+				tileOwner: editor.tileOwner,
 				//playerIndex: localPlayer.playerIndex,
 			});
 		}
@@ -13601,6 +13631,7 @@ function executeAction(playerId, action) {
 					hex: action.hex, 
 					tileType: action.tileType, 
 					brushSize: action.brushSize,
+					tileOwner: action.tileOwner,
 					playerIndex: playerIndex,
 				});
 			}
@@ -16789,6 +16820,7 @@ function handleHostData(data) {
 			let centerHex = data.hex;
 			let newType = data.tileType;
 			let radius = data.brushSize;
+			let tileOwner = data.tileOwner;
 			
 			const cq = centerHex.q;
 			const cr = centerHex.r;
@@ -16803,7 +16835,7 @@ function handleHostData(data) {
 					for (let dr = minR; dr <= maxR; dr++) {
 						const q = cq + dq;
 						const r = cr + dr;
-						setEditorTile({q, r}, newType);
+						setEditorTile({q, r}, {type: newType, ownerIndex: tileOwner});
 					}
 				}
 			}else{
@@ -16827,7 +16859,7 @@ function handleHostData(data) {
 						const distance = Math.sqrt(dx * dx + dy * dy);
 
 						if (distance <= pixelRadius) {
-							setEditorTile({q, r}, newType);
+							setEditorTile({q, r}, {type: newType, ownerIndex: tileOwner});
 						}
 					}
 				}
