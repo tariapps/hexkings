@@ -2562,7 +2562,7 @@ input.disabled {
 				
 					</div>
 					<div class="button-row">
-						<button id="editor-soldier" class="gamebutton" title="Requires player to be selected">Soldier</button>
+						<button id="editor-soldier" class="gamebutton" title="Requires player to be selected">Unit</button>
 						<select id="editor-soldier-type" style="padding: 0; height: 44px;" title="Requires player to be selected">
 							<option value="1">Peasant</option>
 							<option value="2">Knight</option>
@@ -6063,6 +6063,7 @@ let editor = {
 	objectType: 0, // 0 = disabled, 1.. = place these types
 	soldierType: 0, // 0 = disabled, 1.. = place these types
 	castleType: 0, // 0 = disabled, 1.. = place these types
+	otherType: 0, // 0 = disabled, 1 = boat,
 };
 
 
@@ -6149,12 +6150,37 @@ editorTileType.addEventListener("change", function(){
 });
 
 
+editorBoat.addEventListener("click", function(){
+	// disable every placement type first:
+	editor.objectType = 0;
+	editor.soldierType = 0;
+	editor.castleType = 0;
+	editor.otherType = 0;
+	
+	if(editorBoat.classList.contains("active")){
+		editorBoat.classList.remove("active");
+	}else{
+		// activate this, unactivate others:
+		editorObject.classList.remove("active");
+		editorSoldier.classList.remove("active");
+		editorCastle.classList.remove("active");
+		editorBoat.classList.add("active");
+		
+		editorObjectType.classList.remove("active");
+		editorSoldierType.classList.remove("active");
+		editorCastleType.classList.remove("active");
+		
+		editor.otherType = 1;
+	}
+});
+
 
 editorObject.addEventListener("click", function(){
 	// disable every placement type first:
 	editor.objectType = 0;
 	editor.soldierType = 0;
 	editor.castleType = 0;
+	editor.otherType = 0;
 	
 	if(editorObject.classList.contains("active")){
 		editorObject.classList.remove("active");
@@ -6164,6 +6190,7 @@ editorObject.addEventListener("click", function(){
 		editorObject.classList.add("active");
 		editorSoldier.classList.remove("active");
 		editorCastle.classList.remove("active");
+		editorBoat.classList.remove("active");
 		
 		editorObjectType.classList.add("active");
 		editorSoldierType.classList.remove("active");
@@ -6177,12 +6204,14 @@ editorObjectType.addEventListener("change", function(){
 	editor.objectType = 0;
 	editor.soldierType = 0;
 	editor.castleType = 0;
+	editor.otherType = 0;
 	
 	editor.objectType = Number(this.value);
 	
 	editorObject.classList.add("active");
 	editorSoldier.classList.remove("active");
 	editorCastle.classList.remove("active");
+	editorBoat.classList.remove("active");
 	
 	editorObjectType.classList.add("active");
 	editorSoldierType.classList.remove("active");
@@ -6197,6 +6226,7 @@ editorSoldier.addEventListener("click", function(){
 	editor.objectType = 0;
 	editor.soldierType = 0;
 	editor.castleType = 0;
+	editor.otherType = 0;
 	
 	if(editorSoldier.classList.contains("active")){
 		editorSoldier.classList.remove("active");
@@ -6206,6 +6236,7 @@ editorSoldier.addEventListener("click", function(){
 		editorObject.classList.remove("active");
 		editorSoldier.classList.add("active");
 		editorCastle.classList.remove("active");
+		editorBoat.classList.remove("active");
 		
 		editorObjectType.classList.remove("active");
 		editorSoldierType.classList.add("active");
@@ -6219,12 +6250,14 @@ editorSoldierType.addEventListener("change", function(){
 	editor.objectType = 0;
 	editor.soldierType = 0;
 	editor.castleType = 0;
+	editor.otherType = 0;
 	
 	editor.soldierType = Number(this.value);
 	
 	editorObject.classList.remove("active");
 	editorSoldier.classList.add("active");
 	editorCastle.classList.remove("active");
+	editorBoat.classList.remove("active");
 	
 	editorObjectType.classList.remove("active");
 	editorSoldierType.classList.add("active");
@@ -6240,6 +6273,7 @@ editorCastle.addEventListener("click", function(){
 	editor.objectType = 0;
 	editor.soldierType = 0;
 	editor.castleType = 0;
+	editor.otherType = 0;
 	
 	if(editorCastle.classList.contains("active")){
 		editorCastle.classList.remove("active");
@@ -6249,6 +6283,7 @@ editorCastle.addEventListener("click", function(){
 		editorObject.classList.remove("active");
 		editorSoldier.classList.remove("active");
 		editorCastle.classList.add("active");
+		editorBoat.classList.remove("active");
 		
 		editorObjectType.classList.remove("active");
 		editorSoldierType.classList.remove("active");
@@ -6262,12 +6297,14 @@ editorCastleType.addEventListener("change", function(){
 	editor.objectType = 0;
 	editor.soldierType = 0;
 	editor.castleType = 0;
+	editor.otherType = 0;
 	
 	editor.castleType = Number(this.value);
 	
 	editorObject.classList.remove("active");
 	editorSoldier.classList.remove("active");
 	editorCastle.classList.add("active");
+	editorBoat.classList.remove("active");
 	
 	editorObjectType.classList.remove("active");
 	editorSoldierType.classList.remove("active");
@@ -6316,6 +6353,7 @@ function clearWaterTiles(){
 function setEditorTile(hex, tileInfo){
 	let tileSet = false;
 	let object = null;
+
 	if(tileInfo.object){
 		switch(tileInfo.object){
 			case 1:
@@ -6336,6 +6374,10 @@ function setEditorTile(hex, tileInfo){
 			//case 6:
 			//	object = "landmine";
 			//break;
+		}
+		// dont allow placing object on an unit:
+		if(getUnitAt(hex.q, hex.r)){
+			return;
 		}
 	}
 	
@@ -10772,6 +10814,15 @@ function handleCanvasMouseLeave(e) {
 }
 
 
+function cancelAll(){
+	deselectHex();
+	deselectUnit();
+	cancelBuildPopup();
+	updateHighlights();
+	selectedPool = null;
+	updateSelectedPoolUi();
+}
+
 // seems to be only for desktop mode.
 function handleCanvasMouseUp(e) {
 	editor.isDrawing = false;
@@ -10785,12 +10836,7 @@ function handleCanvasMouseUp(e) {
 			// right click:
 			if(e.button === 2){
 				// oncontextmenu contextmenu cancel build popup cancelbuildpopup
-				deselectHex();
-				deselectUnit();
-				cancelBuildPopup();
-				updateHighlights();
-				selectedPool = null;
-				updateSelectedPoolUi();
+				cancelAll();
 			}else if(e.button === 0){
 				handleHexClick({x: e.clientX, y: e.clientY});
 			}
@@ -11818,22 +11864,40 @@ function sendTileUpdate(hex){
 		
 		
 		if(editor.soldierType){
-			allowEdit = true;
-			
-			if(allowEdit){
-				sendToHost({
-					type: ACTION.action_edit_tile,
-					subtype: 'soldier',
-					hex: hex,
-					tileType: tileType,
-					brushSize: editor.brushSize,
-					tileOwner: editor.tileOwner,
-					soldierType: editor.soldierType,
-					//playerIndex: localPlayer.playerIndex,
-				});
-			}
+
+			sendToHost({
+				type: ACTION.action_edit_tile,
+				subtype: 'soldier',
+				hex: hex,
+				tileType: tileType,
+				brushSize: editor.brushSize,
+				tileOwner: editor.tileOwner,
+				soldierType: editor.soldierType,
+				//playerIndex: localPlayer.playerIndex,
+			});
+
 		}else if(editor.castleType){
-			
+			sendToHost({
+				type: ACTION.action_edit_tile,
+				subtype: 'castle',
+				hex: hex,
+				tileType: tileType,
+				brushSize: editor.brushSize,
+				tileOwner: editor.tileOwner,
+				castleType: editor.castleType,
+				//playerIndex: localPlayer.playerIndex,
+			});
+		}else if(editor.otherType){
+			sendToHost({
+				type: ACTION.action_edit_tile,
+				subtype: 'other',
+				hex: hex,
+				tileType: tileType,
+				brushSize: editor.brushSize,
+				tileOwner: editor.tileOwner,
+				otherType: editor.otherType,
+				//playerIndex: localPlayer.playerIndex,
+			});
 		}else{
 			// editing tiles:
 			
@@ -14278,6 +14342,7 @@ function executeAction(playerId, action) {
 					objectType: action.objectType,
 					soldierType: action.soldierType,
 					castleType: action.castleType,
+					otherType: action.otherType,
 					playerIndex: playerIndex,
 				});
 			}
@@ -16815,6 +16880,11 @@ function addUnit(unit){
 }
 
 
+function removeUnit(unitId){
+	gameState.units = gameState.units.filter(u => u.id !== unitId);
+}
+
+
 
 function doBloodSplash(ep, splat = true){
 
@@ -17470,17 +17540,22 @@ function handleHostData(data) {
 			let objectType = data.objectType;
 			let soldierType = data.soldierType;
 			let castleType = data.castleType;
+			let otherType = data.otherType;
 			let subtype = data.subtype;
+			
+			/*
+			removeUnit(data.unitId);
+			needsUIUpdate = true;
+			updateHighlights();
+			*/
+		
 			
 			if(subtype === 'soldier'){
 				console.log("setting soldier");
 				//let tile = getTileAt(centerHex.q, centerHex.r);
 				//if(isTileLand(tile)){
-					console.log("setting soldier at land");
 					if(!getUnitAt(centerHex.q, centerHex.r)){
-						console.log("setting soldier at land success");
 						if(tileOwner !== -1){
-							console.log("setting soldier at land success with owner");
 							let tileInfo = {
 								type: 'land', 
 								ownerIndex: tileOwner, 
@@ -17491,9 +17566,9 @@ function handleHostData(data) {
 								unitType = "peasant";
 							}else if(soldierType === 2){
 								unitType = "knight";
-							}if(soldierType === 3){
+							}else if(soldierType === 3){
 								unitType = "horse";
-							}if(soldierType === 4){
+							}else if(soldierType === 4){
 								unitType = "dragon";
 							}
 							setEditorTile(centerHex, tileInfo);
@@ -17503,6 +17578,43 @@ function handleHostData(data) {
 				//}
 			}else if(subtype === 'castle'){
 				console.log("setting castle");
+				//let tile = getTileAt(centerHex.q, centerHex.r);
+				//if(isTileLand(tile)){
+					if(!getUnitAt(centerHex.q, centerHex.r)){
+						if(tileOwner !== -1){
+							let tileInfo = {
+								type: 'land', 
+								ownerIndex: tileOwner, 
+								object: null,
+							};
+							let unitType = "hut";
+							if(castleType === 1){
+								unitType = "hut";
+							}else if(castleType === 2){
+								unitType = "castle";
+							}else if(castleType === 3){
+								unitType = "fortress";
+							}
+							setEditorTile(centerHex, tileInfo);
+							spawnCastle(centerHex.q, centerHex.r, tileOwner, unitType);
+						}
+					}
+				//}
+			}else if(subtype === 'other'){
+				console.log("setting other");
+				//let tile = getTileAt(centerHex.q, centerHex.r);
+				// add boats:
+				if(otherType === 1){
+					let tile = getTileAt(centerHex.q, centerHex.r);
+					if(isTileWater(tile)){
+						if(!getUnitAt(centerHex.q, centerHex.r)){
+							if(tileOwner !== -1){
+								let unitType = "sailboat";
+								spawnSoldier(centerHex.q, centerHex.r, tileOwner, unitType);
+							}
+						}
+					}
+				}
 			}else{
 				// tile type:
 				console.log("setting tile");
@@ -17725,8 +17837,12 @@ function handleHostData(data) {
 				makeExplosionBySoundMessage({name:data.explosion, q:unit.q, r:unit.r, action: ACTION.unit_removed, level: getUnitLevel(unit.type)});
 			}
 			
+			
+			
 			// remove unit:
-			gameState.units = gameState.units.filter(u => u.id !== data.unitId);
+			//gameState.units = gameState.units.filter(u => u.id !== data.unitId);
+			removeUnit(data.unitId);
+			
 			
 			needsUIUpdate = true;
 			updateHighlights();
@@ -20783,6 +20899,9 @@ function spawnCastle(q, r, playerIndex, type){
 }
 
 
+
+
+
 let DELAY_MULTI = 1;
 let DELAY_MULTI_STEP = 1.5;
 
@@ -21394,6 +21513,8 @@ function openEditor(){
 	settingsElems['game-settings-editor'].elem.checked = true;
 	gameState.settings.editorEnabled = true;
 	uiEditor.style.display = "block";
+	// cancel all selections etc:
+	cancelAll();
 }
 function closeEditor(){
 	settingsElems['game-settings-editor'].elem.checked = false;
