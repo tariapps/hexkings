@@ -12040,8 +12040,11 @@ function handleHexClick(point) {
 		}
 		
 		let clickedHexTile = getTileAt(hex.q, hex.r);
-		console.warn("handleHexClick: clickedHexTile:");
+		console.warn("handleHexClick: tile on hex:");
 		console.warn(clickedHexTile);
+		console.warn("handleHexClick: unit on hex:");
+		console.warn(getUnitAt(hex.q, hex.r));
+		
 		if(clickedHexTile){
 			//makeExplosionBySoundMessage({name:'kill', q: clickedHexTile.q, r: clickedHexTile.r, action: "test", level:1});
 			//makeExplosionBySoundMessage({name:'kill2', q: clickedHexTile.q, r: clickedHexTile.r, action: "test", level:1});
@@ -14234,6 +14237,8 @@ function executeAction(playerId, action) {
 					newUnit.id = newUnitID();
 					newUnit.q = toQ;
 					newUnit.r = toR;
+					newUnit.pq = unit.q;
+					newUnit.pr = unit.r;
 					newUnit.hasMoved = false;
 					
 					let unitCopy = {...newUnit}; // used for mines killing.
