@@ -5019,6 +5019,7 @@ let shakingUnits = []; // { id, endTime }
 let highlightedPool = []; // [{q, r}] for highlighting connected hexes
 let enemyHighlightedPool = []; // [{q, r}] for highlighting connected hexes
 let validMoveHexes = []; // [{q, r}] for green move highlight
+let possibleMoveHexes = []; // the hexes with all possible moves even when the move will fail. for being able to click and get feedback.
 let invalidMoveHexes = []; // [{q, r}] for red move highlight
 let selectedPool = [];
 
@@ -10123,9 +10124,26 @@ function getNearestValidHex(point){
 	
 
 	if(selectedUnit && isTypeBoat(selectedUnit.type)){
-		closestHex.q = hex.q;
-		closestHex.r = hex.r;
-		closestHex.found = true;
+		if(getUnitAt(hex.q, hex.r)){
+			closestHex.q = hex.q;
+			closestHex.r = hex.r;
+			closestHex.found = true;
+			return closestHex;
+		}
+		for(let i = 0; i < validSeaMoveHexes.length; i++){
+			let validHex = validSeaMoveHexes[i];
+			
+			let dist = getHexPointDistance(validHex, point);
+			if(dist < closestHex.dist){
+				closestHex.dist = dist;
+				closestHex.q = validHex.q;
+				closestHex.r = validHex.r;
+				closestHex.found = true;
+			}
+		}
+		//closestHex.q = hex.q;
+		//closestHex.r = hex.r;
+		//closestHex.found = true;
 		return closestHex;
 	}
 	
@@ -10178,8 +10196,8 @@ function getNearestValidHex(point){
 		}
 	}
 	
-	for(let i = 0; i < validMoveHexes.length; i++){
-		let validHex = validMoveHexes[i];
+	for(let i = 0; i < possibleMoveHexes.length; i++){
+		let validHex = possibleMoveHexes[i];
 		
 		let dist = getHexPointDistance(validHex, point);
 		if(dist < closestHex.dist){
@@ -10225,14 +10243,22 @@ function drawFocusedHex(){
 			}
 		}
 		
-		let scale = pulseScale(0.6, HEX_LINE_MULTI, PULSE_SPEED);
-				
-
+		const x = axialToPixelX(focusedHex.q, focusedHex.r);
+		const y = axialToPixelY(focusedHex.q, focusedHex.r);
 		
-
+		let scale = pulseScale(0.6, HEX_LINE_MULTI, PULSE_SPEED);
 		
 		if(overrideColor){
 			scale = HEX_LINE_MULTI*0.9;
+		}
+		
+		if(closestHex.found){
+			if(selectedUnit || placingUnit){
+				drawHexagonPathLines(x, y, null, scale*0.9);
+				//ctx.globalAlpha = 1;
+				ctx.fillStyle = 'rgba(255,255,0, 0.3)';
+				ctx.fill();
+			}
 		}
 		
 		ctx.lineDashOffset = 8*scale;
@@ -10240,8 +10266,6 @@ function drawFocusedHex(){
 
 
 		
-		const x = axialToPixelX(focusedHex.q, focusedHex.r);
-		const y = axialToPixelY(focusedHex.q, focusedHex.r);
 		
 		let tile = getTileAt(focusedHex.q, focusedHex.r);
 		
@@ -12296,7 +12320,7 @@ function handleHexClick(point) {
 						
 						if(unitOnHex){
 							if(unitCanBeSelected(unitOnHex)){
-								if(unitOnHex)
+								//if(unitOnHex)
 								selectedHex = {q:selectedUnit.q, r:selectedUnit.r};
 								selectedUnit = unitOnHex;
 								updatePools = false; // ensure it wont update pools with the hex we try to move onto.
@@ -12386,6 +12410,14 @@ function handleHexClick(point) {
 							}else{
 								console.warn("isMoveValid = true");
 							}
+							console.warn("sendToHost:");
+							console.warn({
+								type: ACTION.action_move,
+								unitId: selectedUnit.id,
+								toQ: hex.q,
+								toR: hex.r,
+								poolHex: poolHex,
+							});
 							sendToHost({
 								type: ACTION.action_move,
 								unitId: selectedUnit.id,
@@ -12400,6 +12432,7 @@ function handleHexClick(point) {
 								// set selected hex to the selected unit position:
 								// caused some crash on addCost() if moved to rock first and then to tree,
 								// probably remembered the selectedHex as the rock hex, so it failed...
+								//selectedHex = {q:selectedUnit.q, r:selectedUnit.r};
 								selectedHex = {q:selectedUnit.q, r:selectedUnit.r};
 								updatePools = false; // ensure it wont update pools with the hex we try to move onto.
 								sellUnitBtn.disabled = false;
@@ -12780,6 +12813,9 @@ function getReachableHexes(startHex, maxRange = 5) {
 		distance: 0,
 		usedLand: false
 	}];
+	
+	// add the unit own position, so you can deselect it:
+	//results.push({ q: startHex.q, r: startHex.r });
 
 	while (queue.length > 0) {
 		const { q, r, distance, usedLand } = queue.shift();
@@ -12801,9 +12837,9 @@ function getReachableHexes(startHex, maxRange = 5) {
 			// Cannot enter more than one land hex
 			if (usedLand && isLand) continue;
 			
-			const unitFound = gameState.units.some(
-				u => u.q === n.q && u.r === n.r
-			);
+			// must check for units or it thinks you can move through them.
+			const unitFound = gameState.units.some(u => u.q === n.q && u.r === n.r);
+	
 			if (unitFound && !isLand){
 				continue;
 			}
@@ -12902,6 +12938,7 @@ function updateHighlights() {
 	// Clear all highlights
 	highlightedPool = [];
 	validMoveHexes = [];
+	possibleMoveHexes = [];
 	invalidMoveHexes = [];
 	validSeaMoveHexes = [];
 	
@@ -12994,6 +13031,8 @@ function updateHighlights() {
 				validMoveHexes.push(hex);
 			}
 			
+			possibleMoveHexes.push(hex);
+			
 			// While we're here, find all neighbors to build the border set
 			for (const n of getHexNeighbors(hex.q, hex.r)) {
 				const nKey = `${n.q},${n.r}`;
@@ -13012,6 +13051,7 @@ function updateHighlights() {
 			const targetUnit = getUnitAt(hex.q, hex.r);
 			const shieldLevel = getShieldLevelFromTile(toTile, myPlayer.playerIndex);
 
+			possibleMoveHexes.push(hex);
 
 			if (targetUnit) {
 				if (targetUnit.ownerIndex === myPlayer.playerIndex){
@@ -13022,6 +13062,7 @@ function updateHighlights() {
 				} else {
 					invalidMoveHexes.push(hex);
 				}
+				
 			} else { // No target unit
 				if (toTile.ownerIndex !== -1) { // Enemy land
 					if (unit.level > shieldLevel) {
