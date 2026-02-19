@@ -1984,8 +1984,8 @@ input.disabled {
 					</div>
 					<div class="input-group">
 						<select id="game-end-rule" disabled>
-							<option value="0">Lose all warriors & Cannot buy anything</option>
-							<option value="1">Lose all warriors</option>
+							<option value="0">Lose all soldiers & Cannot buy anything</option>
+							<option value="1">Lose all soldiers</option>
 						</select>
 					</div>
 				</div>
@@ -2466,9 +2466,9 @@ input.disabled {
 				</div>
 				<div class="info-right" id="info-right">
 					<div class="button-row" id="ui-right-button-row1-id">
-						<button id="sell-unit-btn" class="gamebutton" title="Sell warrior"></button>
+						<button id="sell-unit-btn" class="gamebutton" title="Sell soldier"></button>
 						<button id="build-other-btn" class="gamebutton" title="Build item"></button>
-						<button id="build-soldier-btn" class="gamebutton" title="Recruit warrior"></button>
+						<button id="build-soldier-btn" class="gamebutton" title="Recruit soldier"></button>
 						<button id="build-castle-btn" class="gamebutton" title="Build castle"></button>
 						<button id="undo-btn" class="gamebutton redbutton" title="Undo"></button>
 					</div>
@@ -2562,7 +2562,7 @@ input.disabled {
 				
 					</div>
 					<div class="button-row">
-						<button id="editor-soldier" class="gamebutton" title="Requires player to be selected">Unit</button>
+						<button id="editor-soldier" class="gamebutton" title="Requires player to be selected">Soldier</button>
 						<select id="editor-soldier-type" style="padding: 0; height: 44px;" title="Requires player to be selected">
 							<option value="1">Peasant</option>
 							<option value="2">Knight</option>
@@ -6064,6 +6064,9 @@ let editor = {
 	soldierType: 0, // 0 = disabled, 1.. = place these types
 	castleType: 0, // 0 = disabled, 1.. = place these types
 	otherType: 0, // 0 = disabled, 1 = boat,
+	
+	deleteUnit: false,
+	deleteObject: false,
 };
 
 
@@ -6350,9 +6353,10 @@ function clearWaterTiles(){
 }
 
 
-function setEditorTile(hex, tileInfo){
+function setEditorTile(hex, tileInfo, editorVars){
 	let tileSet = false;
 	let object = null;
+	let deleteObject = editorVars.deleteObject;
 
 	if(tileInfo.object){
 		switch(tileInfo.object){
@@ -6375,37 +6379,53 @@ function setEditorTile(hex, tileInfo){
 			//	object = "landmine";
 			//break;
 		}
+		// override if there was previously object set and thus it must be deleted when clicking again:
+		if(editorVars.deleteObject){
+			if(editorVars.objectType){
+				object = null;
+				deleteObject = true;
+			}
+		}
 		// dont allow placing object on an unit:
 		if(getUnitAt(hex.q, hex.r)){
 			return;
 		}
 	}
 	
+
+	
 	if(!getTileAt(hex.q, hex.r)){ // water
 		// dont create create empty tiles:
 		if(tileInfo.type !== 'water'){
-			let ownerIndex = tileInfo.ownerIndex;
-			if(tileInfo.type !== 'land'){
-				ownerIndex = -1;
+			if(!deleteObject){
+				let ownerIndex = tileInfo.ownerIndex;
+				if(tileInfo.type !== 'land'){
+					ownerIndex = -1;
+				}
+				let newdata = {type:tileInfo.type, ownerIndex: ownerIndex, object: object, savings: 0};
+				// ensure grass grows and crosses turn to grass:
+				if(object === "grass" || object === "dead"){
+					newdata.actionTurnNumber = gameState.turn.turnNumber;
+				}
+				setTileAt(hex.q, hex.r, newdata);
+				tileSet = true;
 			}
-			let newdata = {type:tileInfo.type, ownerIndex: ownerIndex, object: object, savings: 0};
-			// ensure grass grows and crosses turn to grass:
-			if(object === "grass" || object === "dead"){
-				newdata.actionTurnNumber = gameState.turn.turnNumber;
-			}
-			setTileAt(hex.q, hex.r, newdata);
-			tileSet = true;
 		}
 	}else{
 		let tile = getTileAt(hex.q, hex.r);
-		tile.type = tileInfo.type;//tile.type === "water" ? "land" : "water";
-		if(tile.type === 'land'){
-			tile.ownerIndex = tileInfo.ownerIndex;
-		}else{
-			tile.ownerIndex = -1;
-		}
 		tile.object = object;
 		tile.savings = 0;
+		
+		if(!deleteObject){
+			tile.type = tileInfo.type;//tile.type === "water" ? "land" : "water";
+		
+			if(tile.type === 'land'){
+				tile.ownerIndex = tileInfo.ownerIndex;
+			}else{
+				tile.ownerIndex = -1;
+			}
+		}
+
 		// ensure grass grows and crosses turn to grass:
 		if(tile.object === "grass" || tile.object === "dead"){
 			tile.actionTurnNumber = gameState.turn.turnNumber;
@@ -10792,6 +10812,14 @@ function handleCanvasMouseDown(e) {
 			editor.currentTileType = "water";
 		}
 		
+		editor.deleteUnit = false;
+		if(getUnitAt(hex.q, hex.r)){
+			editor.deleteUnit = true;
+		}
+		editor.deleteObject = false;
+		if(tile && tile.object){
+			editor.deleteObject = true;
+		}
 		console.warn("editor.currentTileType", editor.currentTileType);
 		
 		sendTileUpdate(hex);
@@ -10900,6 +10928,15 @@ function handleTouchStart(e) {
 			editor.currentTileType = "land";
 		}else{
 			editor.currentTileType = "water";
+		}
+		
+		editor.deleteUnit = false;
+		if(getUnitAt(hex.q, hex.r)){
+			editor.deleteUnit = true;
+		}
+		editor.deleteObject = false;
+		if(tile && tile.object){
+			editor.deleteObject = true;
 		}
 		
 		console.warn("editor.currentTileType touch", editor.currentTileType);
@@ -11861,10 +11898,10 @@ function sendTileUpdate(hex){
 		let override = true;//editor.tileOwner !== -1;
 		let allowEdit = false;
 		let tileType = editor.currentTileType;
-		
-		
-		if(editor.soldierType){
 
+		if(editor.soldierType){
+			
+			
 			sendToHost({
 				type: ACTION.action_edit_tile,
 				subtype: 'soldier',
@@ -11873,6 +11910,8 @@ function sendTileUpdate(hex){
 				brushSize: editor.brushSize,
 				tileOwner: editor.tileOwner,
 				soldierType: editor.soldierType,
+				deleteUnit: editor.deleteUnit,
+				deleteObject: editor.deleteObject,
 				//playerIndex: localPlayer.playerIndex,
 			});
 
@@ -11885,6 +11924,8 @@ function sendTileUpdate(hex){
 				brushSize: editor.brushSize,
 				tileOwner: editor.tileOwner,
 				castleType: editor.castleType,
+				deleteUnit: editor.deleteUnit,
+				deleteObject: editor.deleteObject,
 				//playerIndex: localPlayer.playerIndex,
 			});
 		}else if(editor.otherType){
@@ -11896,6 +11937,8 @@ function sendTileUpdate(hex){
 				brushSize: editor.brushSize,
 				tileOwner: editor.tileOwner,
 				otherType: editor.otherType,
+				deleteUnit: editor.deleteUnit,
+				deleteObject: editor.deleteObject,
 				//playerIndex: localPlayer.playerIndex,
 			});
 		}else{
@@ -11946,6 +11989,8 @@ function sendTileUpdate(hex){
 					brushSize: editor.brushSize,
 					tileOwner: editor.tileOwner,
 					objectType: editor.objectType,
+					deleteUnit: editor.deleteUnit,
+					deleteObject: editor.deleteObject,
 					//playerIndex: localPlayer.playerIndex,
 				});
 			}
@@ -12582,6 +12627,7 @@ function isHexInPool(pool, hex){
 
 
 
+// for boats movement, check also validSeaMoveHexes
 function findFastestRoute(startHex, endHex, maxDistance = 50) {
 	const startKey = `${startHex.q},${startHex.r}`;
 	const endKey = `${endHex.q},${endHex.r}`;
@@ -12622,9 +12668,8 @@ function findFastestRoute(startHex, endHex, maxDistance = 50) {
 
 			const isEndHex = key === endKey;
 
-			// Block land unless this is the destination
-			if (!isEndHex && isHexLand(n.q, n.r)){
-				// not sure whats happening here actually...
+			// Block everything except water unless this is the destination
+			if (!isEndHex && !isHexWater(n.q, n.r)){
 				continue;
 			}
 
@@ -12744,7 +12789,12 @@ function getReachableHexes(startHex, maxRange = 5) {
 			const tile = getTileAt(n.q, n.r);
 			const isLand = getTileType(tile) === 'land';
 			const nextUsedLand = usedLand || isLand;
-
+			
+			// dont allow landing/moving on cliffs:
+			if(getTileType(tile) === 'cliff'){
+				continue;
+			}
+			
 			// Cannot enter more than one land hex
 			if (usedLand && isLand) continue;
 			
@@ -13011,8 +13061,8 @@ function openBuildPopup(type) {
 		buildprefix = "Build"; // build castle
 		buildsuffix = "castle";
 	}else if(type === "soldier"){
-		buildprefix = "Recruit"; // recruit warrior
-		buildsuffix = "warrior";
+		buildprefix = "Recruit"; // recruit soldier
+		buildsuffix = "soldier";
 	}else if(type === "other"){
 		buildprefix = "Build"; // build item
 		buildsuffix = "item";
@@ -14343,7 +14393,10 @@ function executeAction(playerId, action) {
 					soldierType: action.soldierType,
 					castleType: action.castleType,
 					otherType: action.otherType,
+					deleteUnit: action.deleteUnit,
+					deleteObject: action.deleteObject,
 					playerIndex: playerIndex,
+					
 				});
 			}
 		}
@@ -17402,13 +17455,23 @@ function handleHostData(data) {
 			console.warn("settings_update");
 			
 			// dont allow settings update if game has started.
-			if(!gameStarted()){
+			//if(!gameStarted()){
 				gameState.settings = data.settings;
 				
 				updateSettingsInputs();
 				
+				if(!getMyPlayer().isSpectator){
+					if(gameState.settings.editorEnabled){
+						openEditor();
+					}else{
+						closeEditor();
+					}
+				}
+				
 				updateLobbyUI();
-			}
+			//}
+			
+			
 		}
 		break;
 		case ACTION.lobby_update: {
@@ -17542,63 +17605,81 @@ function handleHostData(data) {
 			let castleType = data.castleType;
 			let otherType = data.otherType;
 			let subtype = data.subtype;
+			let deleteUnit = data.deleteUnit;
+			let deleteObject = data.deleteObject;
 			
-			/*
-			removeUnit(data.unitId);
-			needsUIUpdate = true;
-			updateHighlights();
-			*/
-		
+			let editorVars = {...data};
+			
 			
 			if(subtype === 'soldier'){
 				console.log("setting soldier");
 				//let tile = getTileAt(centerHex.q, centerHex.r);
 				//if(isTileLand(tile)){
-					if(!getUnitAt(centerHex.q, centerHex.r)){
-						if(tileOwner !== -1){
-							let tileInfo = {
-								type: 'land', 
-								ownerIndex: tileOwner, 
-								object: null,
-							};
-							let unitType = "peasant";
-							if(soldierType === 1){
-								unitType = "peasant";
-							}else if(soldierType === 2){
-								unitType = "knight";
-							}else if(soldierType === 3){
-								unitType = "horse";
-							}else if(soldierType === 4){
-								unitType = "dragon";
+					let unit = getUnitAt(centerHex.q, centerHex.r);
+					if(deleteUnit){
+						if(unit){
+							removeUnit(unit.id);
+						}
+					}else{
+					
+						if(!unit){
+							if(tileOwner !== -1){
+								let tileInfo = {
+									type: 'land', 
+									ownerIndex: tileOwner, 
+									object: null,
+								};
+								let unitType = "peasant";
+								if(soldierType === 1){
+									unitType = "peasant";
+								}else if(soldierType === 2){
+									unitType = "knight";
+								}else if(soldierType === 3){
+									unitType = "horse";
+								}else if(soldierType === 4){
+									unitType = "dragon";
+								}
+								setEditorTile(centerHex, tileInfo, editorVars);
+								spawnSoldier(centerHex.q, centerHex.r, tileOwner, unitType);
 							}
-							setEditorTile(centerHex, tileInfo);
-							spawnSoldier(centerHex.q, centerHex.r, tileOwner, unitType);
 						}
 					}
+					needsUIUpdate = true;
+					updateHighlights();
 				//}
 			}else if(subtype === 'castle'){
 				console.log("setting castle");
 				//let tile = getTileAt(centerHex.q, centerHex.r);
 				//if(isTileLand(tile)){
-					if(!getUnitAt(centerHex.q, centerHex.r)){
-						if(tileOwner !== -1){
-							let tileInfo = {
-								type: 'land', 
-								ownerIndex: tileOwner, 
-								object: null,
-							};
-							let unitType = "hut";
-							if(castleType === 1){
-								unitType = "hut";
-							}else if(castleType === 2){
-								unitType = "castle";
-							}else if(castleType === 3){
-								unitType = "fortress";
+					let unit = getUnitAt(centerHex.q, centerHex.r);
+					if(deleteUnit){
+						if(unit){
+							removeUnit(unit.id);
+						}
+					}else{
+						if(!unit){
+							if(tileOwner !== -1){
+								let tileInfo = {
+									type: 'land', 
+									ownerIndex: tileOwner, 
+									object: null,
+								};
+								let unitType = "hut";
+								if(castleType === 1){
+									unitType = "hut";
+								}else if(castleType === 2){
+									unitType = "castle";
+								}else if(castleType === 3){
+									unitType = "fortress";
+								}
+								setEditorTile(centerHex, tileInfo, editorVars);
+								spawnCastle(centerHex.q, centerHex.r, tileOwner, unitType);
 							}
-							setEditorTile(centerHex, tileInfo);
-							spawnCastle(centerHex.q, centerHex.r, tileOwner, unitType);
 						}
 					}
+					
+					needsUIUpdate = true;
+					updateHighlights();
 				//}
 			}else if(subtype === 'other'){
 				console.log("setting other");
@@ -17607,18 +17688,27 @@ function handleHostData(data) {
 				if(otherType === 1){
 					let tile = getTileAt(centerHex.q, centerHex.r);
 					if(isTileWater(tile)){
-						if(!getUnitAt(centerHex.q, centerHex.r)){
-							if(tileOwner !== -1){
-								let unitType = "sailboat";
-								spawnSoldier(centerHex.q, centerHex.r, tileOwner, unitType);
+						let unit = getUnitAt(centerHex.q, centerHex.r);
+						if(deleteUnit){
+							if(unit){
+								removeUnit(unit.id);
+							}
+						}else{
+							if(!unit){
+								if(tileOwner !== -1){
+									let unitType = "sailboat";
+									spawnSoldier(centerHex.q, centerHex.r, tileOwner, unitType);
+								}
 							}
 						}
+						needsUIUpdate = true;
+						updateHighlights();
 					}
 				}
 			}else{
 				// tile type:
 				console.log("setting tile");
-				
+				console.log("deleteObject: ", deleteObject);
 				
 				const cq = centerHex.q;
 				const cr = centerHex.r;
@@ -17628,6 +17718,18 @@ function handleHostData(data) {
 					ownerIndex: tileOwner, 
 					object: objectType,
 				};
+				
+				if(deleteObject){
+					// if object is to be set:
+					if(objectType){
+						// if the clicked hex has object:
+						let tile = getTileAt(centerHex.q, centerHex.r);
+						if(tile && tile.object){
+							// remove objects:
+							tileInfo.object = null;
+						}
+					}
+				}
 				
 				// hexagonal brush:
 				if(editor.brushType === 0){
@@ -17639,7 +17741,7 @@ function handleHostData(data) {
 						for (let dr = minR; dr <= maxR; dr++) {
 							const q = cq + dq;
 							const r = cr + dr;
-							setEditorTile({q, r}, tileInfo);
+							setEditorTile({q, r}, tileInfo, editorVars);
 						}
 					}
 				}else{
@@ -17663,7 +17765,7 @@ function handleHostData(data) {
 							const distance = Math.sqrt(dx * dx + dy * dy);
 
 							if (distance <= pixelRadius) {
-								setEditorTile({q, r}, tileInfo);
+								setEditorTile({q, r}, tileInfo, editorVars);
 							}
 						}
 					}
@@ -20855,17 +20957,26 @@ function spawnPlayersRandom() {
 // create unique ID for units without making messy hashes for them.
 let UNIT_ID_COUNTER = 1; // start from 1, as 0 could be used to check if it was set at all.
 function newUnitID(){
-	let id = UNIT_ID_COUNTER;
-	UNIT_ID_COUNTER++;
-	return id;
+	let maxId = 0;
+	for(let i = 0; i < gameState.units.length; i++){
+		let unit = gameState.units[i];
+		if(unit.id > maxId){
+			maxId = unit.id;
+		}
+	}
+	return maxId+1;
+	//let id = UNIT_ID_COUNTER;
+	//UNIT_ID_COUNTER++;
+	//return id;
 }
+
 
 
 // type = Peasant, Knight, Horse, Dragon
 function spawnSoldier(q, r, playerIndex, type){
 	const soldier = {
 		// rearranged keys for easier debugging
-		id: newUnitID(),
+		id: newUnitID(), // THIS IS HOST ONLY
 		ownerIndex: playerIndex,
 		q: q,
 		r: r,
@@ -21495,9 +21606,11 @@ Object.keys(settingsElems).forEach(id => {
 				}
 				if(setting.gameStateKey === 'editorEnabled'){
 					if(setting.elem.checked){
-						openEditor();
+						//gameState.settings.editorEnabled = true;
+						//openEditor();
 					}else{
-						closeEditor();
+						//gameState.settings.editorEnabled = false;
+						//closeEditor();
 					}
 				}
 				broadcastSettings();
