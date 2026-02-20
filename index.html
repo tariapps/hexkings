@@ -1481,9 +1481,6 @@ input.disabled {
 
 
 
-#quick-settings-btn {
-	background-image: url('images/ui/settings-icon.png');
-}
 
 
 #build-other-btn {
@@ -2479,7 +2476,6 @@ input.disabled {
 						<button id="next-unit-btn" class="gamebutton" title="Next unit"></button>
 						
 						<button id="game-settings-btn2" class="gamebutton" title="Settings"></button>
-						<button id="quick-settings-btn" class="gamebutton" title="Settings" style="display:none"></button>
 						<button id="toggle-ui-btn" class="gamebutton" title="Open chat"></button>
 					</div>
 				</div>
@@ -6172,10 +6168,8 @@ const quitGameBtn = document.getElementById('quit-game-btn');
 const saveGameBtn = document.getElementById('save-game-btn');
 
 //const settingsBtn = document.getElementById('settings-btn');
-const quickSettingsBtn = document.getElementById('quick-settings-btn');
 
 
-const settingsUi = document.getElementById('settings-ui');
 
 
 const gameSettingsBtn = document.getElementById('game-settings-btn');
@@ -6303,7 +6297,14 @@ editorBoat.addEventListener("click", function(){
 	
 	if(editorBoat.classList.contains("active")){
 		editorBoat.classList.remove("active");
+		editorBrushSize.disabled = false;
+		editorBrushType.disabled = false;
+		editorTileType.disabled = false;
 	}else{
+		editorBrushSize.disabled = true;
+		editorBrushType.disabled = true;
+		editorTileType.disabled = true;
+		
 		// activate this, unactivate others:
 		editorObject.classList.remove("active");
 		editorSoldier.classList.remove("active");
@@ -6326,10 +6327,17 @@ editorObject.addEventListener("click", function(){
 	editor.castleType = 0;
 	editor.otherType = 0;
 	
+	editorBrushSize.disabled = false;
+	editorBrushType.disabled = false;
+	
 	if(editorObject.classList.contains("active")){
 		editorObject.classList.remove("active");
 		editorObjectType.classList.remove("active");
+		
+		editorTileType.disabled = false;
 	}else{
+		editorTileType.disabled = true;
+		
 		// activate this, unactivate others:
 		editorObject.classList.add("active");
 		editorSoldier.classList.remove("active");
@@ -6349,6 +6357,10 @@ editorObjectType.addEventListener("change", function(){
 	editor.soldierType = 0;
 	editor.castleType = 0;
 	editor.otherType = 0;
+	
+	editorBrushSize.disabled = false;
+	editorBrushType.disabled = false;
+	editorTileType.disabled = true;
 	
 	editor.objectType = Number(this.value);
 	
@@ -6375,7 +6387,14 @@ editorSoldier.addEventListener("click", function(){
 	if(editorSoldier.classList.contains("active")){
 		editorSoldier.classList.remove("active");
 		editorSoldierType.classList.remove("active");
+		editorBrushSize.disabled = false;
+		editorBrushType.disabled = false;
+		editorTileType.disabled = false;
 	}else{
+		editorBrushSize.disabled = true;
+		editorBrushType.disabled = true;
+		editorTileType.disabled = true;
+		
 		// activate this, unactivate others:
 		editorObject.classList.remove("active");
 		editorSoldier.classList.add("active");
@@ -6395,6 +6414,10 @@ editorSoldierType.addEventListener("change", function(){
 	editor.soldierType = 0;
 	editor.castleType = 0;
 	editor.otherType = 0;
+	
+	editorBrushSize.disabled = true;
+	editorBrushType.disabled = true;
+	editorTileType.disabled = true;
 	
 	editor.soldierType = Number(this.value);
 	
@@ -6422,7 +6445,14 @@ editorCastle.addEventListener("click", function(){
 	if(editorCastle.classList.contains("active")){
 		editorCastle.classList.remove("active");
 		editorCastleType.classList.remove("active");
+		editorBrushSize.disabled = false;
+		editorBrushType.disabled = false;
+		editorTileType.disabled = false;
 	}else{
+		editorBrushSize.disabled = true;
+		editorBrushType.disabled = true;
+		editorTileType.disabled = true;
+		
 		// activate this, unactivate others:
 		editorObject.classList.remove("active");
 		editorSoldier.classList.remove("active");
@@ -6443,6 +6473,10 @@ editorCastleType.addEventListener("change", function(){
 	editor.castleType = 0;
 	editor.otherType = 0;
 	
+	editorBrushSize.disabled = true;
+	editorBrushType.disabled = true;
+	editorTileType.disabled = true;
+
 	editor.castleType = Number(this.value);
 	
 	editorObject.classList.remove("active");
@@ -6746,19 +6780,9 @@ openEndgamePopupBtn.addEventListener("click", () => {
 
 
 
-function openIngameSettings(){
-	settingsUi.style.display = "flex";
-}
-function closeIngameSettings(){
-	settingsUi.style.display = "none";
-}
 
 
 
-quickSettingsBtn.addEventListener("click", (e) => {
-	e.stopPropagation(); // needed or it will close the popup instantly due to check of handleOutside()
-	toggleSettings();
-});
 
 
 
@@ -7197,20 +7221,6 @@ function broadcast(data, everyone = true) {
 
 
 
-function toggleSettings(setState = -1){
-	let hidePopup = (settingsUi.style.display === 'flex');
-	if(setState !== -1){
-		hidePopup = (setState === 0);
-	}
-	
-	if(hidePopup){
-		settingsUi.style.opacity = '1';
-		settingsUi.style.display = 'none';
-	}else{
-		settingsUi.style.opacity = '1';
-		settingsUi.style.display = 'flex';
-	}
-}
 
 
 
@@ -22011,7 +22021,7 @@ function preventBackNavigation() {
 			closePopup();
 			closeColorPicker();
 			closeMapPreviewPopup();
-			//toggleSettings(0); // cant close chatbox since you might have game settings open.
+
 			popupOpen = false;
 			history.replaceState({ state: 'game' }, '', location.href);
 			return;
@@ -22568,9 +22578,6 @@ window.addEventListener('DOMContentLoaded', async () => {
 	
 	toggleUiBtn.onclick = () => {
 		toggleUiTopLeft();
-		if(settingsUi.style.display === 'flex'){
-			toggleSettings();
-		}
 	};
 	toggleUiBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
 	toggleUiBtn.tabIndex = -1; //remove it from the tab order
