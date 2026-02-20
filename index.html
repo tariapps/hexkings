@@ -3501,6 +3501,8 @@ let gameRules = {
 // sounds =
 let gameSounds = {
 	moveunit:     {filename: "sounds/down.mp3",    gain: 1,   filter: false},
+	moveunit2:    {filename: "sounds/down2.mp3",   gain: 1,   filter: false},
+	
 	startmove:    {filename: "sounds/up.mp3",      gain: 1,   filter: false},
 	info:         {filename: "sounds/info.mp3",    gain: 1,   filter: false},
 	kill:         {filename: "sounds/kill.mp3",    gain: 1,   filter: false},
@@ -12316,14 +12318,18 @@ function handleHexClick(point) {
 					}else{
 						console.warn("isMoveValid = false");
 						
+						// invalid move, check if we selected new unit:
+						
 						let unitOnHex = getUnitAt(hex);
 						
 						if(unitOnHex){
 							if(unitCanBeSelected(unitOnHex)){
 								//if(unitOnHex)
-								selectedHex = {q:selectedUnit.q, r:selectedUnit.r};
+								//selectedHex = {q:selectedUnit.q, r:selectedUnit.r};
+								selectedHex = {q:unitOnHex.q, r:unitOnHex.r};
+								console.warn("WARNING:::::: selectedHex = ", selectedHex);
 								selectedUnit = unitOnHex;
-								updatePools = false; // ensure it wont update pools with the hex we try to move onto.
+								updatePools = true; // ensure it wont update pools with the hex we try to move onto.
 								sellUnitBtn.disabled = isTypeBoat(selectedUnit.type);
 								playSound('startmove');
 							}
@@ -12340,6 +12346,8 @@ function handleHexClick(point) {
 					}
 	
 				}else{
+					// normal (non-boat) unit selected:
+					
 					let poolHex = getSelectedPoolHex();
 					console.log("handleHexClick: selectedUnit: poolHex");
 					console.log(poolHex);
@@ -12375,6 +12383,7 @@ function handleHexClick(point) {
 					}
 					
 					if(loadedIntoUnit){
+						// normal unit moved on boat unit:
 						sendToHost({
 							type: ACTION.action_load_unit,
 							unitId: selectedUnit.id,
@@ -12384,11 +12393,13 @@ function handleHexClick(point) {
 						deselectUnit();
 						
 					}else if(selectBoat){
+						// tried to click boat out of range, select it:
 						selectedUnit = unitOnHex;
 						updatePools = false; // ensure it wont update pools with the hex we try to move onto.
 						sellUnitBtn.disabled = true; // boats cant be sold.
 						playSound('startmove');
 					}else{
+						// moved normal unit:
 					
 						// Check if clicking a valid move hex
 						// validMoveHexes = highlighted move area.
@@ -14086,7 +14097,7 @@ function executeAction(playerId, action) {
 						if(!isAiPlayer(playerIndex)){
 							if (!toTile.object) {
 								if(!actionForUndo.killedUnit){
-									sounds.push({name:'moveunit', q: toQ, r: toR, action: action.type});
+									sounds.push({name:getMoveunitSound(toTile.ownerIndex, unit.ownerIndex), q: toQ, r: toR, action: action.type});
 								}
 							}
 						}
@@ -14122,12 +14133,12 @@ function executeAction(playerId, action) {
 								allowHexClaim = false;
 							}else{
 								if(!actionForUndo.killedUnit){
-									sounds.push({name:'moveunit', q: toQ, r: toR, action: action.type});
+									sounds.push({name:getMoveunitSound(toTile.ownerIndex, unit.ownerIndex), q: toQ, r: toR, action: action.type});
 								}
 							}
 						}else{
 							if(!actionForUndo.killedUnit){
-								sounds.push({name:'moveunit', q: toQ, r: toR, action: action.type});
+								sounds.push({name:getMoveunitSound(toTile.ownerIndex, unit.ownerIndex), q: toQ, r: toR, action: action.type});
 							}
 						}
 
@@ -14240,6 +14251,7 @@ function executeAction(playerId, action) {
 			let loadedUnit = unit.loadedUnit;
 			
 			let tile = getTileAt(toQ, toR);
+			let oldTileOwnerIndex = tile.ownerIndex;
 			
 			if(getTileType(tile) === 'land'){
 				
@@ -14284,17 +14296,14 @@ function executeAction(playerId, action) {
 					
 					let unitCopy = {...newUnit}; // used for mines killing.
 					
-
+					let didClaimEnemy = (tile.ownerIndex !== -1 && tile.ownerIndex !== newUnit.ownerIndex);
 					
 					let playMoveUnit = true;
-					let didClaimEnemy = false;
+					//let didClaimEnemy = false;
 					let killAddedUnit = false;
 					
 					// if claimed a tile:
 					if (tile.ownerIndex !== playerIndex) {
-						if(tile.ownerIndex !== -1){
-							didClaimEnemy = true;
-						}
 						setTileOwnerByIndex(tile, playerIndex);
 						tile.savings = 0; // update to host data.
 						
@@ -14354,12 +14363,12 @@ function executeAction(playerId, action) {
 							}else{
 								// if not killed unit, just play move sound? not sure about this logic.
 								if(!actionForUndo.killedUnit){
-									sounds.push({name:'moveunit', q: toQ, r: toR, action: action.type});
+									sounds.push({name:getMoveunitSound(oldTileOwnerIndex, newUnit.ownerIndex), q: toQ, r: toR, action: action.type});
 								}
 							}
 						}else{
 							if(!actionForUndo.killedUnit){
-								sounds.push({name:'moveunit', q: toQ, r: toR, action: action.type});
+								sounds.push({name:getMoveunitSound(oldTileOwnerIndex, newUnit.ownerIndex), q: toQ, r: toR, action: action.type});
 							}
 						}
 				
@@ -14409,7 +14418,7 @@ function executeAction(playerId, action) {
 					
 	
 					if(playMoveUnit){
-						sounds.push({name:'moveunit', q: toQ, r: toR, action: action.type});
+						sounds.push({name:getMoveunitSound(oldTileOwnerIndex, newUnit.ownerIndex), q: toQ, r: toR, action: action.type});
 					}
 					
 					// push to updates all tile_changed updates that were merged into one:
@@ -14789,12 +14798,12 @@ function executeAction(playerId, action) {
 									}else{
 										// if not killed unit, just play move sound? not sure about this logic.
 										if(!actionForUndo.killedUnit){
-											sounds.push({name:'moveunit', q: q, r: r, action: action.type});
+											sounds.push({name:getMoveunitSound(tile.ownerIndex, newUnit.ownerIndex), q: q, r: r, action: action.type});
 										}
 									}
 								}else{
 									if(!actionForUndo.killedUnit){
-										sounds.push({name:'moveunit', q: q, r: r, action: action.type});
+										sounds.push({name:getMoveunitSound(tile.ownerIndex, newUnit.ownerIndex), q: q, r: r, action: action.type});
 									}
 									//playMoveUnit = true;
 								}
@@ -14882,10 +14891,10 @@ function executeAction(playerId, action) {
 						}
 						
 						if(playMoveUnit){
-							if(moveUnitType){
+							if(moveUnitType){ // castle
 								sounds.push({name:'build'+newUnit.level, q: q, r: r, action: action.type});
 							}else{
-								sounds.push({name:'moveunit', q: q, r: r, action: action.type});
+								sounds.push({name:getMoveunitSound(tile.ownerIndex, newUnit.ownerIndex), q: q, r: r, action: action.type});
 							}
 						}
 							
@@ -15732,6 +15741,18 @@ function addCost(pools, cost, preferredHex = null, actionType = "unknown") {
 
 		targetTile.savings += cost;
 		console.log(`Refunded ${cost} to tile ${targetTile.q},${targetTile.r}`);
+	}
+}
+
+
+function getMoveunitSound(tileOwner, unitOwner){
+	console.warn("tileOwner, unitOwner = ", tileOwner, unitOwner);
+	if(tileOwner !== unitOwner && tileOwner !== -1){
+		// moved onto enemy tile:
+		return "moveunit2";
+	}else{
+		// moved onto unowned tile or own tile:
+		return "moveunit";
 	}
 }
 
