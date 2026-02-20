@@ -12327,7 +12327,7 @@ function handleHexClick(point) {
 								//if(unitOnHex)
 								//selectedHex = {q:selectedUnit.q, r:selectedUnit.r};
 								selectedHex = {q:unitOnHex.q, r:unitOnHex.r};
-								console.warn("WARNING:::::: selectedHex = ", selectedHex);
+								//console.warn("WARNING:::::: selectedHex = ", selectedHex);
 								selectedUnit = unitOnHex;
 								updatePools = true; // ensure it wont update pools with the hex we try to move onto.
 								sellUnitBtn.disabled = isTypeBoat(selectedUnit.type);
@@ -12421,6 +12421,7 @@ function handleHexClick(point) {
 							}else{
 								console.warn("isMoveValid = true");
 							}
+							/*
 							console.warn("sendToHost:");
 							console.warn({
 								type: ACTION.action_move,
@@ -12429,6 +12430,7 @@ function handleHexClick(point) {
 								toR: hex.r,
 								poolHex: poolHex,
 							});
+							*/
 							sendToHost({
 								type: ACTION.action_move,
 								unitId: selectedUnit.id,
