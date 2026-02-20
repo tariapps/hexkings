@@ -1072,7 +1072,7 @@ button.redbutton:hover {
 	justify-content: center;
 	align-items: center;
 	---background: rgba(0, 0, 0, 0.7);
-	z-index: 9999;
+	z-index: 10000;
 	user-select: none;
 }
 
@@ -1818,6 +1818,7 @@ input.disabled {
 				<div><span style="color:yellow">Left Click</span> = Draw (if "Draw" enabled)</div>
 				<div><span style="color:yellow">Left Click</span> = Drag (if "Move" enabled)</div>
 				<div><span style="color:yellow">Right Click</span> = Drag (if "Draw" enabled)</div>
+				<div>Note: You can delete units/objects by clicking the unit/object again, if you hold it down, it will delete any unit under it.</div>
 				
 			</div>
 			
@@ -2510,7 +2511,7 @@ input.disabled {
 							<option value="3">Cliff</option>
 						</select>
 						
-						<button id="editor-delete-item" class="gamebutton" title="">Delete</button>
+						<button id="editor-delete-item" class="gamebutton" title="" style="display:none">Delete</button>
 						
 						<button id="editor-movetoggle-move" class="gamebutton" title="">Move</button>
 						<button id="editor-movetoggle-draw" class="gamebutton" title="" style="background-color:#45723d; display:none">Draw</button>
@@ -2557,7 +2558,7 @@ input.disabled {
 						</select>
 						
 						
-						<button id="editor-settings" class="gamebutton btn-settings" title=""></button>
+						<button id="editor-settings" class="gamebutton btn-settings" title="" style="display:none"></button>
 						
 				
 					</div>
@@ -2598,6 +2599,143 @@ input.disabled {
 
 <script>
 "use strict";
+
+
+// blooddrop blood drop blood dripping blooddripping
+class GameOverBloodEffect {
+    constructor() {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        
+        this.canvas.style.position = 'absolute';
+        this.canvas.style.top = '0';
+        this.canvas.style.left = '0';
+        this.canvas.style.width = '100vw';
+        this.canvas.style.height = '100vh';
+        this.canvas.style.pointerEvents = 'none'; 
+        this.canvas.style.zIndex = '9999'; 
+        
+        this.drips = [];
+        this.animationFrame = null;
+        this.startTime = null;
+        this.duration = 5000; 
+        
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+    }
+
+    resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+    }
+
+    initDrips() {
+        this.drips = [];
+        const dripCount = Math.floor(this.canvas.width / 15); 
+        
+        for (let i = 0; i < dripCount; i++) {
+            // Start with a high initial burst of speed (pixels per second)
+            const initialSpeed = 600*0.2 + Math.random() * 800*0.2; 
+            
+            // Calculate deceleration to make it stop between 1.5 and 4.5 seconds
+            const stopTime = 1.5 + Math.random() * 3;
+            const deceleration = initialSpeed / stopTime;
+
+            this.drips.push({
+                x: Math.random() * this.canvas.width,
+                y: -10, 
+                speed: initialSpeed, 
+                deceleration: deceleration,
+                topWidth: 1 + Math.random() * 2, 
+                currentThickness: 1, 
+                maxThickness: 5 + Math.random() * 15, 
+                // Growth rate adjusted for the new speed logic
+                growthRate: 0.1 + Math.random() * 0.2 
+            });
+        }
+    }
+
+    start(durationMs = 5000) {
+        if (!document.body.contains(this.canvas)) {
+            document.body.appendChild(this.canvas);
+        }
+        
+        this.duration = durationMs;
+        this.initDrips();
+        this.startTime = performance.now();
+        
+        this.loop(this.startTime);
+    }
+
+    loop(currentTime) {
+        const elapsed = currentTime - this.startTime;
+        const deltaTime = 16; // Standardize delta at ~60fps
+        
+        this.update(deltaTime);
+        this.draw();
+
+        if (elapsed < this.duration) {
+            this.animationFrame = requestAnimationFrame((time) => this.loop(time));
+        } else {
+            cancelAnimationFrame(this.animationFrame);
+        }
+    }
+
+    update(deltaTime) {
+        const timeScale = deltaTime / 1000;
+        
+        this.drips.forEach(drip => {
+            // 1. Apply deceleration to slow down the speed
+            if (drip.speed > 0) {
+                drip.speed -= drip.deceleration * timeScale;
+                if (drip.speed < 0) drip.speed = 0; // Prevent it from going upwards
+            }
+
+            // 2. Move down based on the current (slowing) speed
+            drip.y += drip.speed * timeScale;
+            
+            // 3. Thicken as it falls, but slow down the thickening as the speed drops
+            if (drip.currentThickness < drip.maxThickness && drip.speed > 0) {
+                // Tie growth to the current velocity so it pools naturally as it stops
+                const velocityFactor = drip.speed / 500; 
+                drip.currentThickness += drip.growthRate * velocityFactor;
+                
+                // Hard cap at maxThickness
+                if (drip.currentThickness > drip.maxThickness) {
+                    drip.currentThickness = drip.maxThickness;
+                }
+            }
+        });
+    }
+
+    draw() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        const elapsed = performance.now() - this.startTime;
+        const fade = Math.min(elapsed / (this.duration / 2), 1); // Fades in faster now
+        this.ctx.fillStyle = `rgba(100, 0, 0, ${fade * 0.45})`;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        this.ctx.fillStyle = '#8a0303'; 
+        
+        this.drips.forEach(drip => {
+            this.ctx.beginPath();
+            this.ctx.moveTo(drip.x - drip.topWidth, 0);
+            this.ctx.lineTo(drip.x + drip.topWidth, 0);
+            this.ctx.lineTo(drip.x + drip.currentThickness, drip.y);
+            this.ctx.arc(drip.x, drip.y, drip.currentThickness, 0, Math.PI);
+            this.ctx.lineTo(drip.x - drip.currentThickness, drip.y);
+            this.ctx.fill();
+        });
+    }
+
+    clear() {
+        cancelAnimationFrame(this.animationFrame);
+        if (this.canvas.parentNode) {
+            this.canvas.parentNode.removeChild(this.canvas);
+        }
+    }
+}
 
 
 
@@ -2794,7 +2932,7 @@ class FireworksOverlay {
 // Initialize
 const fireworks = new FireworksOverlay();
 
-
+const bloodEffect = new GameOverBloodEffect();
 
 
 
@@ -6571,6 +6709,8 @@ function openEndgamePopup(fireworksEnabled){
 	
 	if(fireworksEnabled || getMyPlayer().isWinner){
 		fireworks.start();
+	}else{
+		bloodEffect.start();
 	}
 	
 	if(fireworksEnabled){
@@ -6588,6 +6728,7 @@ function closeEndgamePopup(){
 	endgameStatsWrapper.style.display = "flex";
 	
 	fireworks.stop();
+	bloodEffect.clear();
 	
 	//removePopupState(endgamePopupUi);
 }
