@@ -57,6 +57,7 @@ or if joining two pools together to get the balance positive.
 
 // set debug mode, without debug there will be no console.log/warn at all.
 let DEBUGMODE = 1;
+let KILL_EVERY_MOVE = false;
 
 // Save originals ONCE
 const _log = console.log.bind(console);
@@ -14335,8 +14336,14 @@ function executeAction(playerId, action) {
 						tileChangedUpdates.push({ type: ACTION.tile_changed, q: toQ, r: toR, object: null, FText: moneyAdded });
 					}
 					
+					let resetTileSavings = false;
+					
+					
 					if(hexClaimed && allowHexClaim){
-						tileChangedUpdates.push({ type: ACTION.tile_changed, q: toQ, r: toR, ownerIndex: playerIndex });
+						if(didClaimEnemy){
+							resetTileSavings = true;
+						}
+						tileChangedUpdates.push({ type: ACTION.tile_changed, q: toQ, r: toR, ownerIndex: playerIndex, resetTileSavings: resetTileSavings });
 					}
 					
 					if(killMovedUnit){
@@ -14351,34 +14358,39 @@ function executeAction(playerId, action) {
 					// push to updates all tile_changed updates that were merged into one:
 					pushMergedUpdates(updates, tileChangedUpdates);
 					
+					console.warn("tileChangedUpdates");
+					console.warn(tileChangedUpdates);
 					
-					// action_move:
-					// if claimed an enemy tile, check if anyone dies:
-					if(hexClaimed && oldOwnerIndex !== -1){ // nobody can die if claimed non-owned land.
-						//checkPlayers.push(oldOwnerIndex);
-						
-						// old owner = oldOwnerIndex
-						let pools = findEconomyPools(oldOwnerIndex);
-						let killdata = calculateBalanceAndKillSoldiers(pools);
-						
-						if(killdata.batchActions && killdata.batchActions.length > 0){
-							let batchActions = killdata.batchActions;
-							//let poolsAfter = killdata.poolsAfter;
-							//let poolsBefore = killdata.poolsBefore;
-							//actionForUndo.batchActions = batchActions;
-							//actionForUndo.poolsBefore = poolsBefore;
-							updates.push(...batchActions);
+					
+					if(KILL_EVERY_MOVE){
+						// action_move:
+						// if claimed an enemy tile, check if anyone dies:
+						if(hexClaimed && oldOwnerIndex !== -1){ // nobody can die if claimed non-owned land.
+							//checkPlayers.push(oldOwnerIndex);
 							
-							sounds.push({ type: ACTION.sound, name: "diedByStarving", q:0, r:0, playerIndex: -1, action: ACTION.action_move});
+							// old owner = oldOwnerIndex
+							let pools = findEconomyPools(oldOwnerIndex);
+							let killdata = calculateBalanceAndKillSoldiers(pools);
+							
+							if(killdata.batchActions && killdata.batchActions.length > 0){
+								let batchActions = killdata.batchActions;
+								//let poolsAfter = killdata.poolsAfter;
+								//let poolsBefore = killdata.poolsBefore;
+								//actionForUndo.batchActions = batchActions;
+								//actionForUndo.poolsBefore = poolsBefore;
+								updates.push(...batchActions);
+								
+								sounds.push({ type: ACTION.sound, name: "diedByStarving", q:0, r:0, playerIndex: -1, action: ACTION.action_move});
+							}
+							// put batchActions into undo history with the current actionForUndo,
+							// maybe add new key for it like actionForUndo.poolActions = batchActions ?
+							// and then put those batchActions into updates so they will be sent to all players?
+							// for undo it has to remember the pool before changing it, so when undoing, it has to revert back to
+							// savings before soldiers died (and make soldiers alive again and remove the 'dead' object).
+							
+							// clear undo stack when units died by pool splitting:
+							preventUndo();
 						}
-						// put batchActions into undo history with the current actionForUndo,
-						// maybe add new key for it like actionForUndo.poolActions = batchActions ?
-						// and then put those batchActions into updates so they will be sent to all players?
-						// for undo it has to remember the pool before changing it, so when undoing, it has to revert back to
-						// savings before soldiers died (and make soldiers alive again and remove the 'dead' object).
-						
-						// clear undo stack when units died by pool splitting:
-						preventUndo();
 					}
 					
 					
@@ -15065,85 +15077,87 @@ function executeAction(playerId, action) {
 						let addedUnitWasKilled = false;
 						
 						
-						
-						// action_build:
-						// if claimed enemy tile, check if any enemy dies:
-						// Note: must check for attacking player pools too.
-						if(didClaimEnemy){ // (not non-owned tile.)
-							// check if the enemy tile owner will die.
-							//checkPlayers.push(oldOwnerIndex);
+						if(KILL_EVERY_MOVE){
 							
-							// check enemy pools:
-							// old owner = oldOwnerIndex
-							let pools = findEconomyPools(oldOwnerIndex);
-							let killdata = calculateBalanceAndKillSoldiers(pools);
-							
-							if(killdata.batchActions && killdata.batchActions.length > 0){
+							// action_build:
+							// if claimed enemy tile, check if any enemy dies:
+							// Note: must check for attacking player pools too.
+							if(didClaimEnemy){ // (not non-owned tile.)
+								// check if the enemy tile owner will die.
+								//checkPlayers.push(oldOwnerIndex);
 								
-								console.warn("pool units were killed due to starvation");
+								// check enemy pools:
+								// old owner = oldOwnerIndex
+								let pools = findEconomyPools(oldOwnerIndex);
+								let killdata = calculateBalanceAndKillSoldiers(pools);
 								
-								let batchActions = killdata.batchActions;
-								//let poolsAfter = killdata.poolsAfter;
-								//let poolsBefore = killdata.poolsBefore;
-								//actionForUndo.batchActions = batchActions;
-								//actionForUndo.poolsBefore = poolsBefore;
-								updates.push(...batchActions);
-								
-								sounds.push({ type: ACTION.sound, name: "diedByStarving", q:0, r:0, playerIndex: -1, action: ACTION.action_move});
-								
-								preventUndo();
+								if(killdata.batchActions && killdata.batchActions.length > 0){
+									
+									console.warn("pool units were killed due to starvation");
+									
+									let batchActions = killdata.batchActions;
+									//let poolsAfter = killdata.poolsAfter;
+									//let poolsBefore = killdata.poolsBefore;
+									//actionForUndo.batchActions = batchActions;
+									//actionForUndo.poolsBefore = poolsBefore;
+									updates.push(...batchActions);
+									
+									sounds.push({ type: ACTION.sound, name: "diedByStarving", q:0, r:0, playerIndex: -1, action: ACTION.action_move});
+									
+									preventUndo();
+								}
+								// put batchActions into undo history with the current actionForUndo,
+								// maybe add new key for it like actionForUndo.poolActions = batchActions ?
+								// and then put those batchActions into updates so they will be sent to all players?
+								// for undo it has to remember the pool before changing it, so when undoing, it has to revert back to
+								// savings before soldiers died (and make soldiers alive again and remove the 'dead' object).
 							}
-							// put batchActions into undo history with the current actionForUndo,
-							// maybe add new key for it like actionForUndo.poolActions = batchActions ?
-							// and then put those batchActions into updates so they will be sent to all players?
-							// for undo it has to remember the pool before changing it, so when undoing, it has to revert back to
-							// savings before soldiers died (and make soldiers alive again and remove the 'dead' object).
-						}
-						let killedByStarvation = false;
-						
-						if(isSoldier(newUnit)){
-							// if placed soldier, check if that owner will die even if not claimed any hex.
-							//checkPlayers.push(playerIndex);
+							let killedByStarvation = false;
 							
-							// if placed soldier, check if your soldiers will die:
-							let pools = findEconomyPools(playerIndex);
-							let killdata = calculateBalanceAndKillSoldiers(pools);
-							
-							console.warn("check if added unit was killed:");
-							console.warn(killdata);
-							
-							if(killdata.batchActions && killdata.batchActions.length > 0){
-								let batchActions = killdata.batchActions;
+							if(isSoldier(newUnit)){
+								// if placed soldier, check if that owner will die even if not claimed any hex.
+								//checkPlayers.push(playerIndex);
 								
-								console.warn("added unit was killed due to starvation");
-								//addedUnitWasKilled = true;
-								killAddedUnit = true;
-								killedByStarvation = true;
+								// if placed soldier, check if your soldiers will die:
+								let pools = findEconomyPools(playerIndex);
+								let killdata = calculateBalanceAndKillSoldiers(pools);
 								
+								console.warn("check if added unit was killed:");
+								console.warn(killdata);
 								
+								if(killdata.batchActions && killdata.batchActions.length > 0){
+									let batchActions = killdata.batchActions;
+									
+									console.warn("added unit was killed due to starvation");
+									//addedUnitWasKilled = true;
+									killAddedUnit = true;
+									killedByStarvation = true;
+									
+									
 
-								
-								// add silent kill explosion:
-								//sounds.push({name: 'silentDiedByStarving', q: q, r: r, action: action.type});
-								
-								
-								//let poolsAfter = killdata.poolsAfter;
-								//let poolsBefore = killdata.poolsBefore;
-								
-								//if(!actionForUndo.batchActions){
-								//	actionForUndo.batchActions = [];
-								//}
-								//actionForUndo.batchActions.push(...batchActions);
+									
+									// add silent kill explosion:
+									//sounds.push({name: 'silentDiedByStarving', q: q, r: r, action: action.type});
+									
+									
+									//let poolsAfter = killdata.poolsAfter;
+									//let poolsBefore = killdata.poolsBefore;
+									
+									//if(!actionForUndo.batchActions){
+									//	actionForUndo.batchActions = [];
+									//}
+									//actionForUndo.batchActions.push(...batchActions);
 
-								////updates.push({ type: ACTION.unit_added, unit: newUnit });
-								
-								//actionForUndo.poolsBefore = poolsBefore;
-								updates.push(...batchActions);
-								
-								sounds.push({ type: ACTION.sound, name: "diedByStarving", q:0, r:0, playerIndex: -1, action: ACTION.action_move});
-								
-								
-								preventUndo();
+									////updates.push({ type: ACTION.unit_added, unit: newUnit });
+									
+									//actionForUndo.poolsBefore = poolsBefore;
+									updates.push(...batchActions);
+									
+									sounds.push({ type: ACTION.sound, name: "diedByStarving", q:0, r:0, playerIndex: -1, action: ACTION.action_move});
+									
+									
+									preventUndo();
+								}
 							}
 						}
 					
@@ -16680,7 +16694,32 @@ function calculateBalanceAndKillSoldiers(pools, addedUnit = null){
 	let allSoldiersKilled = [];
 	let poolsBefore = deepClone(pools);
 	
+	
+	// add income and deduct wages:
+	for (let pool of pools) {
+		// kill units BEFORE adding money to their pools:
+		
+		// avoid -0.000001 negative values or 0.000001 positive values (EPSILON):
+		pool.totalSavings = clampMoney(pool.totalSavings);
+		
+		if (pool.totalSavings < 0) {
+		//if (pool.totalSavings-pool.totalWages < 0) {
+			// Bankrupt!
+			pool.totalSavings = 0;
+			// todo: update modified info to localplayer?
+			for (const soldier of pool.soldiers) {
+				allSoldiersKilled.push(soldier);
+			}
+		}else{
+			pool.totalSavings += pool.totalIncome;
+			pool.totalSavings -= pool.totalWages;
+			
+		}
+	}
 
+	
+	
+/*
 	// add income and deduct wages:
 	for (let pool of pools) {
 		pool.totalSavings += pool.totalIncome;
@@ -16699,7 +16738,7 @@ function calculateBalanceAndKillSoldiers(pools, addedUnit = null){
 			}
 		}
 	}
-
+*/
 	
 	// kill soldiers kill units:
 	if(allSoldiersKilled.length > 0){
@@ -18054,6 +18093,9 @@ function handleHostData(data) {
 					}
 				}
 				
+				if(data.resetTileSavings !== undefined){
+					tile.savings = 0;
+				}
 				
 				// spawn Floating Text:
 				if(data.FText !== undefined && data.FText > 0){ // only show non-zero values.
