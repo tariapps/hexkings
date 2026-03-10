@@ -5159,6 +5159,7 @@ let validMoveHexes = []; // [{q, r}] for green move highlight
 let possibleMoveHexes = []; // the hexes with all possible moves even when the move will fail. for being able to click and get feedback.
 let invalidMoveHexes = []; // [{q, r}] for red move highlight
 let selectedPool = [];
+let enemySelectedPool = null;
 
 let myCurrentSavings = 0; // Client-side savings
 
@@ -11026,6 +11027,7 @@ function cancelAll(){
 	cancelBuildPopup();
 	updateHighlights();
 	selectedPool = null;
+	enemySelectedPool = null;
 	updateSelectedPoolUi();
 }
 
@@ -12020,7 +12022,21 @@ function updateSelectedPoolUi(){
 
 		showPoolInfo();
 	}else{
-		hidePoolInfo();
+		if(enemySelectedPool){
+			console.warn("selectedPool ----------------------------------------");
+			console.warn(selectedPool);
+
+			playerSavings.textContent = "?";
+			playerBalance.textContent = "?";
+			playerIncome.textContent = formatPoolDecimal(enemySelectedPool.totalIncome);
+			playerWages.textContent = formatPoolDecimal(enemySelectedPool.totalWages);
+			
+			
+			showPoolInfo();
+		}else{
+		
+			hidePoolInfo();
+		}
 	}
 }
 
@@ -12031,6 +12047,11 @@ function updateSelectedPoolInfo(hex){
 	console.warn(localPlayerPools);
 	
 	selectedPool = findSelectedPool(hex);
+	enemySelectedPool = findEnemySelectedPool(hex);
+	if(enemySelectedPool){
+		enemyHighlightedPool = enemySelectedPool.hexes;
+	}
+	
 	updateSelectedPoolUi();
 	console.log("updateSelectedPoolInfo: selectedPool");
 	console.log(selectedPool);
@@ -13099,6 +13120,61 @@ let BOAT_MOVE_DAYS = 7; // days until explosion.
 let MAX_BOAT_MOVE_DIST = BOAT_MOVE_DIST*BOAT_MOVE_DAYS; // max dist to show with findfastestroute()
 
 
+
+function findEnemySelectedPool(poolStartHex){
+	let enemyHighlightedPool2 = [];
+	
+	const tile = getTileAt(poolStartHex.q, poolStartHex.r);
+	if(!tile || tile.ownerIndex === -1 || tile.ownerIndex === localPlayer.ownerIndex){
+		return null;
+	}
+
+	// Run BFS to find all connected friendly hexes
+	const queue = [{q: poolStartHex.q, r: poolStartHex.r}];
+	const visited = new Set([`${poolStartHex.q},${poolStartHex.r}`]);
+	
+	while (queue.length > 0) {
+		const current = queue.shift();
+		enemyHighlightedPool2.push(current);
+		
+		for (const n of getHexNeighbors(current.q, current.r)) {
+			const nKey = `${n.q},${n.r}`;
+			const nTile = getTileAt(n.q, n.r);
+			if (nTile && nTile.ownerIndex === tile.ownerIndex && !visited.has(nKey)) {
+				visited.add(nKey);
+				queue.push(n);
+			}
+		}
+	}
+	
+	let totalWages = 0;
+	
+	let enemySelectedPool2 = {
+		hexes: enemyHighlightedPool2, // {q, r, tile}
+		soldiers: [],
+		totalSavings: 0, // recalculated from tile.savings
+		totalIncome: 0,
+		totalWages: 0
+	};
+	
+	for(let i = 0; i < enemyHighlightedPool2.length; i++){
+		let hex = enemyHighlightedPool2[i];
+		let currentTile = getTileAt(hex.q, hex.r);
+		let unit = getUnitAt(hex.q, hex.r);
+		if(unit){
+			let unitInfo = getUnitInfo(unit.type);
+			if(unitInfo){
+				enemySelectedPool2.totalWages += unitInfo.wage;
+				enemySelectedPool2.soldiers.push(unit);
+			}
+		}
+		if (tileGivesIncome(currentTile)) {
+			enemySelectedPool2.totalIncome += gameRules.tileIncome;
+		}
+	}
+	return enemySelectedPool2;
+}
+
 function updateHighlights() {
 	// Clear all highlights
 	highlightedPool = [];
@@ -13106,6 +13182,7 @@ function updateHighlights() {
 	possibleMoveHexes = [];
 	invalidMoveHexes = [];
 	validSeaMoveHexes = [];
+	enemySelectedPool = null;
 	
 	enemyHighlightedPool = [];
 	
@@ -13149,23 +13226,17 @@ function updateHighlights() {
 			}else if(tile.ownerIndex !== -1){
 				// create highlight for enemy pools:
 				
-				// Run BFS to find all connected friendly hexes
-				const queue = [{q: poolStartHex.q, r: poolStartHex.r}];
-				const visited = new Set([`${poolStartHex.q},${poolStartHex.r}`]);
-				
-				while (queue.length > 0) {
-					const current = queue.shift();
-					enemyHighlightedPool.push(current);
-					
-					for (const n of getHexNeighbors(current.q, current.r)) {
-						const nKey = `${n.q},${n.r}`;
-						const nTile = getTileAt(n.q, n.r);
-						if (nTile && nTile.ownerIndex === tile.ownerIndex && !visited.has(nKey)) {
-							visited.add(nKey);
-							queue.push(n);
-						}
-					}
+				enemySelectedPool = findEnemySelectedPool(poolStartHex);
+				if(enemySelectedPool){
+					enemyHighlightedPool = enemySelectedPool.hexes;
 				}
+				
+				
+				console.warn("enemySelectedPool");
+				console.warn(enemySelectedPool);
+
+
+				
 			}
 		}
 	}
