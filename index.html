@@ -13511,11 +13511,11 @@ function openBuildPopup(type) {
 			if(!selectedUnit){
 				extraInfo = "<br>(Select Unit)";
 			}
-				if(item.type === "mine"){
-					countInfo = " ("+totalMines+"x)";
-				}else if(item.type === "boat"){
-					countInfo = " ("+totalBoats+"x)";
-				}
+			if(item.type === "mine"){
+				countInfo = " ("+totalMines+"x)";
+			}else if(item.type === "boat"){
+				countInfo = " ("+totalBoats+"x)";
+			}
 			
 		}
 		
@@ -13526,6 +13526,10 @@ function openBuildPopup(type) {
 		if(item.type === "mine" && !gameState.settings.useLandmines){
 			isDisabled = true;
 			extraInfo = "<br>(Disabled)";
+		}
+		
+		if(type === "castle" || type === "soldier"){
+			extraInfo = `<br>(Level ${item.level})`;
 		}
 		
 		if(item.type === "mine" && totalMines < 1){
@@ -14000,6 +14004,18 @@ let prevhex = "";
 
 let placementframe = 0;
 
+
+
+function isNeighborWater(hex){
+	for (const n of getHexNeighbors(hex.q, hex.r)) {
+		const nTile = getTileAt(n.q, n.r);
+		if (isTileWater(nTile)) {
+			return true;
+		}
+	}
+	return false;
+}
+
 // isvalidplacement
 // unitType = what unit to build 
 // hex = where to build
@@ -14165,6 +14181,13 @@ function isPlacementValid(unitType, hex, player, poolHex, log_enabled = true, fr
 				//console.log("trying to place castle");
 			}
 			return badMove("not_my_hex"); // Must own hex
+		}
+		// handle shipyards:
+		if(isSubtypeShipyard(unitType)){
+			// only allow to build nearby water:
+			if(!isNeighborWater(hex)){
+				return badMove("no_water_nearby");
+			}
 		}
 		// if there is object:
 		// original game allows placing castles on objects.
