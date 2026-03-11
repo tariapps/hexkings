@@ -3656,6 +3656,7 @@ let gameSounds = {
 	message:      {filename: "sounds/message.mp3", gain: 0.6,   filter: false},
 	
 	// need one sound per castle level so the explosion animation gets chosen correctly.
+	build0:        {filename: "sounds/build.mp3",    gain: 0.4,   filter: false},
 	build1:        {filename: "sounds/build.mp3",    gain: 0.4,   filter: false},
 	build2:        {filename: "sounds/build.mp3",    gain: 0.4,   filter: false},
 	build3:        {filename: "sounds/build.mp3",    gain: 0.4,   filter: false},
@@ -4514,7 +4515,7 @@ const SOLDIER_DATA = {
 const CASTLE_DATA = {
 	// listed in this order.
 	
-	"shipyard":      { canMove: 0, frames: 1, visibleName: "Shipyard",     name: "shipyard",      type:"castle", defaultImage: "shipyard", subtype: "shipyard", level: 1, cost: 20, sell: 5},
+	"shipyard":      { canMove: 0, frames: 1, visibleName: "Shipyard",     name: "shipyard",      type:"castle", defaultImage: "shipyard", subtype: "shipyard", level: 0, cost: 20, sell: 5},
 	
 	"fortress": { canMove: 0, frames: 1, visibleName: "Fortress",name: "fortress", type:"castle", defaultImage: "castle3", level: 3, cost: 200, sell: 50},
 	
@@ -17746,7 +17747,7 @@ function makeExplosionBySoundMessage(data){
 		}else{
 			ep.amount = 110; // for any other higher level in case more were added later.
 		}
-	}else if(data.name === 'build1' || data.name === 'build2' || data.name === 'build3'){
+	}else if(data.name === 'build0' || data.name === 'build1' || data.name === 'build2' || data.name === 'build3'){
 		doExplosion = 1;
 		
 		ep.level = parseInt(data.name[5], 10);
@@ -17755,7 +17756,11 @@ function makeExplosionBySoundMessage(data){
 		if(data.playerIndex !== -1){
 			let player = getPlayerByIndex(data.playerIndex);
 			let basecolor = darkenHexColor(blendHexColor(player.color, "#888888", 0.3), 0.3);
-			if(ep.level == 1){
+			if(ep.level == 0){
+				// for shipyards basically. or any level 0 unit that can be killed by any soldier.
+				// create darker and grayer hex color from player.color:
+				newcolor = basecolor;
+			}else if(ep.level == 1){
 				// create darker and grayer hex color from player.color:
 				newcolor = basecolor;
 			}else if(ep.level == 2){
