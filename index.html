@@ -9503,6 +9503,8 @@ function drawUnitsByInternalType(unitType){
 							startPercent = 0.17;
 						}else if(unit.type === 'fortress'){
 							startPercent = 0.15;
+						}else if(unit.type === 'shipyard'){
+							startPercent = 0.05;
 						}
 						let startAnimDiff = timeDiff+animationLenCastle*startPercent;
 						if(startAnimDiff > animationLenCastle){
@@ -14353,12 +14355,15 @@ function executeAction(playerId, action) {
 			}
 			
 			if(unit.internalType === "soldier"){
-				// dont sell if unit already moved:
+				// dont allow selling if unit has already moved:
 				if (unit.hasMoved){
 					return;
 				}
+			}else if(unit.internalType === "boat"){
+				// dont allow selling boats.
+				return;
 			}else{
-				// allow selling castle at any time.
+				// allow selling castles at any time.
 			}
 			
 			let sellPrice = getUnitSellPrice(unit);
