@@ -13305,7 +13305,7 @@ function findEnemySelectedPool(poolStartHex){
 		let hex = enemyHighlightedPool2[i];
 		let currentTile = getTileAt(hex.q, hex.r);
 		let unit = getUnitAt(hex.q, hex.r);
-		if(unit){
+		if(unit && isSoldier(unit)){
 			let unitInfo = getUnitInfo(unit.type);
 			if(unitInfo){
 				enemySelectedPool2.totalWages += unitInfo.wage;
