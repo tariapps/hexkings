@@ -4513,9 +4513,14 @@ const SOLDIER_DATA = {
 // cost values checked from original gameplay.
 const CASTLE_DATA = {
 	// listed in this order.
-	"fortress": { canMove: 0, frames: 1, visibleName: "Fortress",name: "fortress", type:"castle", defaultImage: "castle3", level: 3, cost: 200 },
-	"castle":   { canMove: 0, frames: 1, visibleName: "Castle",  name: "castle",   type:"castle", defaultImage: "castle2", level: 2, cost: 40 },
-	"hut":      { canMove: 0, frames: 1, visibleName: "Hut",     name: "hut",      type:"castle", defaultImage: "castle1", level: 1, cost: 10 },
+	
+	"shipyard":      { canMove: 0, frames: 1, visibleName: "Shipyard",     name: "shipyard",      type:"castle", defaultImage: "shipyard", subtype: "shipyard", level: 1, cost: 20, sell: 5},
+	
+	"fortress": { canMove: 0, frames: 1, visibleName: "Fortress",name: "fortress", type:"castle", defaultImage: "castle3", level: 3, cost: 200, sell: 50},
+	
+	"castle":   { canMove: 0, frames: 1, visibleName: "Castle",  name: "castle",   type:"castle", defaultImage: "castle2", level: 2, cost: 40, sell: 10},
+	
+	"hut":      { canMove: 0, frames: 1, visibleName: "Hut",     name: "hut",      type:"castle", defaultImage: "castle1", level: 1, cost: 10, sell: 3},
 };
 
 
@@ -4657,6 +4662,20 @@ function unitTypeAnimationFramesCount(type){
 function unitTypeCanMove(type){
 	return getUnitInfo(type).canMove;
 }
+function unitTypeCanBeSelected(type){
+	let unitInfo = getUnitInfo(type);
+	// allow selecting units that can move:
+	if(unitInfo.canMove){
+		return true;
+	}else{
+		// allow selecting castles, not other possible types:
+		if(unitInfo.type === "castle"){
+			return true;
+		}
+	}
+	return false;
+}
+
 
 function unitCanBeSelected(unit){
 	if(unitTypeCanMove(unit.type)){
@@ -5293,6 +5312,10 @@ imageAssets = {
 	'castle1':  {path:'images/'+pathPrefix+'/castle1.png', scale: unitScales[0], offsetX: unitOffsets[0].x, offsetY: unitOffsets[0].y},
 	'castle2':  {path:'images/'+pathPrefix+'/castle2.png', scale: unitScales[1], offsetX: unitOffsets[1].x, offsetY: unitOffsets[1].y},
 	'castle3':  {path:'images/'+pathPrefix+'/castle3.png', scale: unitScales[2], offsetX: unitOffsets[2].x, offsetY: unitOffsets[2].y},
+	
+	'shipyard':  {path:'images/'+pathPrefix+'/shipyard.png', scale: unitScales[0], offsetX: unitOffsets[0].x, offsetY: unitOffsets[0].y},
+	
+	
 	
 	'soldier1': {path:'images/'+pathPrefix+'/soldier1.png', scale: unitScales[3], offsetX: unitOffsets[3].x, offsetY: unitOffsets[3].y},
 	'soldier2': {path:'images/'+pathPrefix+'/soldier2.png', scale: unitScales[4], offsetX: unitOffsets[4].x, offsetY: unitOffsets[4].y},
@@ -9420,7 +9443,14 @@ function drawUnitsByInternalType(unitType){
 		}
 		
 		let imageKey = `${data.defaultImage}${seasonKey}${animSuffix}`;//`${data.type}${data.level}${animSuffix}`;
-		const img = getImage(imageKey);
+		let img = getImage(imageKey);
+		if(!img){
+			if(!isSummer()){
+				seasonKey = "";
+				imageKey = `${data.defaultImage}${seasonKey}${animSuffix}`;
+				img = getImage(imageKey);
+			}
+		}
 		
 
 		
@@ -9641,7 +9671,7 @@ function drawUnits(){
 	}
 	
 	// draw selected unit name on top of it:
-	if(selectedUnit){
+	if(selectedUnit && selectedUnit.name){
 		const x = axialToPixelX(selectedUnit.q, selectedUnit.r);
 		const y = axialToPixelY(selectedUnit.q, selectedUnit.r);
 		let dx = x;
@@ -10383,10 +10413,16 @@ function getNearestValidHex(point){
 
 function drawFocusedHex(){
 	if(focusedHex){
+		// dont draw focused hex for selected castles.
+		if(selectedUnit && !placingUnit && isTypeCastle(selectedUnit.type)){
+			return;
+		}
+		
 		let nearestValidHex = null;
 		
 		
 		let overrideColor = null;
+
 
 		let closestHex = getNearestValidHex(focusedPoint);
 		if(closestHex.found){
@@ -10401,17 +10437,59 @@ function drawFocusedHex(){
 		const x = axialToPixelX(focusedHex.q, focusedHex.r);
 		const y = axialToPixelY(focusedHex.q, focusedHex.r);
 		
+		
+		let tile = getTileAt(focusedHex.q, focusedHex.r);
+		
 		let scale = pulseScale(0.6, HEX_LINE_MULTI, PULSE_SPEED);
 		
 		if(overrideColor){
 			scale = HEX_LINE_MULTI*0.9;
 		}
 		
+		let fillColor = "rgba(255,255,0, 0.3)";
+		
+		if(!isTileWater(tile)){
+			if(selectedUnit && isTypeBoat(selectedUnit.type)){
+				let dist = getHexDistance(selectedUnit.q, selectedUnit.r, focusedHex.q, focusedHex.r);
+
+				if(!selectedUnit.loadedUnit || dist > 1){
+					overrideColor = "rgba(255,0,0, 0.8)";
+					fillColor = "rgba(255,0,0, 0.6)";
+				}
+			}else{
+				// handle other than boats:
+				if(selectedUnit || placingUnit){
+					if(selectedUnit && !placingUnit){
+						let moveCheck = isMoveValid(selectedUnit, { q: focusedHex.q, r: focusedHex.r }, localPlayer);
+						
+						if(!moveCheck.valid){
+							overrideColor = "rgba(255,0,0, 0.8)";
+							fillColor = "rgba(255,0,0, 0.6)";
+						}
+					}
+					if(placingUnit){
+						let poolHex = getSelectedPoolHex();
+						if(poolHex){
+							let moveCheck = isPlacementValid(placingUnit.type, focusedHex, localPlayer, poolHex, true, selectedUnit);
+							
+							
+							if(!moveCheck.valid){
+								overrideColor = "rgba(255,0,0, 0.8)";
+								fillColor = "rgba(255,0,0, 0.6)";
+							}
+						}
+					}
+				}
+			}
+		}
+		
+		
+		
 		if(closestHex.found){
 			if(selectedUnit || placingUnit){
 				drawHexagonPathLines(x, y, null, scale*0.9);
 				//ctx.globalAlpha = 1;
-				ctx.fillStyle = 'rgba(255,255,0, 0.3)';
+				ctx.fillStyle = fillColor;
 				ctx.fill();
 			}
 		}
@@ -10422,7 +10500,6 @@ function drawFocusedHex(){
 
 		
 		
-		let tile = getTileAt(focusedHex.q, focusedHex.r);
 		
 		if(placingUnit && isTypeBoat(placingUnit.type)){
 			if(isTileWater(tile)){
@@ -10439,6 +10516,8 @@ function drawFocusedHex(){
 		}else{
 			if(!isTileWater(tile)){
 				if(selectedUnit || placingUnit){
+					
+
 					drawHexagonPathLines(x, y, null, scale);
 					ctx.setLineDash(dashes);
 					if(placingUnit){
@@ -10843,8 +10922,11 @@ function render() {
 			//const { x, y } = axialToPixel(hex.q, hex.r);
 			const x = axialToPixelX(hex.q, hex.r);
 			const y = axialToPixelY(hex.q, hex.r);
-			drawHexagonPath(x, y);
-			ctx.fill();
+			let tile = getTileAt(hex.q, hex.r);
+			if(isTileWater(tile)){
+				drawHexagonPath(x, y);
+				ctx.fill();
+			}
 		}
 	}
 
@@ -12015,7 +12097,12 @@ function updateSelectedPoolUi(){
 		if(selectedPool.totalSavings >= minOtherCost){
 			// must have selected unit set to build other units.
 			// todo: make later check if any of the items can be built when adding new units that doesnt require selected unit.
-			if(selectedUnit){
+			// if not a castle:
+			if(selectedUnit && !isTypeCastle(selectedUnit.type)){
+				buildOtherBtn.classList.remove("disabled");
+			}
+			// if shipyard:
+			if(selectedUnit && isSubtypeShipyard(selectedUnit.type)){
 				buildOtherBtn.classList.remove("disabled");
 			}
 		}
@@ -12076,6 +12163,23 @@ function isUnitNextToUnit(unit1, unit2){
 	}
 	return false;
 }
+
+function isUnitNextToPool(targetUnit, poolUnit){
+	let pool = getPoolAt(poolUnit);
+	for(let h = 0; h < pool.length; h++){
+		let startHex = pool[h];
+		
+		let neigh = getHexNeighbors(startHex);
+		for(let i = 0; i < neigh.length; i++){
+			let hex = neigh[i];
+			if(hex.q === targetUnit.q && hex.r === targetUnit.r){
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 
 function isUnitNextToHex(unit, hex){
 	return isUnitNextToUnit(unit, hex);
@@ -12539,8 +12643,8 @@ function handleHexClick(point) {
 						if(isTypeBoat(unitOnHex.type)){
 							// dont load unit if there already is unit:
 							if(!unitOnHex.loadedUnit){
-								// allow loading only if unit stands next to the boat:
-								if(isUnitNextToUnit(selectedUnit, unitOnHex)){
+								// allow loading only if boat is next to the pool of the selected unit:
+								if(isUnitNextToPool(unitOnHex, selectedUnit)){
 									console.warn("loading unit into boat");
 									loadedIntoUnit = unitOnHex;
 								}else{
@@ -12574,10 +12678,17 @@ function handleHexClick(point) {
 					}else{
 						// moved normal unit:
 					
+
+						
 						// Check if clicking a valid move hex
 						// validMoveHexes = highlighted move area.
 						// poolHex guaranteed to be in validMoveHexes.
-						const isValidMove = validMoveHexes.some(h => h.q === hex.q && h.r === hex.r);
+						let isValidMove = validMoveHexes.some(h => h.q === hex.q && h.r === hex.r);
+						
+						// dont try to move castles.
+						if(isTypeCastle(selectedUnit.type)){
+							isValidMove = false;
+						}
 						
 						console.warn("isValidMove:",isValidMove);
 						//console.log("isValidMove: "+isValidMove);
@@ -12677,6 +12788,7 @@ function handleHexClick(point) {
 								deselectHex();
 							}
 						}
+					
 					}
 				}
 			}
@@ -12689,9 +12801,10 @@ function handleHexClick(point) {
 				
 				if (unitOnHex && unitOnHex.ownerIndex === localPlayer.playerIndex) {
 					// allow only selecting movable units
-					if(unitTypeCanMove(unitOnHex.type)){
+					//if(unitTypeCanMove(unitOnHex.type)){
+					if(unitTypeCanBeSelected(unitOnHex.type)){
 					//if(unitOnHex.internalType === 'soldier'){
-						if(!unitOnHex.hasMoved){
+						if(!unitOnHex.hasMoved || unitOnHex.internalType === "castle"){
 							//console.log("selected new unit");
 							selectedUnit = unitOnHex;
 							sellUnitBtn.disabled = isTypeBoat(selectedUnit.type);
@@ -13121,6 +13234,37 @@ let MAX_BOAT_MOVE_DIST = BOAT_MOVE_DIST*BOAT_MOVE_DAYS; // max dist to show with
 
 
 
+function getPoolAt(poolStartHex){
+	let pool = [];
+	
+	const tile = getTileAt(poolStartHex.q, poolStartHex.r);
+	if(!tile || isTileWater(tile) || tile.ownerIndex === -1){
+		return null;
+	}
+
+	// Run BFS to find all connected friendly hexes
+	const queue = [{q: poolStartHex.q, r: poolStartHex.r}];
+	const visited = new Set([`${poolStartHex.q},${poolStartHex.r}`]);
+	
+	while (queue.length > 0) {
+		const current = queue.shift();
+		pool.push(current);
+		
+		for (const n of getHexNeighbors(current.q, current.r)) {
+			const nKey = `${n.q},${n.r}`;
+			const nTile = getTileAt(n.q, n.r);
+			if (nTile && nTile.ownerIndex === tile.ownerIndex && !visited.has(nKey)) {
+				visited.add(nKey);
+				queue.push(n);
+			}
+		}
+	}
+	
+	return pool;
+}
+
+
+
 function findEnemySelectedPool(poolStartHex){
 	let enemyHighlightedPool2 = [];
 	
@@ -13407,6 +13551,13 @@ function openBuildPopup(type) {
 			if(!selectedUnit){
 				//itemEl.classList.add('disabled');
 				isDisabled = true;
+			}else{
+				if(isTypeCastle(selectedUnit.type)){
+					isDisabled = true;
+				}
+				if(item.type === "boat" && isSubtypeShipyard(selectedUnit.type)){
+					isDisabled = false;
+				}
 			}
 		}
 		if(isDisabled){
@@ -13518,6 +13669,10 @@ function isTypeBoat(unitType){
 }
 function isTypeMine(unitType){
 	return getUnitInfo(unitType)?.type === 'mine';
+}
+
+function isSubtypeShipyard(unitType){
+	return getUnitInfo(unitType)?.subtype === 'shipyard';
 }
 
 function getUnitType(unitType){
@@ -14167,12 +14322,19 @@ function executeAction(playerId, action) {
 			console.log(poolHex);
 			
 			const unit = gameState.units.find(u => u.id === unitId);
+			
 			// dont sell if not your unit:
-			// dont sell if unit already moved:
-			if (!unit || 
-				unit.ownerIndex !== playerIndex || 
-				unit.hasMoved){
+			if (!unit || unit.ownerIndex !== playerIndex){
 				return;
+			}
+			
+			if(unit.internalType === "soldier"){
+				// dont sell if unit already moved:
+				if (unit.hasMoved){
+					return;
+				}
+			}else{
+				// allow selling castle at any time.
 			}
 			
 			let sellPrice = getUnitSellPrice(unit);
@@ -14213,7 +14375,13 @@ function executeAction(playerId, action) {
 			
 			const unit = gameState.units.find(u => u.id === unitId);
 			let unitCopy = {...unit}; // used when killing current unit.
-			if (!unit || unit.ownerIndex !== playerIndex) return;
+			if (!unit || unit.ownerIndex !== playerIndex){
+				return;
+			}
+			// donw allow moving castles.
+			if(isTypeCastle(unit.type)){
+				return;
+			}
 			
 			let pq = unit.q;
 			let pr = unit.r;
@@ -14701,6 +14869,11 @@ function executeAction(playerId, action) {
 			const { unitId, targetUnitId, poolHex } = action;
 			
 			let unit = getUnitById(unitId);
+			// dont allow to load castles on boats.
+			if(unit && isTypeCastle(unit.type)){
+				return;
+			}
+			
 			let targetUnit = getUnitById(targetUnitId);
 			
 			if(!targetUnit.loadedUnit){
@@ -14751,6 +14924,11 @@ function executeAction(playerId, action) {
 			let unit = getUnitById(unitId);
 			if(!unit){
 				console.warn("selected unit not found");
+				return;
+			}
+			
+			// dont allow castles to build anything.
+			if(unit && isTypeCastle(unit.type)){
 				return;
 			}
 			
@@ -14864,6 +15042,13 @@ function executeAction(playerId, action) {
 				}
 				if(!unit){
 					console.warn("selected unit not found");
+					return;
+				}
+			}
+			
+			// dont allow castles to build other units (boats atm only possible).
+			if(unit && isTypeCastle(unit.type)){
+				if(!isSubtypeShipyard(unit.type)){
 					return;
 				}
 			}
@@ -15243,6 +15428,8 @@ function executeAction(playerId, action) {
 						if(killAddedUnit){
 							// dont add killed unit or it will create that unit after undo...
 							//actionForUndo.killedUnit = { ...unitCopy };
+							
+							/*
 							if(killedByStarvation){
 								
 								// add cross & blood at same object_change process:
@@ -15259,6 +15446,9 @@ function executeAction(playerId, action) {
 							}else{
 								updates.push({ type: ACTION.unit_removed, unitId: unitCopy.id });
 							}
+							*/
+							
+							updates.push({ type: ACTION.unit_removed, unitId: unitCopy.id });
 							
 							// clear undo stack when unit died by move:
 							preventUndo();
