@@ -1094,6 +1094,8 @@ button.redbutton:hover {
 	margin-top: 10px;
 	font-size: 20px;
 	margin-bottom: 20px;
+
+	white-space: pre-line;
 }
 #endgame-popup-title {
 	text-align: center;
@@ -6664,6 +6666,9 @@ const endgamePopupTitle = document.getElementById('endgame-popup-title');
 const endgamePopupMessage = document.getElementById('endgame-popup-message');
 
 
+
+const endgamePopupStats = document.getElementById('endgame-popup-stats');
+
 const endgamePopupStatsHexes = document.getElementById('endgame-popup-stats-hexes');
 const endgamePopupStatsSoldiers = document.getElementById('endgame-popup-stats-soldiers');
 const endgamePopupStatsWages = document.getElementById('endgame-popup-stats-wages');
@@ -6759,7 +6764,7 @@ closeGameSettingsBtn.addEventListener("click", () => {
 
 
 
-function openEndgamePopup(fireworksEnabled){
+function openEndgamePopup(fireworksEnabled, isSpectator = false){
 	// unfocus chatinput:
 	chatInput.blur();
 	
@@ -6767,16 +6772,18 @@ function openEndgamePopup(fireworksEnabled){
 	
 	endgameStatsWrapper.style.display = "none";
 	
-	if(fireworksEnabled || getMyPlayer().isWinner){
-		fireworks.start();
-	}else{
-		bloodEffect.start();
-	}
-	
-	if(fireworksEnabled){
-		playSound("victory");
-	}else{
-		playSound("defeat");
+	if(!isSpectator){
+		if(fireworksEnabled || getMyPlayer().isWinner){
+			fireworks.start();
+		}else{
+			bloodEffect.start();
+		}
+
+		if(fireworksEnabled){
+			playSound("victory");
+		}else{
+			playSound("defeat");
+		}
 	}
 	
 	//addPopupState(endgamePopupUi);
@@ -6799,7 +6806,7 @@ closeEndgamePopupBtn.addEventListener("click", () => {
 
 openEndgamePopupBtn.addEventListener("click", () => {
 	let fireworksEnabled = getMyPlayer().isWinner;
-	openEndgamePopup(fireworksEnabled);
+	openEndgamePopup(fireworksEnabled, getMyPlayer().isSpectator);
 });
 
 
@@ -11164,7 +11171,7 @@ let twofingers = false;
 function updateDebugInfo(){
 	let str = "";
 	Object.keys(debugVars).forEach(key => {
-		str += `<div><span>${key}</span> = <span>${debugVars[key]}</span></div>\r\n`;
+		str += `<div><span>${key}</span> = <span>${debugVars[key]}</span></div>\n`;
 	});
 	debugInfo.style.display = "block";
 	debugInfo.innerHTML = str;
@@ -14734,13 +14741,19 @@ function executeAction(playerId, action) {
 					let playMoveUnit = true;
 					//let didClaimEnemy = false;
 					let killAddedUnit = false;
+					let allowHexClaim = true;
+					
+					let didClaim = false;
 					
 					// if claimed a tile:
 					if (tile.ownerIndex !== playerIndex) {
+						didClaim = true;
+						/*
 						setTileOwnerByIndex(tile, playerIndex);
 						tile.savings = 0; // update to host data.
 						
 						tileChangedUpdates.push({ type: ACTION.tile_changed, q: toQ, r: toR, ownerIndex: playerIndex });
+						*/
 					}
 					
 
@@ -14788,11 +14801,13 @@ function executeAction(playerId, action) {
 						}else if(tile.object === 'mine1'){
 							sounds.push({name:'claimMine', q: toQ, r: toR, action: action.type});
 							killAddedUnit = true;
+							allowHexClaim = false;
 						}else if(tile.object === 'landmine'){
 							// only explode if its not your mine:
 							if(!isTileMinePlayerMine(tile, playerIndex)){
 								sounds.push({name:'claimMine', q: toQ, r: toR, action: action.type});
 								killAddedUnit = true;
+								allowHexClaim = false;
 							}else{
 								// if not killed unit, just play move sound? not sure about this logic.
 								if(!actionForUndo.killedUnit){
@@ -14829,6 +14844,11 @@ function executeAction(playerId, action) {
 						tileChangedUpdates.push({ type: ACTION.tile_changed, q: toQ, r: toR, object: null, FText: moneyAdded });
 					}
 					
+					if(didClaim && allowHexClaim){
+						//setTileOwnerByIndex(tile, playerIndex);
+						//tile.savings = 0; // update to host data.
+						tileChangedUpdates.push({ type: ACTION.tile_changed, q: toQ, r: toR, ownerIndex: playerIndex });
+					}
 					
 					
 					//let addedUnitWasKilled = false;
@@ -14905,7 +14925,9 @@ function executeAction(playerId, action) {
 			
 			let targetUnit = getUnitById(targetUnitId);
 			
-			if(!targetUnit.loadedUnit){
+			// only allow loading if no unit loaded yet
+			// AND the boat is owned by the unit being loaded to it.
+			if(!targetUnit.loadedUnit && targetUnit.ownerIndex === unit.ownerIndex){
 				
 				actionForUndo = {
 					type: 'load_unit', 
@@ -15109,6 +15131,8 @@ function executeAction(playerId, action) {
 					if(isTypeBoat(unitType)){
 						console.warn("BOAT DETECTED");
 						
+						
+						
 						const newUnit = {
 							id: newUnitID(),
 							ownerIndex: playerIndex,
@@ -15130,7 +15154,10 @@ function executeAction(playerId, action) {
 							actionPlayerIndex: playerIndex, // who did this action, used for starvation undoing only.
 						};
 						
-						updates.push({ type: ACTION.unit_move_reset, hasMoved: true, unitId: unitId});
+						// dont set hasmoved flag for castles or selecting them wont make sound. atm they dont use this flag anyway.
+						if(!isTypeCastle(unit.type)){
+							updates.push({ type: ACTION.unit_move_reset, hasMoved: true, unitId: unitId});
+						}
 						
 						// decrease boats count:
 						updates.push({
@@ -15148,6 +15175,12 @@ function executeAction(playerId, action) {
 						const oldObject = tile.object;
 						const oldSavings = tile.savings;
 						
+						let hasMovedFlag = 1;
+						// remove hasmovedflag from castles or selecting them wont make sound. atm they dont use this flag anyway.
+						if(isTypeCastle(unitType)){
+							hasMovedFlag = 0;
+						}
+						
 						const newUnit = {
 							id: newUnitID(),
 							ownerIndex: playerIndex,
@@ -15156,7 +15189,7 @@ function executeAction(playerId, action) {
 							r: r,
 							type: unitType,
 							level: data.level,
-							hasMoved: 1,
+							hasMoved: hasMovedFlag,
 							internalType: data.type,
 						};
 						let unitCopy = {...newUnit}; // used for mines killing.
@@ -18534,39 +18567,79 @@ function handleHostData(data) {
 			
 				let fireworksEnabled = false;
 				
+				let winTitle = "Victory!";
+				let winMessage = "You have won the game!";
+				let winColor = "#FFFF00";
+				
+				let loseTitle = "Defeat!";
+				let loseMessage = "You have been defeated!";
+				let loseColor = "#FF0000";
+				
+				
+				if(myPlayer.isSpectator){
+					if(winnerPlayerIndex !== -1){
+						let winnerPlayer = getPlayerByIndex(winnerPlayerIndex);
+						
+						winTitle = "Game Over!";
+						winMessage = `Player '${winnerPlayer.name}' has won the game!`;
+						winColor = "#FFFFFF";
+						
+						loseTitle = winTitle;
+						loseMessage = winMessage;
+						loseColor = winColor;
+						
+					}else{ 
+						loseTitle = "Game Over!";
+						loseMessage = `Every human has lost the game!`;
+						loseColor = "#FFFFFF";
+					}
+				}
+				
 				if(winnerPlayerIndex === myIndex){
 					// you have won the game!
 					// play win sound.
 					fireworksEnabled = true;
 					//playSound("victory");
 					myPlayer.isWinner = true;
-					endgamePopupTitle.textContent = "Victory!";
-					endgamePopupMessage.textContent = "You have won the game!";
-					endgamePopupTitle.style.color = "#FFFF00";
+					endgamePopupTitle.textContent = winTitle;
+					endgamePopupMessage.textContent = winMessage;
+					endgamePopupTitle.style.color = winColor;
 				}else{
 					// you have lost the game!
 					// play lose sound.
+					if(!myPlayer.isSpectator){
+						if(winnerPlayerIndex !== -1){
+							let winnerPlayer = getPlayerByIndex(winnerPlayerIndex);
+							loseMessage += "\nPlayer '"+winnerPlayer.name+"' has won the game.";
+						}
+					}
 					fireworksEnabled = false;
 					//playSound("defeat");
-					endgamePopupTitle.textContent = "Defeat!";
-					endgamePopupMessage.textContent = "You have been defeated!";
-					endgamePopupTitle.style.color = "#FF0000";
+					endgamePopupTitle.textContent = loseTitle;
+					endgamePopupMessage.textContent = loseMessage;
+					endgamePopupTitle.style.color = loseColor;
 				}
 				
-				// update stats:
-				let myStats = data.allStats[myIndex]; // getPlayerStats(myIndex);
-				endgamePopupStatsHexes.textContent = myStats.hexes;
-				endgamePopupStatsSoldiers.textContent = myStats.soldiers;
-				endgamePopupStatsWages.textContent = myStats.wages;
-				endgamePopupStatsMoney.textContent = formatPoolDecimal(myStats.money);
+				if(!myPlayer.isSpectator){
+					// update stats:
+					endgamePopupStats.hidden = false;
+					let myStats = data.allStats[myIndex]; // getPlayerStats(myIndex);
+					endgamePopupStatsHexes.textContent = myStats.hexes;
+					endgamePopupStatsSoldiers.textContent = myStats.soldiers;
+					endgamePopupStatsWages.textContent = myStats.wages;
+					endgamePopupStatsMoney.textContent = formatPoolDecimal(myStats.money);
+				}else{
+					endgamePopupStats.hidden = true;
+				}
 				
 				// wont work without this or requestAnimationFrame()
 				//setTimeout(function(){
 				//	openEndgamePopup();
 				//}, 1);
 				requestAnimationFrame(() => {
-					openEndgamePopup(fireworksEnabled);
+					openEndgamePopup(fireworksEnabled, myPlayer.isSpectator);
 				});
+				
 			}
 			
 			updateGameUI();
