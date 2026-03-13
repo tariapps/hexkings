@@ -18659,6 +18659,13 @@ function handleHostData(data) {
 			//   so explosions will also be triggered for clients,
 			//   and they will be removed properly for all players.
 			//killPlayerUnits(data.playerIndex);
+			
+			if(data.playerIndex === localPlayer.playerIndex){
+				// if at least 2 humans still playing against each other, show message:
+				if(remainingHumanPlayers() >= 2){
+					alert("You have died.");
+				}
+			}
 
 			addSystemChatMessage(`>>> Player ${player.name} has died!`, "#FFFFFF");
 			//}
