@@ -10,7 +10,12 @@
 
 	<title>Hex Kings</title>
 
-	<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
+	<!--<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>-->
+	<!--<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>-->
+	
+	<script src="peerjs.min.js"></script>
+	<script src="chart.js"></script>
 
 	<script src="config.js"></script> <!-- LOCAL=false on public, true on local pc -->
 
@@ -16562,17 +16567,6 @@ function ai_find_best_move(player) {
 	return null;
 }
 
-function getSoldiersCountByType(units, type){
-	let total = 0;
-	for(const unit in units){
-		if(unit.internalType === "soldier"){
-			if(unit.type === type){
-				total++;
-			}
-		}
-	}
-	return total;
-}
 
 
 function ai_find_best_build_move(player) {
@@ -17097,211 +17091,6 @@ function hasNearbyCastle(pos, myIndex) {
 }
 
 
-
-function ai_find_best_build_moves2(player){
-	let bestMove = null;
-
-	//////////////////////////
-	//
-	// building units: soldiers/castles
-	//
-	
-	let pools = findEconomyPools(player.playerIndex);
-	/*
-	hexes: (3) [{…}, {…}, {…}]
-	soldiers: [{…}]
-	totalIncome: 3
-	totalSavings: 0
-	totalWages: 3
-	*/
-	
-	/*
-im trying to make my AI in my hexagonal tiled game (using q,r coordinates) to determine whether or not he should buy new soldiers or castles (and where to place castles), and which type of soldiers, and whether or not to sell them: need to calculate which units to sell to avoid all the soldiers from dying due to starvation. your units will die if income+savings-wages < 0
-
-gameState.units has all units.
-gameState.players has all players (not really needed here).
-
-the function should be defined as:
-function ai_find_best_build_moves(player){
-	let bestMove = null;
-	
-	// this gets the list of pools of the AI player, each pool has own income and savings. to build in a pool (or edges of it) the cost of the unit will be deducted from that pool later (the networking code will deduct it later).
-	let pools = findEconomyPools(player.playerIndex);
-	// example of one pool it could return:
-	{
-		hexes: [
-			0: {q: 2, r: 10, tile: {…}}, // tile is reference to the actual tile data (your tiles). also contains q,r coords.
-			1: {q: 1, r: 11, tile: {…}},
-			2: {q: 1, r: 12, tile: {…}},
-		],
-		soldiers: [{…}], // reference of actual soldier data (your own soldiers). also contains q,r coords.
-		totalIncome: 3,
-		totalSavings: 0,
-		totalWages: 3,
-	};
-	
-	
-	/////////////
-	// the AI code goes here
-	/////////////
-	
-	return bestMove;
-}
-
-where player is an object of the AI player.
-player.playerIndex is the value used to determine who owns which unit:
-unit.ownerIndex is the player.playerIndex for the player who owns the unit. if chosen to build unit on top of enemy unit, then you need to know its enemy and not yours. you cant build units on top of any unit (castle or soldier).
-
-
-
-
-all the units in the game is stored in gameState.units array and gameState.players has list of players.
-i can use getTileAt(q,r) to get the tile with its info. null if no tile.
-i can use isTileLand(tile) or isHexLand(q,r) to check if the tile is land (so you wont check water units at all).
-i can use getUnitAt(q,r) if there is an unit on that tile. null if not.
-
-
-each unit has:
-unit.id
-unit.ownerIndex
-unit.internalType // "soldier" or "castle"
-use isTypeCastle(unit.type) or isTypeSoldier(unit.type) to check which class of unit it is (castle or soldier).
-
-castles are static and doesnt take money per turn, they have no wages, so its better to build castles first, more specifically the "hut" type of castles, since they shield your land without losing money for wages.
-AI should build castles of type "castle" only if there are enough income like 40.
-
-// i can use this function to get neighbouring tiles:
-function getHexNeighbors(q, r) {
-	// If first argument is an object, extract values
-	if (q !== null && typeof q === "object") {
-		r = q.r;
-		q = q.q; // must be set here or overwrites q before r.
-	}
-	if (typeof q !== "number" || typeof r !== "number") {
-		throw new TypeError("hexRound expects (q, r) numbers or an object { q, r }");
-	}
-	return [                    //              i for "angle index" calculations
-		{ q: q,     r: r + 1 }, // bottom       0
-		{ q: q - 1, r: r + 1 }, // bottom left  1
-		{ q: q - 1, r: r },     // top left     2
-		{ q: q,     r: r - 1 }, // top          3
-		{ q: q + 1, r: r - 1 }, // top right    4
-		{ q: q + 1, r: r },     // bottom right 5
-	];
-}
-
-units can be built inside the pool, or one hex outside the pool.
-
-if unit level is higher than an enemy unit on the tile, then it will kill that unit.
-
-you cannot move unit on top of your own unit, or if the enemy unit level is same or higher level as your unit.
-
-// units level, cost and wage is defined here:
-const SOLDIER_DATA = {
-	"dragon":  { canMove: 1, frames: 2, visibleName: "Dragon",  name: "dragon",  type:"soldier", defaultImage: "soldier4", level: 4, cost: 40, wage: 54, sell: 20 },
-	"horse":   { canMove: 1, frames: 2, visibleName: "Horse",   name: "horse",   type:"soldier", defaultImage: "soldier3", level: 3, cost: 30, wage: 18, sell: 15 },
-	"knight":  { canMove: 1, frames: 2, visibleName: "Knight",  name: "knight",  type:"soldier", defaultImage: "soldier2", level: 2, cost: 20, wage: 8, sell: 10 },
-	"peasant": { canMove: 1, frames: 2, visibleName: "Peasant", name: "peasant", type:"soldier", defaultImage: "soldier1", level: 1, cost: 10, wage: 3, sell: 5 },
-};
-
-wage means that it will deduct that amount of money after you end your turn.
-
-let balance = (pool.totalSavings + pool.totalIncome) - pool.totalWages;
-this calculates if your units will survive after ending your turn, so it must be 0 or greater.
-
-so after building an unit that takes a wage each day (day changes after you end turn), the balance must be greater or equal to zero. But its best to keep some money after each turn, since enemy can steal your tiles and thus reducing your income, and thus making the balance negative and you lose all the units in the pool.
-
-the AI should not build dragons unless it finds a fortress that it can attack onto, and that the AI's balance is good enough (like 30).
-
-// castles levels and costs are defined here: they do not use wages. AI should NEVER build "shipyard" unit.
-const CASTLE_DATA = {
-	"shipyard":      { canMove: 0, frames: 1, visibleName: "Shipyard",     name: "shipyard",      type:"castle", defaultImage: "shipyard", subtype: "shipyard", level: 0, cost: 20, sell: 5},
-	
-	"fortress": { canMove: 0, frames: 1, visibleName: "Fortress",name: "fortress", type:"castle", defaultImage: "castle3", level: 3, cost: 200, sell: 50},
-	
-	"castle":   { canMove: 0, frames: 1, visibleName: "Castle",  name: "castle",   type:"castle", defaultImage: "castle2", level: 2, cost: 40, sell: 10},
-	
-	"hut":      { canMove: 0, frames: 1, visibleName: "Hut",     name: "hut",      type:"castle", defaultImage: "castle1", level: 1, cost: 10, sell: 3},
-};
-
-each unit, soldier or castle, has 1 hex radius of defense around them, so a peasant cannot move next to a hut because they are the same level.
-
-the function should decide whether or not to build castles or to build soldiers.
-
-function should return only one best move at a time, the function will be called many times in a loop until no more moves are possible.
-
-// example of building move it would return:
-{
-	type: ACTION.action_build,
-	unitType: unitType, // "peasant" etc.
-	q: toQ, // coordinate q where to build.
-	r: toR, // coordinate r where to build.
-}
-
-// example of selling move it would return:
-{
-	type: ACTION.action_sell, 
-	unitId: unit.id,
-}
-
-you can sell unit only if unit.hasMoved is false.
-do not try to sell castles.
-only sell units if it looks like your balance is going to be negative after end of turn.
-
-
-if building a castle, it should be placed strategically, so they are at least 1 hex away from each other, to save money.
-
-it is important to build peasant unit type so other AI can use them to move them strategically to claim more land. the more land you claim, the more income you get: one tile gives you 1 income for the pool.
-
-when building soldiers, they should either claim land, kill lower level enemy unit, or act as a castle to protect units around it.
-
-you should leave the pool good balance after each move, lets say 9 money at least, so they wont die if someone claims your lands.
-
-any questions? feel free to ask, not sure if i explained everything clearly.
-
-check if the move is actually valid before doing the move:
-// poolHex = first hex of the pool in action.
-const buildCheck = isPlacementValid(unitType, {q, r}, player, poolHex);
-if (buildCheck.valid) {
-	// valid move
-}
-	
-	*/
-	
-	let buildableSoldiers = {
-		"peasant": {count: 0},
-		"knight": {count: 0},
-		"horse": {count: 0},
-		"dragon": {count: 0},
-	};
-	// update soldier counts:
-	for(const type in buildableSoldiers){
-		const soldierInfo = buildableSoldiers[type];
-		soldierInfo.count = getSoldiersCountByType(type);
-	}
-	
-	for(const pool in pools){
-		// current pool balance:
-		let balance = (pool.totalSavings + pool.totalIncome) - pool.totalWages;
-		// leave at least 5 gold after building:
-		balance -= 5;
-		
-		let balanceAfter = balance;
-		
-		if(balance >= 30){
-			// can buy peasant
-			//balanceAfter -= 
-		}
-	}
-	
-	if (bestMove) {
-		console.log("AI selected best build move:", bestMove);
-		return bestMove;
-	}
-
-	// fallback
-	return null;
-}
 
 
 
