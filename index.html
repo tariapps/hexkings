@@ -3411,6 +3411,8 @@ function initChartByPlayers(){
 	gameChart.data.labels = labels;
 	gameChart.data.datasets = datasets;
 	
+	console.warn("INIT gameChart.data", gameChart.data);
+	
 }
 
 
@@ -3456,15 +3458,37 @@ function addStatsChartDataAllPlayers(){
 		return;
 	}
 	
-	gameChart.data.labels.push(gameState.turn.turnNumber);
+	// init chart if not initted yet:
+	if(gameChart.data.labels.length === 0){
+		initChartByPlayers();
+	}
+	
+	//gameChart.data.labels.push(gameState.turn.turnNumber);
+	
+	
+	let datasetsData = [];
 	
 	for(const key in gameChart.data.datasets){
 		let dataset = gameChart.data.datasets[key];
-		dataset.data.push(countPlayerStats(dataset.metricKey, dataset.playerIndex));
+		let data = countPlayerStats(dataset.metricKey, dataset.playerIndex);
+		datasetsData.push({
+			playerIndex: dataset.playerIndex, 
+			metricKey: dataset.metricKey, 
+			data: data,
+		});
+		//dataset.data.push(data);
 	}
 	
+	console.warn("addStatsChartDataAllPlayers:", gameState.turn.turnNumber, datasetsData);
+	
+	broadcast({
+		type: ACTION.stats, 
+		turnNumber: gameState.turn.turnNumber,
+		datasetsData: datasetsData,
+	});
+	
 	// Redraw the chart
-	gameChart.update();
+	//gameChart.update();
 }
 
 
@@ -4685,6 +4709,8 @@ const ACTION = {
 	'player_changed': 125,		// ACTION.player_changed
 	'game_over': 126,			// ACTION.game_over
 	'player_kicked': 127,		// ACTION.player_kicked
+	'stats': 128,				// ACTION.stats
+	'day_changed': 129,			// ACTION.day_changed
 
 	// handleClientData: (host receives these)
 	'pong': 200, 				// ACTION.pong
@@ -17938,7 +17964,11 @@ function processEndOfDay(){
 	console.log("processEndOfDay done, save game:");
 	
 	
-	addStatsChartDataAllPlayers();
+	batchActions.push({
+		type: ACTION.day_changed,
+		turnNumber: gameState.turn.turnNumber,
+	});
+	//addStatsChartDataAllPlayers();
 	
 	
 	if(batchActions.length > 0){
@@ -18428,6 +18458,10 @@ function executeEndTurn(playerIndex) {
 		}
 	}
 	
+	if(gameState.settings.gameOver){
+		//addStatsChartDataAllPlayers();
+	}
+	
 
 	if(!gameState.settings.gameOver){
 		// --- 4. Grow Grass / Spawn Trees (random events) ---
@@ -18907,6 +18941,49 @@ function handleHostData(data) {
 			console.warn("received ping from host.");
 		}
 		break;
+		case ACTION.day_changed: {
+			console.warn("day_changed", data);
+			addStatsChartDataAllPlayers();
+		}
+		break;
+		case ACTION.stats: {
+			
+			console.warn("ACTION.stats", data);
+
+			if(!gameChart){3
+				console.error("gameChart is not initialized yet!");
+				return;
+			}
+			
+			if(gameChart.data.labels.length === 0){
+				initChartByPlayers();
+			}
+			
+			gameChart.data.labels.push(data.turnNumber);
+			
+			let datasetsData = data.datasetsData;
+			
+			for(const key in gameChart.data.datasets){
+				let dataset = gameChart.data.datasets[key];
+				
+				// find corresponding data from received data items and add it:
+				for(let i = 0; i < datasetsData.length; i++){
+					let ds = datasetsData[i];
+					if(ds.playerIndex === dataset.playerIndex && ds.metricKey === dataset.metricKey){
+						dataset.data.push(ds.data);
+						break;
+					}
+				}
+
+			}
+			
+			console.warn("gameChart.data", gameChart.data);
+
+			// Redraw the chart
+			gameChart.update();
+			
+		}
+		break;
 		case ACTION.check_balance: {
 			// called at the very last after action_move/action_build messages have been processed.
 			if(isHost()){
@@ -18955,6 +19032,7 @@ function handleHostData(data) {
 		case ACTION.game_start: {
 			REPLAY_ENABLED = 0;
 			
+			
 			GAME_START_TIME = msNowFloor();
 			
 			closeGameSettings();
@@ -18987,6 +19065,7 @@ function handleHostData(data) {
 			startZoom();
 			
 			addCurrentTurnChatMessage();
+			
 		}
 		break;
 		case ACTION.replay_start: {
@@ -19000,6 +19079,7 @@ function handleHostData(data) {
 			updateGameUI();
 
 			centerFirstUnit();
+			
 			
 			if(isHost()){
 				replayHistory(NETWORK_HISTORY);
@@ -19574,6 +19654,8 @@ function handleHostData(data) {
 			let myIndex = myPlayer.playerIndex;
 			gameState.settings.gameOver = true;
 			
+			addStatsChartDataAllPlayers();
+			
 			console.warn("ACTION.game_over");
 			
 			if(!REPLAY_ENABLED){
@@ -19848,6 +19930,7 @@ function handleHostData(data) {
 			case ACTION.player_killed:
 			case ACTION.player_changed:
 			case ACTION.game_over:
+			case ACTION.day_changed:
 			case ACTION.tile_edited:
 			//case ACTION.turn_changed: 
 			case ACTION.sound: {
@@ -22686,6 +22769,9 @@ async function replayHistory(history) {
 	// broadcast message for start of replay:
 	broadcast({ type: ACTION.system_message, message: "--- Replay has started ---" });
 
+
+	addStatsChartDataAllPlayers();
+
 	// Broadcast the first message immediately
 	broadcast(deCompressAction(history[0]));
 
@@ -22699,8 +22785,11 @@ async function replayHistory(history) {
 		
 		await new Promise(res => setTimeout(res, delay));
 
+		//addStatsChartDataAllPlayers();
 		broadcast(curr);
 	}
+	
+	//addStatsChartDataAllPlayers();
 	
 	// broadcast message for end of replay:
 	broadcast({ type: ACTION.system_message, message: "--- Replay has ended ---" });
@@ -23043,8 +23132,8 @@ function startGame() {
 	
 
 
-	initChartByPlayers();
 	addStatsChartDataAllPlayers();
+
 	
 	// Broadcast start
 	// At the very end of the function, AFTER broadcast(game_start):
