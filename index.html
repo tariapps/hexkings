@@ -15,7 +15,9 @@
 	<!--<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>-->
 	
 	<script src="peerjs.min.js"></script>
+	
 	<script src="chart.js"></script>
+	<script src="chartjs-plugin-zoom.min.js"></script>
 
 	<script src="config.js"></script> <!-- LOCAL=false on public, true on local pc -->
 
@@ -1055,6 +1057,51 @@ button.redbutton:hover {
 
 
 
+
+
+#gamestats-popup-ui-wrapper {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	width:100%;
+	---height:50%;
+}
+
+#gamestats-popup-ui-wrapper2 {
+	height:100%;
+	background-color: rgba(0, 0, 0, 0.9);
+	border-radius: 10px;
+	max-width:90% !important;
+}
+
+/* Popup container */
+#gamestats-popup-ui {
+	position: fixed;
+	inset: 0;
+	display: none;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	---background: rgba(0, 0, 0, 0.7);
+	z-index: 10000;
+	user-select: none;
+}
+
+/* Visible state */
+#gamestats-popup-ui.active {
+	display: flex;
+}
+
+#close-gamestats-popup-btn {
+	border-radius: 5px;
+	margin-bottom: 0;
+}
+
+
+
+
+
+
 #endgame-popup-ui-wrapper {
 	display: flex;
 	flex-direction: column;
@@ -1644,6 +1691,13 @@ input.disabled {
 
 <input type="hidden" id="dirty-flag">
 
+
+
+
+
+
+
+
 <div id="turn-popup-overlay" class="turn-popup-overlay">
 	<div class="turn-popup" id="turn-popup">
 		<div class="turn-popup-text" id="turn-popup-text">
@@ -1714,6 +1768,33 @@ input.disabled {
 			</label>
 
 			<button id="move-confirmation-popup-confirm-button">OK</button>
+		</div>
+	</div>
+</div>
+
+
+
+
+
+<!-- game stats popup -->
+<div id="gamestats-popup-ui">
+	<div id="gamestats-popup-ui-wrapper">
+		<div id="gamestats-popup-ui-wrapper2" class="ui-menu ui-panel settings-panel scrollable">
+
+			<div class="input-group">
+				<div style="flex: 4; padding: 10px 0 10px 0; font-size: 20px; font-weight:bold">
+					Statistics
+				</div>
+				
+				<div style="flex: 1;">
+					<button id="close-gamestats-popup-btn" class="gamebutton largefont">×</button>
+				</div>
+			</div>
+			
+			<div style="width:100%; height:400px">
+				<canvas id="gameStatsChart" style="max-height:500px"></canvas>
+			</div>
+
 		</div>
 	</div>
 </div>
@@ -1955,6 +2036,10 @@ input.disabled {
 			</div>
 			
 			<div class="tab tab-game active">
+				<div class="ingame-class hidden">
+					<button id="game-settings-stats-btn" class="gamebutton" style="width:40%">Open game stats</button>
+				</div>
+				
 				<div>
 					<div class="settings-title">
 						<span style="color:yellow">Undo is disabled if:</span> Unit dies on a mine, Enemy tile is claimed, Unit is unloaded from boat.<br>
@@ -3233,6 +3318,315 @@ lobbyPlayerNameInput.addEventListener("input", () => {
 
 
 
+const gameSettingsStatsBtn = document.getElementById("game-settings-stats-btn");
+const gameSettingsStatsCloseBtn = document.getElementById("close-gamestats-popup-btn");
+
+const gameStatsPopup = document.getElementById("gamestats-popup-ui");
+const gameStatsPopupUiWrapper2 = document.getElementById('gamestats-popup-ui-wrapper2');
+
+
+gameSettingsStatsBtn.addEventListener("click", () => {
+	closeGameSettings();
+	openStatsPopup();
+});
+
+gameSettingsStatsCloseBtn.addEventListener("click", () => {
+	closeStatsPopup();
+});
+
+function openStatsPopup(){
+	gameStatsPopup.style.display = "block";
+}
+function closeStatsPopup(){
+	gameStatsPopup.style.display = "none";
+}
+
+
+
+const gameStatsChartCtx = document.getElementById('gameStatsChart');
+
+gameStatsChartCtx.addEventListener("click", () => {
+	resetStatsChart();
+});
+
+
+
+const metricStyles = {
+	tiles: {
+		borderWidth: 2,
+		borderDash: [], // solid
+	},
+	soldiers: {
+		borderWidth: 1,
+		borderDash: [10,5], // dashed: 10px dash, 5px gap
+	},
+	castles: {
+		borderWidth: 3,
+		borderDash: [2,4], // dotted: 2px dash, 4px gap
+	},
+};
+
+let gameChart = null;
+
+
+
+// called once when game starts.
+function initChartByPlayers(){
+	if(!gameChart){
+		console.error("gameChart is not initialized yet!");
+		return;
+	}
+	
+	const playingPlayers = gameState.players.filter(p => !p.isSpectator);
+	
+	let labels = [];
+	let datasets = [];
+
+	for(const key in playingPlayers){
+		let player = playingPlayers[key];
+		let playerName = player.name;
+		let playerColor = lightenHexColor(player.color, 0.1);
+		
+		for(const metricKey in metricStyles){
+			let metrics = metricStyles[metricKey];
+			
+			let dataset = {
+				metricKey: metricKey,
+				label: ucfirst(metricKey),
+				player: playerName,
+				playerIndex: player.playerIndex,
+				data: [],
+				borderColor: playerColor,
+				originalColor: player.color,
+				fill: false,
+				pointRadius: 0,
+				borderWidth: metrics.borderWidth,
+				borderDash: metrics.borderDash,
+				pointHitRadius: 20, // increase clickable area
+			};
+			datasets.push(dataset);
+		}
+	}
+	
+	gameChart.data.labels = labels;
+	gameChart.data.datasets = datasets;
+	
+}
+
+
+function countPlayerStats(metricKey, playerIndex){
+	let count = 0;
+	switch(metricKey){
+		case 'tiles': {
+			for(let i = 0; i < gameState.map.tilesData.length; i++){
+				let tile = gameState.map.tilesData[i];
+				if(tile.ownerIndex === playerIndex){
+					count++;
+				}
+			}
+		}
+		break;
+		case 'soldiers': {
+			for(let i = 0; i < gameState.units.length; i++){
+				let unit = gameState.units[i];
+				if(unit.ownerIndex === playerIndex && unit.internalType === "soldier"){
+					count++;
+				}
+			}
+		}
+		break;
+		case 'castles': {
+			for(let i = 0; i < gameState.units.length; i++){
+				let unit = gameState.units[i];
+				if(unit.ownerIndex === playerIndex && unit.internalType === "castle"){
+					count++;
+				}
+			}
+		}
+		break;
+	}
+	return count;
+}
+
+
+function addStatsChartDataAllPlayers(){
+	
+	if(!gameChart){
+		console.error("gameChart is not initialized yet!");
+		return;
+	}
+	
+	gameChart.data.labels.push(gameState.turn.turnNumber);
+	
+	for(const key in gameChart.data.datasets){
+		let dataset = gameChart.data.datasets[key];
+		dataset.data.push(countPlayerStats(dataset.metricKey, dataset.playerIndex));
+	}
+	
+	// Redraw the chart
+	gameChart.update();
+}
+
+
+
+function addStatsChartData(dayNumber, newDataArray) {
+	// Add label to the chart
+	gameChart.data.labels.push(dayNumber);
+
+	// Add corresponding value to each dataset
+	gameChart.data.datasets.forEach((dataset, i) => {
+		dataset.data.push(newDataArray[i]); // make sure newDataArray has same length as datasets
+	});
+
+	// Redraw the chart
+	gameChart.update();
+}
+
+
+function resetStatsChart(){
+	gameChart.options.scales.x.min = undefined; // not sure if really needed.
+	gameChart.options.scales.x.max = undefined;
+	
+	gameChart.resetZoom();
+	gameChart.update();
+}
+
+
+function initializeStatsChart(daysTotal = 0){
+
+	gameChart = new Chart(gameStatsChartCtx, {
+		type: 'line',
+		data: {
+			labels: [],
+			datasets: [],
+		},
+		options: {
+			responsive: true,
+			maintainAspectRatio: false,
+
+			scales: {
+				x: {
+					grid: {
+						display: true,
+						color: "rgba(255,255,255,0.1)", // grid line color
+						lineWidth: 1,
+						drawBorder: true,
+					}
+				},
+				y: {
+					grid: {
+						display: true,
+						color: "rgba(255,255,255,0.1)", // grid line color
+						lineWidth: 1,
+						drawBorder: true,
+					}
+				}
+			},
+
+			plugins: {
+				tooltip: {
+					displayColors: true, // show the color box (default true)
+					usePointStyle: true, // makes the box a solid circle by default
+					boxPadding: 6,
+					callbacks: {
+						title: function(context) {
+							return 'Day ' + context[0].label;
+						},
+						label: function(context) {
+							const datasetLabel = context.dataset.label; // e.g., "Random1"
+							let playerName = context.dataset.player;
+							const value = context.raw;                   // raw numeric value
+							return `${playerName} ${datasetLabel}: ${value}`;
+						},
+						labelColor: function(context) {
+							return {
+								borderColor: context.dataset.borderColor, // color of the box border
+								backgroundColor: context.dataset.borderColor // fill with the same color
+							};
+						},
+					}
+				},
+				zoom: {
+					pan: {
+						enabled: true,
+						mode: 'x', // horizontal panning
+						modifierKey: null, // drag directly with mouse
+						onPan: () => console.log('panning...'), // optional debug
+					},
+					zoom: {
+						wheel: {
+							enabled: true, // enable mouse wheel zoom
+							speed: 0.1,
+							modifierKey: null
+						},
+						pinch: {
+							enabled: true
+						}, // mobile pinch
+						mode: 'x'
+					}
+				},
+				legend: {
+					labels: {
+						generateLabels(chart) {
+
+							const players = {};
+
+							chart.data.datasets.forEach((ds, index) => {
+
+								const player = ds.player; // custom field
+
+								if (!players[player]) {
+									const visible = chart.isDatasetVisible(index);
+									let playerColorLight = lightenHexColor(ds.originalColor, 0.1);
+									
+									let borderColorLight = lightenHexColor(ds.originalColor, 0.4);
+									
+									players[player] = {
+										text: player,
+										fillStyle: visible ? playerColorLight : darkenHexColor(ds.originalColor, 0.3),
+										strokeStyle: visible ? borderColorLight : darkenHexColor(borderColorLight, 0.7), // border color
+										lineWidth: 2,
+										fontColor: visible ? "#ffffff" : "#555555", 
+										datasetIndices: []
+									};
+								}
+
+								players[player].datasetIndices.push(index);
+
+							});
+
+							return Object.values(players);
+						}
+					},
+
+					onClick(e, legendItem, legend) {
+
+						const chart = legend.chart;
+
+						legendItem.datasetIndices.forEach(i => {
+
+							const visible = chart.isDatasetVisible(i);
+							chart.setDatasetVisibility(i, !visible);
+
+						});
+
+						chart.update();
+					}
+				},
+			}
+		}
+	});
+}
+
+
+initializeStatsChart();
+
+
+
+
+
+
+
 const popupOverlay = document.getElementById('map-popup-overlay');
 const turnPopupOverlay = document.getElementById('turn-popup-overlay');
 
@@ -3290,6 +3684,8 @@ const hostPreviewTileMsg = document.getElementById("host-preview-tile-msg");
 const lobbyPreviewTileMsg = document.getElementById("lobby-preview-tile-msg");
 
 let currentColor = "#FFFFFF";
+
+
 
 pickerPopupSelect.addEventListener("click", () => {
 	closeColorPicker();
@@ -6983,6 +7379,10 @@ function randomPlayerName() {
 	const suffix = suffixes[Math.floor(randomFunc() * suffixes.length)];
 
 	return capitalize(prefix + middle + suffix);
+}
+
+function ucfirst(word) {
+	return word.charAt(0).toUpperCase() + word.slice(1);
 }
 
 function getRandomString(length) {
@@ -17538,6 +17938,9 @@ function processEndOfDay(){
 	console.log("processEndOfDay done, save game:");
 	
 	
+	addStatsChartDataAllPlayers();
+	
+	
 	if(batchActions.length > 0){
 		broadcast({ 
 			type: ACTION.multiple_actions, 
@@ -22640,7 +23043,8 @@ function startGame() {
 	
 
 
-	
+	initChartByPlayers();
+	addStatsChartDataAllPlayers();
 	
 	// Broadcast start
 	// At the very end of the function, AFTER broadcast(game_start):
@@ -22938,6 +23342,12 @@ function handleOutside(e) {
 		gameSettingsUi.style.display = "none";
 	}
 	
+	// Game stats
+	if (!gameStatsPopupUiWrapper2.contains(e.target)) {
+		gameStatsPopup.style.display = "none";
+	}
+	
+	
 	// endgame popup
 	//if (!endgamePopupUiWrapper2.contains(e.target)) {
 	//	endgamePopupUi.style.display = "none";
@@ -22968,6 +23378,7 @@ document.addEventListener('mousedown', (e) => {
 	mouseDownInsidePopup =
 		pickerWrapper.contains(e.target) ||
 		gameSettingsUiWrapper2.contains(e.target) ||
+		gameStatsPopupUiWrapper2.contains(e.target) ||
 		//endgamePopupUiWrapper2.contains(e.target) || // dont allow closing endgame popup by clicking outside.
 		//moveConfirmationWrapper2.contains(e.target) || // not used, popup must be closen by ok button.
 		buildPopup.contains(e.target) ||
