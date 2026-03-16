@@ -5739,11 +5739,11 @@ imageAssets = {
 	'select':   {path:'images/orig-scaled/128x128/select.png', scale:1, offsetX: 0},
 	
 
-	'castle1':  {path:'images/'+pathPrefix+'/castle1.png', scale: unitScales[0], offsetX: unitOffsets[0].x, offsetY: unitOffsets[0].y},
-	'castle2':  {path:'images/'+pathPrefix+'/castle2.png', scale: unitScales[1], offsetX: unitOffsets[1].x, offsetY: unitOffsets[1].y},
-	'castle3':  {path:'images/'+pathPrefix+'/castle3.png', scale: unitScales[2], offsetX: unitOffsets[2].x, offsetY: unitOffsets[2].y},
+	'castle1':  {path:'images/'+pathPrefix+'/castle1-s.png', scale: unitScales[0], offsetX: unitOffsets[0].x, offsetY: unitOffsets[0].y},
+	'castle2':  {path:'images/'+pathPrefix+'/castle2-s.png', scale: unitScales[1], offsetX: unitOffsets[1].x, offsetY: unitOffsets[1].y},
+	'castle3':  {path:'images/'+pathPrefix+'/castle3-s.png', scale: unitScales[2], offsetX: unitOffsets[2].x, offsetY: unitOffsets[2].y},
 	
-	'shipyard':  {path:'images/'+pathPrefix+'/shipyard.png', scale: unitScales[0], offsetX: unitOffsets[0].x, offsetY: unitOffsets[0].y},
+	'shipyard':  {path:'images/'+pathPrefix+'/shipyard-s.png', scale: unitScales[0], offsetX: unitOffsets[0].x, offsetY: unitOffsets[0].y},
 	
 	
 	
@@ -11070,7 +11070,16 @@ function drawLastActionMoves(){
 				// if has previous position:
 				if(unit.pq !== undefined){
 					// if prev pos != new pos:
+					let allowDraw = true;
+					let hexColor;
+
 					if(unit.pq !== unit.q || unit.pr !== unit.r){
+						hexColor = 'rgba(255,255,255, 1)';
+					}else{
+						hexColor = 'rgba(255,255,0, 1)';
+					}
+					
+					if(allowDraw){
 						let hex = {q: unit.q, r: unit.r};
 						
 						let scale = 1;
@@ -11099,7 +11108,7 @@ function drawLastActionMoves(){
 						
 						drawHexagonPathLines(0, 0, null, scale);
 						
-						ctx.strokeStyle = 'rgba(255,255,255, 1)';
+						ctx.strokeStyle = hexColor;
 						ctx.lineWidth = 5;
 						ctx.stroke();
 						
@@ -19586,6 +19595,8 @@ function handleHostData(data) {
 			let unit = data.unit;
 			console.log("unit_added: gameState.units.push(data.unit);");
 			console.log(unit);
+			unit.pq = unit.q;
+			unit.pr = unit.r;
 			addUnit(unit);
 			needsUIUpdate = true;
 			updateHighlights();
