@@ -1683,6 +1683,13 @@ input.disabled {
 }
 
 
+.playerflag {
+	height: 13px;
+	margin-right: 5px;
+	vertical-align: middle;
+}
+
+
 </style>
 </head>
 <body>
@@ -2664,6 +2671,7 @@ input.disabled {
 							<option value="1">Hut</option>
 							<option value="2">Castle</option>
 							<option value="3">Fortress</option>
+							<option value="4">Shipyard</option>
 						</select>
 						<button id="editor-boat" class="gamebutton" title="Requires player to be selected">Boat</button>
 						
@@ -5232,6 +5240,7 @@ let gameSettings = {
 	drawWater: true,
 	
 	autosave: true,
+	country: null, // {code:"FI", name:"Finland"} etc.
 	
 	mapThemeOverride: 0, // 0 = no override, 1 = summer, 2 = winter
 };
@@ -5730,9 +5739,9 @@ imageAssets = {
 	'mine-winter':     {path:'images/orig-scaled/128x128/winter/mine.png', scale:1.8, offsetX: 0, offsetY: -10},
 	'landmine-winter': {path:'images/'+pathPrefix+'/winter/landmine.png', scale:1.8, offsetX: 0, offsetY: -10},
 	
-	'castle1-winter':  {path:'images/'+pathPrefix+'/winter/castle1.png', scale: unitScales[0], offsetX: unitOffsets[0].x, offsetY: unitOffsets[0].y},
-	'castle2-winter':  {path:'images/'+pathPrefix+'/winter/castle2.png', scale: unitScales[1], offsetX: unitOffsets[1].x, offsetY: unitOffsets[1].y},
-	'castle3-winter':  {path:'images/'+pathPrefix+'/winter/castle3.png', scale: unitScales[2], offsetX: unitOffsets[2].x, offsetY: unitOffsets[2].y},
+	'castle1-winter':  {path:'images/'+pathPrefix+'/winter/castle1-s.png', scale: unitScales[0], offsetX: unitOffsets[0].x, offsetY: unitOffsets[0].y},
+	'castle2-winter':  {path:'images/'+pathPrefix+'/winter/castle2-s.png', scale: unitScales[1], offsetX: unitOffsets[1].x, offsetY: unitOffsets[1].y},
+	'castle3-winter':  {path:'images/'+pathPrefix+'/winter/castle3-s.png', scale: unitScales[2], offsetX: unitOffsets[2].x, offsetY: unitOffsets[2].y},
 	
 	
 	'protect':  {path:'images/orig-scaled/128x128/protect.png', scale:1.6, offsetX: 0},
@@ -7781,7 +7790,7 @@ function pushLobbySystemChatMessage(message, color = '#FFF') {
 	const item = document.createElement('div');
 
 	const strong = document.createElement('strong');
-	strong.style.color = color;
+	strong.style.color = color ? color : "#FFF";
 	strong.textContent = message; // SAFE
 
 	item.appendChild(strong);
@@ -16487,14 +16496,23 @@ function drawText(x, y, text, color = "#FFFFFF"){
 }
 
 
+function hasTileMine(tile){
+	// also used getUnitType(tile.object) !== "mine" somewhere... for reasons unknown.
+	return (tile.object === 'mine1' || tile.object === 'landmine');
+}
+
+// rocks shouldnt and wont give income to tiles.
 function tileGivesIncome(tile){
-	if(tile.object && tile.object !== 'dead' && getUnitType(tile.object) !== "mine"){
-		// if object was set, and it is not dead or mine (so it is tree or grass)
+	if(tile.object && tile.object !== 'dead' && !hasTileMine(tile)){
+		// if object was set, and it is not dead or mine (so it is tree or grass or rock)
 		return false;
 	}else{
 		return true;
 	}
 }
+
+//console.warn(navigator);
+//onsole.warn(navigator.userAgent);
 
 
 // HOST-ONLY: clients doesnt know tiles savings.
@@ -19212,7 +19230,7 @@ function handleHostData(data) {
 					playSound("message");
 				}
 			}else{
-				addLobbySystemChatMessage(data.message);
+				addLobbySystemChatMessage(data.message, data.textColor);
 			}
 		}
 		break;
@@ -19359,6 +19377,8 @@ function handleHostData(data) {
 									unitType = "castle";
 								}else if(castleType === 3){
 									unitType = "fortress";
+								}else if(castleType === 4){
+									unitType = "shipyard";
 								}
 								setEditorTile(centerHex, tileInfo, editorVars);
 								spawnCastle(centerHex.q, centerHex.r, tileOwner, unitType);
@@ -20061,6 +20081,7 @@ function handleClientData(peerId, data) {
 				player.textColor = "#FFFFFF";
 				player.isSpectator = true; // Always spectator if game in progress
 			}
+			player.country = gameSettings.country;
 			// playerIndex updated at game_start message.
 			
 			console.warn("player joined: "+player.id);
@@ -20282,6 +20303,7 @@ function setupConnection(conn) {
 	conn.on('close', () => {
 		console.log(`Connection closed with ${conn.peer}`);
 		connections.delete(conn.peer);
+
 		if (isHost()) {
 			const player = getPlayer(conn.peer);
 			if (player) {
@@ -20292,6 +20314,7 @@ function setupConnection(conn) {
 				if (gameStarted()) {
 					
 					addSystemChatMessage(`>>> ${player.name}${specflag} has left.`, "#FFFF00");
+
 					if(!player.isSpectator){
 						if(!gameState.settings.gameOver){
 							playSound("quit"); // dont play annoying quit sound if game already was over.
@@ -20335,14 +20358,24 @@ function setupConnection(conn) {
 						p.id === conn.peer ? { ...p, isSpectator: true, quitted: true } : p
 					);
 					broadcastLobbyState();
+					
+					broadcast({
+						type: ACTION.lobby_chat,
+						message: `${player.name}${specflag} has left.`,
+						textColor: "#FFFF00",
+					});
+					//addSystemChatMessage(`>>> ${player.name}${specflag} has left.`, "#FFFF00");
 				}
 			}
 		} else {
+			// for clients:
+			
 			if(!localPlayer.hasBeenKicked){
 				// We were disconnected from host
 				//alert('Disconnected from host. Returning to start page.');
 				console.warn('Disconnected from host. Returning to start page.');
 				addSystemChatMessage(">>> Host has left the game. Game is now unplayable.", "#FFFF00");
+				addLobbySystemChatMessage("Host has left the game. Game is now unplayable.", "#FFFF00");
 				if(!gameState.settings.gameOver){
 					playSound("quit"); // dont play annoying quit sound if game already was over.
 				}else{
@@ -20574,6 +20607,8 @@ function hostGame() {
 			let colors = getNextFreeColors();
 			localPlayer.color = colors.color;
 			localPlayer.textColor = colors.textColor;
+			localPlayer.country = gameSettings.country;
+			
 			hostPeerId = myPeerId;
 			
 			// Use the desired ID, not the one from the 'open' event (which should be the same)
@@ -20781,6 +20816,38 @@ function updateHostLobbyUI() {
 	hostPlayerList.innerHTML = '';
 	const usedColors = [];
 	gameState.players.forEach(p => {
+		if (!p.quitted) {
+			const item = document.createElement('div');
+			item.className = 'player-list-item';
+			item.dataset.peer = p.id;
+
+			if (p.id !== localPlayer.id) {
+				item.classList.add("ai-player-item");
+			}
+
+			if(p.country !== undefined && p.country !== null){
+				let flag = `https://flagcdn.com/w40/${p.country.code.toLowerCase()}.png`;
+				const flagElem = document.createElement('img');
+				flagElem.src = flag;
+				flagElem.title = p.country.name;
+				flagElem.classList.add("playerflag");
+
+				item.appendChild(flagElem);
+			}
+
+			let specTag = p.isSpectator ? ' (spec)' : '';
+			item.style.color = p.isSpectator ? SPECTATOR_COLOR : p.textColor;
+
+			let nameText = document.createTextNode(`${p.name}${specTag}`);
+			item.appendChild(nameText);
+
+			hostPlayerList.appendChild(item);
+
+			if (p.color) usedColors.push(p.color);
+		}
+	});
+	/*
+	gameState.players.forEach(p => {
 		if(!p.quitted){
 			const item = document.createElement('div');
 			item.className = 'player-list-item';
@@ -20789,6 +20856,10 @@ function updateHostLobbyUI() {
 			if(p.id	!== localPlayer.id){
 				item.classList.add("ai-player-item");
 			}
+			let flag = `https://flagcdn.com/w40/${p.country}.png`;
+			const flagElem = document.createElement('img');
+			flagElem.src = flag;
+			item.appendChild(flagElem);
 			//}
 			let specTag = p.isSpectator ? ' (spec)' : '';
 			item.style.color = p.isSpectator ? SPECTATOR_COLOR : p.textColor;
@@ -20797,6 +20868,7 @@ function updateHostLobbyUI() {
 			if (p.color) usedColors.push(p.color);
 		}
 	});
+*/
 
 
 	// update startplayer list:
@@ -20901,13 +20973,27 @@ function updateLobbyUI() {
 			item.className = 'player-list-item';
 			let specTag = p.isSpectator ? ' (spec)' : '';
 			item.style.color = p.isSpectator ? SPECTATOR_COLOR : p.textColor;
-			item.textContent = `${p.name}${specTag}`;
+			//item.textContent = `${p.name}${specTag}`;
+			
+			if(p.country !== undefined && p.country !== null){
+				let flag = `https://flagcdn.com/w40/${p.country.code.toLowerCase()}.png`;
+				const flagElem = document.createElement('img');
+				flagElem.src = flag;
+				flagElem.title = p.country.name;
+				flagElem.classList.add("playerflag");
+
+				item.appendChild(flagElem);
+			}
+			
+			let nameText = document.createTextNode(`${p.name}${specTag}`);
+			item.appendChild(nameText);
+			
 			lobbyPlayerList.appendChild(item);
 			if (p.color) usedColors.push(p.color);
 		}
 	});
 	
-	
+
 	
 	// update startplayer list:
 	lobbyStartPlayerList.innerHTML = '';
@@ -24410,14 +24496,24 @@ window.addEventListener('DOMContentLoaded', async () => {
 	
 	initPeerJS();
 	
-	
+	/*
+	// for getting country code and name for a client. not used anymore since its not free to use.
+	fetch("https://ipapi.co/json/")
+		.then(res => res.json())
+		.then(data => {
+			gameSettings.country = {code:data.country, name:data.country_name};
+			//console.warn("your country = "+data.country); // e.g. "FI"
+		});
+	*/
 
 	console.log("DOMContentLoaded finished");
 });
 
 
-
-
+function getCountries(){
+	const countries = {"ad":"Andorra","ae":"United Arab Emirates","af":"Afghanistan","ag":"Antigua and Barbuda","ai":"Anguilla","al":"Albania","am":"Armenia","ao":"Angola","aq":"Antarctica","ar":"Argentina","as":"American Samoa","at":"Austria","au":"Australia","aw":"Aruba","ax":"Åland Islands","az":"Azerbaijan","ba":"Bosnia and Herzegovina","bb":"Barbados","bd":"Bangladesh","be":"Belgium","bf":"Burkina Faso","bg":"Bulgaria","bh":"Bahrain","bi":"Burundi","bj":"Benin","bl":"Saint Barthélemy","bm":"Bermuda","bn":"Brunei","bo":"Bolivia","bq":"Caribbean Netherlands","br":"Brazil","bs":"Bahamas","bt":"Bhutan","bv":"Bouvet Island","bw":"Botswana","by":"Belarus","bz":"Belize","ca":"Canada","cc":"Cocos (Keeling) Islands","cd":"DR Congo","cf":"Central African Republic","cg":"Republic of the Congo","ch":"Switzerland","ci":"Côte d'Ivoire (Ivory Coast)","ck":"Cook Islands","cl":"Chile","cm":"Cameroon","cn":"China","co":"Colombia","cr":"Costa Rica","cu":"Cuba","cv":"Cape Verde","cw":"Curaçao","cx":"Christmas Island","cy":"Cyprus","cz":"Czechia","de":"Germany","dj":"Djibouti","dk":"Denmark","dm":"Dominica","do":"Dominican Republic","dz":"Algeria","ec":"Ecuador","ee":"Estonia","eg":"Egypt","eh":"Western Sahara","er":"Eritrea","es":"Spain","et":"Ethiopia","eu":"European Union","fi":"Finland","fj":"Fiji","fk":"Falkland Islands","fm":"Micronesia","fo":"Faroe Islands","fr":"France","ga":"Gabon","gb":"United Kingdom","gb-eng":"England","gb-nir":"Northern Ireland","gb-sct":"Scotland","gb-wls":"Wales","gd":"Grenada","ge":"Georgia","gf":"French Guiana","gg":"Guernsey","gh":"Ghana","gi":"Gibraltar","gl":"Greenland","gm":"Gambia","gn":"Guinea","gp":"Guadeloupe","gq":"Equatorial Guinea","gr":"Greece","gs":"South Georgia","gt":"Guatemala","gu":"Guam","gw":"Guinea-Bissau","gy":"Guyana","hk":"Hong Kong","hm":"Heard Island and McDonald Islands","hn":"Honduras","hr":"Croatia","ht":"Haiti","hu":"Hungary","id":"Indonesia","ie":"Ireland","il":"Israel","im":"Isle of Man","in":"India","io":"British Indian Ocean Territory","iq":"Iraq","ir":"Iran","is":"Iceland","it":"Italy","je":"Jersey","jm":"Jamaica","jo":"Jordan","jp":"Japan","ke":"Kenya","kg":"Kyrgyzstan","kh":"Cambodia","ki":"Kiribati","km":"Comoros","kn":"Saint Kitts and Nevis","kp":"North Korea","kr":"South Korea","kw":"Kuwait","ky":"Cayman Islands","kz":"Kazakhstan","la":"Laos","lb":"Lebanon","lc":"Saint Lucia","li":"Liechtenstein","lk":"Sri Lanka","lr":"Liberia","ls":"Lesotho","lt":"Lithuania","lu":"Luxembourg","lv":"Latvia","ly":"Libya","ma":"Morocco","mc":"Monaco","md":"Moldova","me":"Montenegro","mf":"Saint Martin","mg":"Madagascar","mh":"Marshall Islands","mk":"North Macedonia","ml":"Mali","mm":"Myanmar","mn":"Mongolia","mo":"Macau","mp":"Northern Mariana Islands","mq":"Martinique","mr":"Mauritania","ms":"Montserrat","mt":"Malta","mu":"Mauritius","mv":"Maldives","mw":"Malawi","mx":"Mexico","my":"Malaysia","mz":"Mozambique","na":"Namibia","nc":"New Caledonia","ne":"Niger","nf":"Norfolk Island","ng":"Nigeria","ni":"Nicaragua","nl":"Netherlands","no":"Norway","np":"Nepal","nr":"Nauru","nu":"Niue","nz":"New Zealand","om":"Oman","pa":"Panama","pe":"Peru","pf":"French Polynesia","pg":"Papua New Guinea","ph":"Philippines","pk":"Pakistan","pl":"Poland","pm":"Saint Pierre and Miquelon","pn":"Pitcairn Islands","pr":"Puerto Rico","ps":"Palestine","pt":"Portugal","pw":"Palau","py":"Paraguay","qa":"Qatar","re":"Réunion","ro":"Romania","rs":"Serbia","ru":"Russia","rw":"Rwanda","sa":"Saudi Arabia","sb":"Solomon Islands","sc":"Seychelles","sd":"Sudan","se":"Sweden","sg":"Singapore","sh":"Saint Helena, Ascension and Tristan da Cunha","si":"Slovenia","sj":"Svalbard and Jan Mayen","sk":"Slovakia","sl":"Sierra Leone","sm":"San Marino","sn":"Senegal","so":"Somalia","sr":"Suriname","ss":"South Sudan","st":"São Tomé and Príncipe","sv":"El Salvador","sx":"Sint Maarten","sy":"Syria","sz":"Eswatini (Swaziland)","tc":"Turks and Caicos Islands","td":"Chad","tf":"French Southern and Antarctic Lands","tg":"Togo","th":"Thailand","tj":"Tajikistan","tk":"Tokelau","tl":"Timor-Leste","tm":"Turkmenistan","tn":"Tunisia","to":"Tonga","tr":"Turkey","tt":"Trinidad and Tobago","tv":"Tuvalu","tw":"Taiwan","tz":"Tanzania","ua":"Ukraine","ug":"Uganda","um":"United States Minor Outlying Islands","un":"United Nations","us":"United States","uy":"Uruguay","uz":"Uzbekistan","va":"Vatican City (Holy See)","vc":"Saint Vincent and the Grenadines","ve":"Venezuela","vg":"British Virgin Islands","vi":"United States Virgin Islands","vn":"Vietnam","vu":"Vanuatu","wf":"Wallis and Futuna","ws":"Samoa","xk":"Kosovo","ye":"Yemen","yt":"Mayotte","za":"South Africa","zm":"Zambia","zw":"Zimbabwe"};
+	return countries;
+}
 
 
 </script>
