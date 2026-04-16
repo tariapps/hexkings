@@ -10444,16 +10444,16 @@ function drawUnitSelection(){
 
 
 // host only cheat function to give money
-function givemoney(amount){
+function givemoney(amount = 100){
 	if(selectedPool && selectedPool.hexes.length > 0){
 		selectedPool.hexes[0].tile.savings += amount;
 		updatePlayerSavings(getMyPlayer().playerIndex);
-		updateSelectedPoolInfo();
+		updateSelectedPoolInfo(selectedPool.hexes[0]);
 		console.log("givemoney = "+amount);
 	}
 }
 
-function givemoneyall(amount){
+function givemoneyall(amount = 100){
 	for(let i = 0; i < gameState.map.tilesData.length; i++){
 		let tile = gameState.map.tilesData[i];
 		if(tile.ownerIndex !== -1){
@@ -10461,7 +10461,9 @@ function givemoneyall(amount){
 		}
 	}
 	updatePlayerSavings(getMyPlayer().playerIndex);
-	updateSelectedPoolInfo();
+	if(selectedPool && selectedPool.hexes.length > 0){
+		updateSelectedPoolInfo(selectedPool.hexes[0]);
+	}
 	console.log("givemoneyall = "+amount);
 }
 
@@ -11447,6 +11449,8 @@ function render() {
 	if (!gameStarted()) return;
 	
 	trackFPS();
+	
+	ctx.setTransform(1, 0, 0, 1, 0, 0); // not sure if really needed. works fine without.
 
 	// calculate current mip level:
 	zoomMipLevel = getZoomMipLevel(1); // use normal. smaller = earlier switch to smaller image
@@ -12794,18 +12798,29 @@ function isUnitNextToUnit(unit1, unit2){
 
 function isUnitNextToPool(targetUnit, poolUnit){
 	let pool = getPoolAt(poolUnit);
-	for(let h = 0; h < pool.length; h++){
-		let startHex = pool[h];
-		
-		let neigh = getHexNeighbors(startHex);
-		for(let i = 0; i < neigh.length; i++){
-			let hex = neigh[i];
-			if(hex.q === targetUnit.q && hex.r === targetUnit.r){
-				return true;
+	if(pool){
+		for(let h = 0; h < pool.length; h++){
+			let startHex = pool[h];
+			
+			let neigh = getHexNeighbors(startHex);
+			for(let i = 0; i < neigh.length; i++){
+				let hex = neigh[i];
+				if(hex.q === targetUnit.q && hex.r === targetUnit.r){
+					return true;
+				}
 			}
 		}
 	}
 	return false;
+}
+
+// just for testing.
+function fillArea(q1, r1, q2, r2){
+	for(let r = r1; r <= r2; r++){
+		for(let q = q1; q <= q2; q++){
+			setTileAt(q, r, { type: 'land', ownerIndex: -1, object: null, savings: 0 });
+		}
+	}
 }
 
 
@@ -14271,8 +14286,8 @@ function getUnitLevel(unitType){
 
 function getUnitCost(unitType){
 	let unitInfo = getUnitInfo(unitType);
-	console.warn("unitInfo", unitType);
-	console.warn(unitInfo);
+	//console.warn("unitInfo", unitType);
+	//console.warn(unitInfo);
 	if(unitInfo){
 		return unitInfo.cost;
 	}
@@ -14651,14 +14666,14 @@ function isNeighborWater(hex){
 // hex = where to build
 // fromHex = unit actually, but contains q,r coordinates.
 function isPlacementValid(unitType, hex, player, poolHex, log_enabled = true, fromHex = null) {
-	console.warn("isPlacementValid CALLED");
+	//console.warn("isPlacementValid CALLED");
 	if(!unitTypeExists(unitType)){
-		console.error("unit_not_exist", unitType);
+		//console.error("unit_not_exist", unitType);
 		return badMove("unit_not_exist"); // unit type doesnt exist!
 	}
 	
 	if(isTypeBoat(unitType)){
-		console.warn(unitType);
+		//console.warn(unitType);
 		if(!fromHex){
 			return badMove('unit not selected');
 		}
@@ -15467,7 +15482,11 @@ function executeAction(playerId, action) {
 					if(didClaim && allowHexClaim){
 						//setTileOwnerByIndex(tile, playerIndex);
 						//tile.savings = 0; // update to host data.
-						tileChangedUpdates.push({ type: ACTION.tile_changed, q: toQ, r: toR, ownerIndex: playerIndex });
+						let resetTileSavings = false;
+						if(didClaimEnemy){
+							resetTileSavings = true;
+						}
+						tileChangedUpdates.push({ type: ACTION.tile_changed, q: toQ, r: toR, ownerIndex: playerIndex , resetTileSavings:resetTileSavings});
 					}
 					
 					
@@ -15827,6 +15846,8 @@ function executeAction(playerId, action) {
 						let didClaimEnemy = false;
 						let allowHexClaim = true;
 						
+						let resetTileSavings = false;
+						
 						let playMoveUnit = false;
 						
 						// 'moveunit' sound type, castlebuild or just moveunit:
@@ -15839,6 +15860,7 @@ function executeAction(playerId, action) {
 							didClaim = true;
 							if(tile.ownerIndex !== -1){
 								didClaimEnemy = true;
+								resetTileSavings = true;
 							}
 							//setTileOwnerByIndex(tile, playerIndex);
 							//tile.savings = 0; // update to host data.
@@ -15957,7 +15979,7 @@ function executeAction(playerId, action) {
 							actionForUndo.clearedObject = tile.object;
 							tile.object = null;
 
-							tileChangedUpdates.push({ type: ACTION.tile_changed, q: q, r: r, object: null, FText: moneyAdded });
+							tileChangedUpdates.push({ type: ACTION.tile_changed, q: q, r: r, object: null, FText: moneyAdded});
 						}
 						/*
 						actionForUndo = {
@@ -15974,7 +15996,7 @@ function executeAction(playerId, action) {
 						*/
 
 						if(didClaim && allowHexClaim){
-							tileChangedUpdates.push({ type: ACTION.tile_changed, q: q, r: r, ownerIndex: playerIndex });
+							tileChangedUpdates.push({ type: ACTION.tile_changed, q: q, r: r, ownerIndex: playerIndex , resetTileSavings: resetTileSavings});
 						}
 						
 						if (buildCheck.action === 'attack') {
@@ -16514,6 +16536,7 @@ function executeAction(playerId, action) {
 			
 			console.warn("executeAction action_end_turn");
 			
+			
 			executeEndTurn(playerIndex);
 			
 			//console.warn("clearing all undo counters");
@@ -16754,8 +16777,8 @@ function findEconomyPools(playerIndex, log_enabled = false) {
 		pools.push(pool);
 	}
 	if(log_enabled){
-		console.warn("findEconomyPools for playerIndex "+playerIndex);
-		console.warn(pools);
+		//console.warn("findEconomyPools for playerIndex "+playerIndex);
+		//console.warn(pools);
 	}
 	return pools;
 }
@@ -18242,20 +18265,129 @@ clampMoney(0.0000001);
 */
 
 
+function getPlayingPlayers(){
+	return gameState.players.filter(p => !p.isSpectator && !p.isDead);
+}
 
 
+function calculateBalanceAndKillSoldiersAllPlayers(curPlayerIndex){
+	let batchActions = [];
+	let playingPlayers = getPlayingPlayers();
+	let killedPlayers = [];
+	let curPlayerPools = null;
 
-function calculateBalanceAndKillSoldiers(pools, addedUnit = null){
+	for(let i = 0; i < playingPlayers.length; i++){
+		let player = playingPlayers[i];
+		let pools = findEconomyPools(player.playerIndex);
+		let addMoney = false;
+		if(player.playerIndex === curPlayerIndex){
+			addMoney = true;
+			//pools = curPlayerPools;
+		}else{
+			//pools = findEconomyPools(player.playerIndex);
+		}
+		let killdata = calculateBalanceAndKillSoldiers(pools, null, addMoney, player.playerIndex);
+		if(killdata.batchActions){
+			batchActions.push(...killdata.batchActions);
+		}
+		if(killdata.killedPlayers){
+			killedPlayers.push(...killdata.killedPlayers);
+		}
+		if(player.playerIndex === curPlayerIndex){
+			curPlayerPools = killdata.curPlayerPools;
+		}
+	}
+	return {
+		batchActions: batchActions, 
+		//curPlayerPools: curPlayerPools,
+		killedPlayers: killedPlayers,
+		curPlayerPools: curPlayerPools,
+	};
+}
+
+
+function calculateBalanceAndKillSoldiers(pools, addedUnit = null, addMoney = true, playerIndex = -1){
 	// check if soldiers will be killed.
+	
+	console.warn("calculateBalanceAndKillSoldiers");
+	console.warn(pools);
 	
 	// send actions in one array to speed up messages and avoiding clutter.
 	let batchActions = [];
+	let killedPlayers = [];
+	let curPlayerPools = [];
 	
 	let allSoldiersKilled = [];
 	let poolsBefore = deepClone(pools);
 	
 	
 	// add income and deduct wages:
+	//for (let pool of pools) {
+	for(let p = 0; p < pools.length; p++){
+		let pool = pools[p];
+		// kill units BEFORE adding money to their pools:
+		
+		// avoid -0.000001 negative values or 0.000001 positive values (EPSILON):
+		
+		if(addMoney){
+			console.warn("adding savings to player", playerIndex);
+			pool.totalSavings += pool.totalIncome;
+			pool.totalSavings -= pool.totalWages;
+			
+			pool.totalSavings = clampMoney(pool.totalSavings);
+			
+			if (pool.totalSavings < 0) {
+			//if (pool.totalSavings-pool.totalWages < 0) {
+				// Bankrupt!
+				pool.totalSavings = 0;
+				
+				// remember which pools savings should be distributed later:
+				killedPlayers.push({
+					playerIndex: playerIndex, 
+					pool: pool,
+					poolIndex: p, // probably not needed.
+				});
+				
+				// dont reset tile data here.
+				
+				// todo: update modified info to localplayer?
+				for (const soldier of pool.soldiers) {
+					allSoldiersKilled.push(soldier);
+				}
+			}
+		}else{
+			let tempCalc = clampMoney(pool.totalSavings+pool.totalIncome-pool.totalWages);
+			
+			if (tempCalc < 0) {
+				// Bankrupt!
+				pool.totalSavings = 0;
+				
+				killedPlayers.push({
+					playerIndex: playerIndex, 
+					pool: pool,
+					poolIndex: p, // probably not needed.
+				});
+				
+				// dont reset tile data here.
+				
+				
+				// todo: update modified info to localplayer?
+				for (const soldier of pool.soldiers) {
+					allSoldiersKilled.push(soldier);
+				}
+			}
+		}
+		
+
+	}
+	console.warn("allSoldiersKilled:");
+	console.warn(allSoldiersKilled);
+	
+	if(addMoney){
+		curPlayerPools = pools;
+	}
+	
+	/*
 	for (let pool of pools) {
 		// kill units BEFORE adding money to their pools:
 		
@@ -18276,7 +18408,7 @@ function calculateBalanceAndKillSoldiers(pools, addedUnit = null){
 			
 		}
 	}
-
+*/
 	
 	
 /*
@@ -18340,7 +18472,13 @@ function calculateBalanceAndKillSoldiers(pools, addedUnit = null){
 		//batchActions.push({ type: ACTION.sound, name: "diedByStarving", q:0, r:0, playerIndex: -1, action: ACTION.action_end_turn});
 	}
 	
-	return {batchActions: batchActions, poolsAfter: pools, poolsBefore: poolsBefore};
+	return {
+		batchActions: batchActions, 
+		poolsAfter: pools, 
+		poolsBefore: poolsBefore,
+		killedPlayers: killedPlayers,
+		curPlayerPools: curPlayerPools,
+	};
 }
 
 
@@ -18507,11 +18645,11 @@ function getLastRemainingPlayer(){
 // HOST-SIDE
 function executeEndTurn(playerIndex) {
 	// --- 1. Apply income and wages for current player ---
-	const player = getPlayerByIndex(playerIndex);
-	let pools = findEconomyPools(playerIndex);
+	//const player = getPlayerByIndex(playerIndex);
+	//let pools = findEconomyPools(playerIndex);
 	
-	console.log("executeEndTurn");
-	
+	console.warn("executeEndTurn", playerIndex);
+
 	/*
 	// add income and deduct wages:
 	for (let pool of pools) {
@@ -18526,11 +18664,17 @@ function executeEndTurn(playerIndex) {
 	*/
 	
 	
+	// add income and deduct wages and kill soldiers for starvation:
+	//let killdata = calculateBalanceAndKillSoldiers(pools);
+	//let batchActions = killdata.batchActions;
+	//pools = killdata.poolsAfter;
 	
-	// this should be executed at every move/build, not end of the turn:
-	let killdata = calculateBalanceAndKillSoldiers(pools);
+	let killdata = calculateBalanceAndKillSoldiersAllPlayers(playerIndex);
 	let batchActions = killdata.batchActions;
-	pools = killdata.poolsAfter;
+	let pools = killdata.curPlayerPools;
+	let killedPlayers = killdata.killedPlayers;
+	//let pools = findEconomyPools(playerIndex);
+	
 	
 	// send sound for died soldiers just once:
 	if(batchActions.length > 0){
@@ -18668,8 +18812,42 @@ function executeEndTurn(playerIndex) {
 		
 		//////////////////////////////////
 		// Distribute final savings
+		//distributePoolSavings(pools);
+		//updatePlayerSavings(playerIndex);
+		
+		// distribute current player pools (changes made here):
 		distributePoolSavings(pools);
-		updatePlayerSavings(playerIndex); // Update savings *after* calcs
+
+		// distribute changed pools:
+		for(let i = 0; i < killedPlayers.length; i++){
+			let killedPlayer = killedPlayers[i];
+			// ignore current player pools (distributed above):
+			if(killedPlayer.playerIndex !== playerIndex){
+				distributePoolSavings(killedPlayer.pool);
+			}
+		}
+		// update savings to everyone:
+		let playingPlayers = getPlayingPlayers();
+		for(let p = 0; p < playingPlayers.length; p++){
+			updatePlayerSavings(playingPlayers[p].playerIndex);
+		}
+		/*
+				killedPlayers.push({
+					playerIndex: playerIndex, 
+					pool: pool,
+					poolIndex: p, // probably not needed.
+				});
+				*/
+		
+		/*
+		let playingPlayers = getPlayingPlayers();
+		for(let i = 0; i < playingPlayers.length; i++){
+			let player = playingPlayers[i];
+			let pools = findEconomyPools(player.playerIndex);
+			distributePoolSavings(pools);
+			updatePlayerSavings(player.playerIndex); // Update savings *after* calcs
+		}
+		*/
 		
 		
 		//console.log("gameState.turn.currentPlayerIndex");
@@ -19711,6 +19889,7 @@ function handleHostData(data) {
 				
 				if(data.resetTileSavings !== undefined){
 					tile.savings = 0;
+					//console.warn("resetTileSavings", tile.savings);
 				}
 				
 				// spawn Floating Text:
