@@ -19455,6 +19455,8 @@ function handleHostData(data) {
 			// update localPlayer index (only valid after game starts, since players could be kicked before start):
 			localPlayer.playerIndex = getPlayerIndex(localPlayer.id);
 
+			// update boats/mines cost from settings:
+			applyUnitCostsFromSettings();
 			
 			// save initial gameState for replaying the games later.
 			INITIAL_STATE = deepClone(gameState);
@@ -23476,7 +23478,7 @@ function startGame() {
 		}
 		
 		// update boats/mines cost from settings:
-		applyUnitCostsFromSettings();
+		//applyUnitCostsFromSettings();
 
 		generateWaterEdgeTiles();
 		
@@ -23557,7 +23559,7 @@ function startGame() {
 		}
 		
 		// set boats/mines cost:
-		applyUnitCostsFromSettings();
+		//applyUnitCostsFromSettings();
 		
 
 		// list playing players for colors: (not sure what is this for)
