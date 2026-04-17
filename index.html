@@ -95,7 +95,7 @@ debugMode(DEBUGMODE);
 
 
 
-    
+	
 <style>
 
 :root {
@@ -250,11 +250,11 @@ select.active {
 }
 
 .tab {
-    display: none;
+	display: none;
 }
 
 .tab.active {
-    display: block;
+	display: block;
 }
 
 .inline {
@@ -610,15 +610,15 @@ label {
 }
 
 .info-editor > .button-row {
-    flex-direction: row;
-    display: flex;
-    gap: 5px;
+	flex-direction: row;
+	display: flex;
+	gap: 5px;
 }
 
 #ui-editor {
-    position: absolute;
-    right: 0;
-    top: 0;
+	position: absolute;
+	right: 0;
+	top: 0;
 }
 
 
@@ -790,19 +790,19 @@ label {
 
 .build-item .elem-left {
 	flex:1;
-    text-align:left;
+	text-align:left;
 }
 .build-item .elem-center {
 	flex:1.7;
-    text-align:left;
+	text-align:left;
 }
 .build-item .elem-count {
 	flex:0.5;
-    text-align:left;
+	text-align:left;
 }
 .build-item .elem-right {
 	flex:1.2;
-    text-align:right;
+	text-align:right;
 }
 
 
@@ -1212,6 +1212,25 @@ button.redbutton:hover {
 
 
 
+#end-turn-confirmation-popup.active {
+	display: flex;
+}
+
+#end-turn-confirmation-wrapper {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	width: 100%;
+}
+
+.button-row-end-turn {
+	display: flex;
+	gap: 10px;
+	margin-top: 15px;
+}
+
+
+
 #music-volume {
 	width: 100%;
 }
@@ -1225,8 +1244,8 @@ button.redbutton:hover {
 
 
 #close-game-settings-btn {
-    padding-bottom: 10px;
-    line-height: 30px;
+	padding-bottom: 10px;
+	line-height: 30px;
 	font-size:36px;
 }
 
@@ -1243,6 +1262,9 @@ button.redbutton:hover {
 	background-color: rgba(0, 0, 0, 0.5);
 }
 
+.trans-panel {
+	background: rgba(0, 0, 0, 0.6);
+}
 
 #top-float-ui {
 	display: none;
@@ -1644,7 +1666,7 @@ input.disabled {
 .picker {
 	position: relative;
 	width: 100%;
-    max-width: 300px;
+	max-width: 300px;
 	height: 150px;
 	background: linear-gradient(to right, red, yellow, lime, cyan, blue, magenta, red);
 	cursor: crosshair;
@@ -1746,7 +1768,7 @@ input.disabled {
 	
 }
 #player-flag-list {
-    width: 81px;
+	width: 81px;
 }
 
 
@@ -1823,6 +1845,17 @@ input.disabled {
 	</div>
 </div>
 
+<div id="end-turn-confirmation-popup" class="popup-overlay">
+	<div id="end-turn-confirmation-wrapper" class="popup-container">
+		<div class="settings-panel trans-panel">
+			<div class="popup-title">You have unmoved units, end turn?</div>
+			<div class="button-row-end-turn">
+				<button id="confirm-end-turn-yes" class="primary">Yes</button>
+				<button id="confirm-end-turn-no" class="danger">No</button>
+			</div>
+		</div>
+	</div>
+</div>
 
 <div id="move-confirmation-popup" hidden>
 	<div id="move-confirmation-wrapper">
@@ -2777,138 +2810,138 @@ input.disabled {
 
 // blooddrop blood drop blood dripping blooddripping
 class GameOverBloodEffect {
-    constructor() {
-        this.canvas = document.createElement('canvas');
-        this.ctx = this.canvas.getContext('2d');
-        
-        this.canvas.style.position = 'absolute';
-        this.canvas.style.top = '0';
-        this.canvas.style.left = '0';
-        this.canvas.style.width = '100vw';
-        this.canvas.style.height = '100vh';
-        this.canvas.style.pointerEvents = 'none'; 
-        this.canvas.style.zIndex = '9999'; 
-        
-        this.drips = [];
-        this.animationFrame = null;
-        this.startTime = null;
-        this.duration = 5000; 
-        
-        this.resize();
-        window.addEventListener('resize', () => this.resize());
-    }
+	constructor() {
+		this.canvas = document.createElement('canvas');
+		this.ctx = this.canvas.getContext('2d');
+		
+		this.canvas.style.position = 'absolute';
+		this.canvas.style.top = '0';
+		this.canvas.style.left = '0';
+		this.canvas.style.width = '100vw';
+		this.canvas.style.height = '100vh';
+		this.canvas.style.pointerEvents = 'none'; 
+		this.canvas.style.zIndex = '9999'; 
+		
+		this.drips = [];
+		this.animationFrame = null;
+		this.startTime = null;
+		this.duration = 5000; 
+		
+		this.resize();
+		window.addEventListener('resize', () => this.resize());
+	}
 
-    resize() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
-    }
+	resize() {
+		this.canvas.width = window.innerWidth;
+		this.canvas.height = window.innerHeight;
+	}
 
-    initDrips() {
-        this.drips = [];
-        const dripCount = Math.floor(this.canvas.width / 15); 
-        
-        for (let i = 0; i < dripCount; i++) {
-            // Start with a high initial burst of speed (pixels per second)
-            const initialSpeed = 600*0.2 + Math.random() * 800*0.2; 
-            
-            // Calculate deceleration to make it stop between 1.5 and 4.5 seconds
-            const stopTime = 1.5 + Math.random() * 3;
-            const deceleration = initialSpeed / stopTime;
+	initDrips() {
+		this.drips = [];
+		const dripCount = Math.floor(this.canvas.width / 15); 
+		
+		for (let i = 0; i < dripCount; i++) {
+			// Start with a high initial burst of speed (pixels per second)
+			const initialSpeed = 600*0.2 + Math.random() * 800*0.2; 
+			
+			// Calculate deceleration to make it stop between 1.5 and 4.5 seconds
+			const stopTime = 1.5 + Math.random() * 3;
+			const deceleration = initialSpeed / stopTime;
 
-            this.drips.push({
-                x: Math.random() * this.canvas.width,
-                y: -10, 
-                speed: initialSpeed, 
-                deceleration: deceleration,
-                topWidth: 1 + Math.random() * 2, 
-                currentThickness: 1, 
-                maxThickness: 5 + Math.random() * 15, 
-                // Growth rate adjusted for the new speed logic
-                growthRate: 0.1 + Math.random() * 0.2 
-            });
-        }
-    }
+			this.drips.push({
+				x: Math.random() * this.canvas.width,
+				y: -10, 
+				speed: initialSpeed, 
+				deceleration: deceleration,
+				topWidth: 1 + Math.random() * 2, 
+				currentThickness: 1, 
+				maxThickness: 5 + Math.random() * 15, 
+				// Growth rate adjusted for the new speed logic
+				growthRate: 0.1 + Math.random() * 0.2 
+			});
+		}
+	}
 
-    start(durationMs = 5000) {
-        if (!document.body.contains(this.canvas)) {
-            document.body.appendChild(this.canvas);
-        }
-        
-        this.duration = durationMs;
-        this.initDrips();
-        this.startTime = performance.now();
-        
-        this.loop(this.startTime);
-    }
+	start(durationMs = 5000) {
+		if (!document.body.contains(this.canvas)) {
+			document.body.appendChild(this.canvas);
+		}
+		
+		this.duration = durationMs;
+		this.initDrips();
+		this.startTime = performance.now();
+		
+		this.loop(this.startTime);
+	}
 
-    loop(currentTime) {
-        const elapsed = currentTime - this.startTime;
-        const deltaTime = 16; // Standardize delta at ~60fps
-        
-        this.update(deltaTime);
-        this.draw();
+	loop(currentTime) {
+		const elapsed = currentTime - this.startTime;
+		const deltaTime = 16; // Standardize delta at ~60fps
+		
+		this.update(deltaTime);
+		this.draw();
 
-        if (elapsed < this.duration) {
-            this.animationFrame = requestAnimationFrame((time) => this.loop(time));
-        } else {
-            cancelAnimationFrame(this.animationFrame);
-        }
-    }
+		if (elapsed < this.duration) {
+			this.animationFrame = requestAnimationFrame((time) => this.loop(time));
+		} else {
+			cancelAnimationFrame(this.animationFrame);
+		}
+	}
 
-    update(deltaTime) {
-        const timeScale = deltaTime / 1000;
-        
-        this.drips.forEach(drip => {
-            // 1. Apply deceleration to slow down the speed
-            if (drip.speed > 0) {
-                drip.speed -= drip.deceleration * timeScale;
-                if (drip.speed < 0) drip.speed = 0; // Prevent it from going upwards
-            }
+	update(deltaTime) {
+		const timeScale = deltaTime / 1000;
+		
+		this.drips.forEach(drip => {
+			// 1. Apply deceleration to slow down the speed
+			if (drip.speed > 0) {
+				drip.speed -= drip.deceleration * timeScale;
+				if (drip.speed < 0) drip.speed = 0; // Prevent it from going upwards
+			}
 
-            // 2. Move down based on the current (slowing) speed
-            drip.y += drip.speed * timeScale;
-            
-            // 3. Thicken as it falls, but slow down the thickening as the speed drops
-            if (drip.currentThickness < drip.maxThickness && drip.speed > 0) {
-                // Tie growth to the current velocity so it pools naturally as it stops
-                const velocityFactor = drip.speed / 500; 
-                drip.currentThickness += drip.growthRate * velocityFactor;
-                
-                // Hard cap at maxThickness
-                if (drip.currentThickness > drip.maxThickness) {
-                    drip.currentThickness = drip.maxThickness;
-                }
-            }
-        });
-    }
+			// 2. Move down based on the current (slowing) speed
+			drip.y += drip.speed * timeScale;
+			
+			// 3. Thicken as it falls, but slow down the thickening as the speed drops
+			if (drip.currentThickness < drip.maxThickness && drip.speed > 0) {
+				// Tie growth to the current velocity so it pools naturally as it stops
+				const velocityFactor = drip.speed / 500; 
+				drip.currentThickness += drip.growthRate * velocityFactor;
+				
+				// Hard cap at maxThickness
+				if (drip.currentThickness > drip.maxThickness) {
+					drip.currentThickness = drip.maxThickness;
+				}
+			}
+		});
+	}
 
-    draw() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+	draw() {
+		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-        const elapsed = performance.now() - this.startTime;
-        const fade = Math.min(elapsed / (this.duration / 2), 1); // Fades in faster now
-        this.ctx.fillStyle = `rgba(100, 0, 0, ${fade * 0.45})`;
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+		const elapsed = performance.now() - this.startTime;
+		const fade = Math.min(elapsed / (this.duration / 2), 1); // Fades in faster now
+		this.ctx.fillStyle = `rgba(100, 0, 0, ${fade * 0.45})`;
+		this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        this.ctx.fillStyle = '#8a0303'; 
-        
-        this.drips.forEach(drip => {
-            this.ctx.beginPath();
-            this.ctx.moveTo(drip.x - drip.topWidth, 0);
-            this.ctx.lineTo(drip.x + drip.topWidth, 0);
-            this.ctx.lineTo(drip.x + drip.currentThickness, drip.y);
-            this.ctx.arc(drip.x, drip.y, drip.currentThickness, 0, Math.PI);
-            this.ctx.lineTo(drip.x - drip.currentThickness, drip.y);
-            this.ctx.fill();
-        });
-    }
+		this.ctx.fillStyle = '#8a0303'; 
+		
+		this.drips.forEach(drip => {
+			this.ctx.beginPath();
+			this.ctx.moveTo(drip.x - drip.topWidth, 0);
+			this.ctx.lineTo(drip.x + drip.topWidth, 0);
+			this.ctx.lineTo(drip.x + drip.currentThickness, drip.y);
+			this.ctx.arc(drip.x, drip.y, drip.currentThickness, 0, Math.PI);
+			this.ctx.lineTo(drip.x - drip.currentThickness, drip.y);
+			this.ctx.fill();
+		});
+	}
 
-    clear() {
-        cancelAnimationFrame(this.animationFrame);
-        if (this.canvas.parentNode) {
-            this.canvas.parentNode.removeChild(this.canvas);
-        }
-    }
+	clear() {
+		cancelAnimationFrame(this.animationFrame);
+		if (this.canvas.parentNode) {
+			this.canvas.parentNode.removeChild(this.canvas);
+		}
+	}
 }
 
 
@@ -2916,191 +2949,191 @@ class GameOverBloodEffect {
 // FireworksOverlay Class
 // Creates a screen-space overlay for particle effects.
 class FireworksOverlay {
-    constructor() {
-        this.canvas = document.createElement('canvas');
-        this.ctx = this.canvas.getContext('2d');
-        this.resize();
-        
-        // CSS to ensure it overlays the game but doesn't block clicks
-        this.canvas.style.position = 'fixed';
-        this.canvas.style.top = '0';
-        this.canvas.style.left = '0';
-        this.canvas.style.width = '100%';
-        this.canvas.style.height = '100%';
-        this.canvas.style.pointerEvents = 'none'; // Lets clicks pass through to game
-        this.canvas.style.zIndex = '9999'; // Ensure it's on top
-        
-        document.body.appendChild(this.canvas);
-        
-        this.particles = [];
-        this.fireworks = [];
-        this.isRunning = false;
-        
-        // Bind resize to handle window changes
-        window.addEventListener('resize', () => this.resize());
-    }
+	constructor() {
+		this.canvas = document.createElement('canvas');
+		this.ctx = this.canvas.getContext('2d');
+		this.resize();
+		
+		// CSS to ensure it overlays the game but doesn't block clicks
+		this.canvas.style.position = 'fixed';
+		this.canvas.style.top = '0';
+		this.canvas.style.left = '0';
+		this.canvas.style.width = '100%';
+		this.canvas.style.height = '100%';
+		this.canvas.style.pointerEvents = 'none'; // Lets clicks pass through to game
+		this.canvas.style.zIndex = '9999'; // Ensure it's on top
+		
+		document.body.appendChild(this.canvas);
+		
+		this.particles = [];
+		this.fireworks = [];
+		this.isRunning = false;
+		
+		// Bind resize to handle window changes
+		window.addEventListener('resize', () => this.resize());
+	}
 
-    resize() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
-    }
+	resize() {
+		this.canvas.width = window.innerWidth;
+		this.canvas.height = window.innerHeight;
+	}
 
-    // Generate a random number within a range
-    random(min, max) {
-        return Math.random() * (max - min) + min;
-    }
+	// Generate a random number within a range
+	random(min, max) {
+		return Math.random() * (max - min) + min;
+	}
 
-    // Create a new firework launching from bottom
-    launchFirework() {
-        const x = this.random(this.canvas.width * 0.1, this.canvas.width * 0.9);
-        const targetY = this.random(this.canvas.height * 0.1, this.canvas.height * 0.4);
-        
-        // Hue determines color (0-360)
-        const hue = this.random(0, 360);
-        
-        this.fireworks.push({
-            x: x,
-            y: this.canvas.height,
-            sx: x, // start x
-            sy: this.canvas.height, // start y
-            tx: x, // target x (straight up for simplicity, can be angled)
-            ty: targetY,
-            distanceToTarget: this.canvas.height - targetY,
-            distanceTraveled: 0,
-            coordinates: [],
-            angle: -Math.PI / 2,
-            speed: 2,
-            acceleration: 1.05,
-            hue: hue,
-            brightness: this.random(50, 70)
-        });
-    }
+	// Create a new firework launching from bottom
+	launchFirework() {
+		const x = this.random(this.canvas.width * 0.1, this.canvas.width * 0.9);
+		const targetY = this.random(this.canvas.height * 0.1, this.canvas.height * 0.4);
+		
+		// Hue determines color (0-360)
+		const hue = this.random(0, 360);
+		
+		this.fireworks.push({
+			x: x,
+			y: this.canvas.height,
+			sx: x, // start x
+			sy: this.canvas.height, // start y
+			tx: x, // target x (straight up for simplicity, can be angled)
+			ty: targetY,
+			distanceToTarget: this.canvas.height - targetY,
+			distanceTraveled: 0,
+			coordinates: [],
+			angle: -Math.PI / 2,
+			speed: 2,
+			acceleration: 1.05,
+			hue: hue,
+			brightness: this.random(50, 70)
+		});
+	}
 
-    createParticles(x, y, hue) {
-        // Create an explosion of particles
-        const particleCount = 100; // Increase for denser explosions
-        for (let i = 0; i < particleCount; i++) {
-            const angle = this.random(0, Math.PI * 2);
-            const speed = this.random(10, 20);
-            const friction = 0.95;
-            const gravity = 1;
+	createParticles(x, y, hue) {
+		// Create an explosion of particles
+		const particleCount = 100; // Increase for denser explosions
+		for (let i = 0; i < particleCount; i++) {
+			const angle = this.random(0, Math.PI * 2);
+			const speed = this.random(10, 20);
+			const friction = 0.95;
+			const gravity = 1;
 
-            this.particles.push({
-                x: x,
-                y: y,
-                coordinates: [], // Store past positions for trails
-                angle: angle,
-                speed: speed,
-                friction: friction,
-                gravity: gravity,
-                hue: hue + this.random(-20, 20), // Slight color variation
-                brightness: this.random(50, 80),
-                alpha: 1,
-                decay: this.random(0.005, 0.01) // How fast they fade
-            });
-        }
-    }
+			this.particles.push({
+				x: x,
+				y: y,
+				coordinates: [], // Store past positions for trails
+				angle: angle,
+				speed: speed,
+				friction: friction,
+				gravity: gravity,
+				hue: hue + this.random(-20, 20), // Slight color variation
+				brightness: this.random(50, 80),
+				alpha: 1,
+				decay: this.random(0.005, 0.01) // How fast they fade
+			});
+		}
+	}
 
-    update() {
-        if (!this.isRunning) return;
+	update() {
+		if (!this.isRunning) return;
 
-        requestAnimationFrame(() => this.update());
+		requestAnimationFrame(() => this.update());
 
-        // Create trails effect
-        // Instead of clearRect, we draw a semi-transparent black rect
-        // This makes moving particles leave a trail behind them
-        this.ctx.globalCompositeOperation = 'destination-out';
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        
-        // Reset composite for drawing
-        this.ctx.globalCompositeOperation = 'lighter';
+		// Create trails effect
+		// Instead of clearRect, we draw a semi-transparent black rect
+		// This makes moving particles leave a trail behind them
+		this.ctx.globalCompositeOperation = 'destination-out';
+		this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+		this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+		
+		// Reset composite for drawing
+		this.ctx.globalCompositeOperation = 'lighter';
 
-        // 1. Logic to launch new fireworks randomly
-        if (this.random(0, 100) < 5) { // 5% chance per frame
-            this.launchFirework();
-        }
+		// 1. Logic to launch new fireworks randomly
+		if (this.random(0, 100) < 5) { // 5% chance per frame
+			this.launchFirework();
+		}
 
-        // 2. Update and Draw Fireworks (The rockets going up)
-        let i = this.fireworks.length;
-        while(i--) {
-            const f = this.fireworks[i];
-            
-            this.ctx.beginPath();
-            // Move to last coordinate or current position
-            const prevX = f.coordinates.length > 0 ? f.coordinates[f.coordinates.length - 1][0] : f.x;
-            const prevY = f.coordinates.length > 0 ? f.coordinates[f.coordinates.length - 1][1] : f.y;
-            
-            this.ctx.moveTo(prevX, prevY);
-            this.ctx.lineTo(f.x, f.y);
+		// 2. Update and Draw Fireworks (The rockets going up)
+		let i = this.fireworks.length;
+		while(i--) {
+			const f = this.fireworks[i];
+			
+			this.ctx.beginPath();
+			// Move to last coordinate or current position
+			const prevX = f.coordinates.length > 0 ? f.coordinates[f.coordinates.length - 1][0] : f.x;
+			const prevY = f.coordinates.length > 0 ? f.coordinates[f.coordinates.length - 1][1] : f.y;
+			
+			this.ctx.moveTo(prevX, prevY);
+			this.ctx.lineTo(f.x, f.y);
 			this.ctx.lineWidth = 5;
-            this.ctx.strokeStyle = `hsl(${f.hue}, 100%, ${f.brightness}%)`;
-            this.ctx.stroke();
+			this.ctx.strokeStyle = `hsl(${f.hue}, 100%, ${f.brightness}%)`;
+			this.ctx.stroke();
 
-            // Track past coordinates
-            f.coordinates.push([f.x, f.y]);
-            if(f.coordinates.length > 3) f.coordinates.shift();
+			// Track past coordinates
+			f.coordinates.push([f.x, f.y]);
+			if(f.coordinates.length > 3) f.coordinates.shift();
 
-            // Physics
-            f.speed *= f.acceleration;
-            const vx = Math.cos(f.angle) * f.speed;
-            const vy = Math.sin(f.angle) * f.speed;
-            f.distanceTraveled = Math.sqrt(Math.pow(f.sx - f.x, 2) + Math.pow(f.sy - f.y, 2));
+			// Physics
+			f.speed *= f.acceleration;
+			const vx = Math.cos(f.angle) * f.speed;
+			const vy = Math.sin(f.angle) * f.speed;
+			f.distanceTraveled = Math.sqrt(Math.pow(f.sx - f.x, 2) + Math.pow(f.sy - f.y, 2));
 
-            // If reached target, explode
-            if (f.distanceTraveled >= f.distanceToTarget) {
-                this.createParticles(f.x, f.y, f.hue);
-                this.fireworks.splice(i, 1);
-            } else {
-                f.x += vx;
-                f.y += vy;
-            }
-        }
+			// If reached target, explode
+			if (f.distanceTraveled >= f.distanceToTarget) {
+				this.createParticles(f.x, f.y, f.hue);
+				this.fireworks.splice(i, 1);
+			} else {
+				f.x += vx;
+				f.y += vy;
+			}
+		}
 
-        // 3. Update and Draw Particles (The explosion)
-        let j = this.particles.length;
-        while(j--) {
-            const p = this.particles[j];
-            
-            this.ctx.beginPath();
-            // Move to last coordinate
-            const prevX = p.coordinates.length > 0 ? p.coordinates[p.coordinates.length - 1][0] : p.x;
-            const prevY = p.coordinates.length > 0 ? p.coordinates[p.coordinates.length - 1][1] : p.y;
-            
-            this.ctx.moveTo(prevX, prevY);
-            this.ctx.lineTo(p.x, p.y);
-            this.ctx.strokeStyle = `hsla(${p.hue}, 100%, ${p.brightness}%, ${p.alpha})`;
-            this.ctx.stroke();
+		// 3. Update and Draw Particles (The explosion)
+		let j = this.particles.length;
+		while(j--) {
+			const p = this.particles[j];
+			
+			this.ctx.beginPath();
+			// Move to last coordinate
+			const prevX = p.coordinates.length > 0 ? p.coordinates[p.coordinates.length - 1][0] : p.x;
+			const prevY = p.coordinates.length > 0 ? p.coordinates[p.coordinates.length - 1][1] : p.y;
+			
+			this.ctx.moveTo(prevX, prevY);
+			this.ctx.lineTo(p.x, p.y);
+			this.ctx.strokeStyle = `hsla(${p.hue}, 100%, ${p.brightness}%, ${p.alpha})`;
+			this.ctx.stroke();
 
-            p.coordinates.push([p.x, p.y]);
-            if(p.coordinates.length > 5) p.coordinates.shift();
+			p.coordinates.push([p.x, p.y]);
+			if(p.coordinates.length > 5) p.coordinates.shift();
 
-            // Physics
-            p.speed *= p.friction;
-            p.x += Math.cos(p.angle) * p.speed;
-            p.y += Math.sin(p.angle) * p.speed + p.gravity;
-            p.alpha -= p.decay;
+			// Physics
+			p.speed *= p.friction;
+			p.x += Math.cos(p.angle) * p.speed;
+			p.y += Math.sin(p.angle) * p.speed + p.gravity;
+			p.alpha -= p.decay;
 
-            // Remove dead particles
-            if (p.alpha <= p.decay) {
-                this.particles.splice(j, 1);
-            }
-        }
-    }
+			// Remove dead particles
+			if (p.alpha <= p.decay) {
+				this.particles.splice(j, 1);
+			}
+		}
+	}
 
-    start() {
-        if (this.isRunning) return;
-        this.isRunning = true;
-        this.update();
-    }
+	start() {
+		if (this.isRunning) return;
+		this.isRunning = true;
+		this.update();
+	}
 
-    stop() {
-        this.isRunning = false;
-        // Optional: Clear canvas immediately
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.fireworks = [];
-        this.particles = [];
-    }
+	stop() {
+		this.isRunning = false;
+		// Optional: Clear canvas immediately
+		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+		this.fireworks = [];
+		this.particles = [];
+	}
 }
 
 // Initialize
@@ -7443,9 +7476,17 @@ openEndgamePopupBtn.addEventListener("click", () => {
 
 
 
+const endTurnPopup = document.getElementById('end-turn-confirmation-popup');
+const endTurnPopupWrapper = document.getElementById('end-turn-confirmation-wrapper');
+const confirmYes = document.getElementById('confirm-end-turn-yes');
+const confirmNo = document.getElementById('confirm-end-turn-no');
 
-
-
+// Helper function to perform the actual turn ending
+function performEndTurn() {
+	clearShieldingUnitsTips();
+	sendToHost({ type: ACTION.action_end_turn });
+	endTurnPopup.classList.remove('active');
+}
 
 
 const moveConfirmationPopup = document.getElementById('move-confirmation-popup');
@@ -11518,7 +11559,7 @@ function render() {
 	// translate back so drawing is centered correctly
 	//ctx.translate(0, 0);
 
-  	ctx.textAlign = 'center';
+	ctx.textAlign = 'center';
 	ctx.textBaseline = 'middle';
 	ctx.font = `11px sans-serif`;
 	
@@ -17243,487 +17284,487 @@ function ai_find_best_move(player) {
 
 
 function ai_find_best_build_move(player) {
-    let bestMove = null;
-    let bestScore = -Infinity;
-    
-    const MIN_BALANCE_BUFFER = 9; 
-    const DRAGON_BALANCE_BUFFER = 30;
+	let bestMove = null;
+	let bestScore = -Infinity;
+	
+	const MIN_BALANCE_BUFFER = 9; 
+	const DRAGON_BALANCE_BUFFER = 30;
 
-    let pools = findEconomyPools(player.playerIndex);
+	let pools = findEconomyPools(player.playerIndex);
 
-    for (let pool of pools) {
-        let { totalSavings, totalIncome, totalWages, hexes, soldiers } = pool;
-        let currentProjectedBalance = (totalSavings + totalIncome) - totalWages;
-        const poolHexRef = { q: hexes[0].q, r: hexes[0].r };
+	for (let pool of pools) {
+		let { totalSavings, totalIncome, totalWages, hexes, soldiers } = pool;
+		let currentProjectedBalance = (totalSavings + totalIncome) - totalWages;
+		const poolHexRef = { q: hexes[0].q, r: hexes[0].r };
 
-        // 1. SURVIVAL
-        if (currentProjectedBalance < 0) {
-            let sellable = soldiers.filter(s => !s.hasMoved);
-            if (sellable.length > 0) {
-                sellable.sort((a, b) => (SOLDIER_DATA[b.type]?.wage || 0) - (SOLDIER_DATA[a.type]?.wage || 0));
-                return { type: ACTION.action_sell, unitId: sellable[0].id, poolHex: poolHexRef };
-            }
-        }
+		// 1. SURVIVAL
+		if (currentProjectedBalance < 0) {
+			let sellable = soldiers.filter(s => !s.hasMoved);
+			if (sellable.length > 0) {
+				sellable.sort((a, b) => (SOLDIER_DATA[b.type]?.wage || 0) - (SOLDIER_DATA[a.type]?.wage || 0));
+				return { type: ACTION.action_sell, unitId: sellable[0].id, poolHex: poolHexRef };
+			}
+		}
 
-        // 2. CANDIDATES
-        let candidates = new Map();
-        for (let hex of hexes) {
-            candidates.set(`${hex.q},${hex.r}`, { q: hex.q, r: hex.r, isBorder: false });
-            for (let n of getHexNeighbors(hex.q, hex.r)) {
-                let key = `${n.q},${n.r}`;
-                if (!candidates.has(key) && isHexLand(n.q, n.r)) {
-                    candidates.set(key, { q: n.q, r: n.r, isBorder: true });
-                }
-            }
-        }
+		// 2. CANDIDATES
+		let candidates = new Map();
+		for (let hex of hexes) {
+			candidates.set(`${hex.q},${hex.r}`, { q: hex.q, r: hex.r, isBorder: false });
+			for (let n of getHexNeighbors(hex.q, hex.r)) {
+				let key = `${n.q},${n.r}`;
+				if (!candidates.has(key) && isHexLand(n.q, n.r)) {
+					candidates.set(key, { q: n.q, r: n.r, isBorder: true });
+				}
+			}
+		}
 
-        for (let [key, pos] of candidates) {
-            let targetTile = getTileAt(pos.q, pos.r);
-            let targetUnit = getUnitAt(pos.q, pos.r);
-            
-            // --- VALIDATION CHECKS ---
-            if (!targetTile || (targetUnit && targetUnit.ownerIndex === player.playerIndex)) continue;
-            
-            // CRITICAL: Avoid building on mines
-            if (targetTile.object === "mine1") continue;
+		for (let [key, pos] of candidates) {
+			let targetTile = getTileAt(pos.q, pos.r);
+			let targetUnit = getUnitAt(pos.q, pos.r);
+			
+			// --- VALIDATION CHECKS ---
+			if (!targetTile || (targetUnit && targetUnit.ownerIndex === player.playerIndex)) continue;
+			
+			// CRITICAL: Avoid building on mines
+			if (targetTile.object === "mine1") continue;
 
-            let enemyDefense = getEnemyDefenseLevel(pos.q, pos.r, targetTile, player.playerIndex);
+			let enemyDefense = getEnemyDefenseLevel(pos.q, pos.r, targetTile, player.playerIndex);
 
-            // --- EVALUATE CASTLES ---
-            for (let name in CASTLE_DATA) {
-                if (name === "shipyard") continue;
-                let data = CASTLE_DATA[name];
-                
-                if (!isPlacementValid(name, {q: pos.q, r: pos.r}, player, poolHexRef).valid) continue;
-                
-                let balanceAfter = (totalSavings - data.cost) + totalIncome - totalWages;
-                if (totalSavings >= data.cost && balanceAfter >= MIN_BALANCE_BUFFER) {
-                    
-                    let score = 0;
-                    // Defense Logic: Don't build a level 1 hut if an enemy Knight (lvl 2) is nearby
-                    if (enemyDefense >= data.level) {
-                        score = 0; 
-                    } else {
-                        if (name === "hut") score = pos.isBorder ? 100 : 30;
-                        if (name === "castle") score = (enemyDefense === 1) ? 160 : 70;
-                        if (name === "fortress") score = (enemyDefense === 2) ? 210 : 80;
-                    }
+			// --- EVALUATE CASTLES ---
+			for (let name in CASTLE_DATA) {
+				if (name === "shipyard") continue;
+				let data = CASTLE_DATA[name];
+				
+				if (!isPlacementValid(name, {q: pos.q, r: pos.r}, player, poolHexRef).valid) continue;
+				
+				let balanceAfter = (totalSavings - data.cost) + totalIncome - totalWages;
+				if (totalSavings >= data.cost && balanceAfter >= MIN_BALANCE_BUFFER) {
+					
+					let score = 0;
+					// Defense Logic: Don't build a level 1 hut if an enemy Knight (lvl 2) is nearby
+					if (enemyDefense >= data.level) {
+						score = 0; 
+					} else {
+						if (name === "hut") score = pos.isBorder ? 100 : 30;
+						if (name === "castle") score = (enemyDefense === 1) ? 160 : 70;
+						if (name === "fortress") score = (enemyDefense === 2) ? 210 : 80;
+					}
 
-                    // Avoid clumping
-                    if (hasNearbyCastle(pos, player.playerIndex)) score -= 120;
+					// Avoid clumping
+					if (hasNearbyCastle(pos, player.playerIndex)) score -= 120;
 
-                    if (score > bestScore && score > 0) {
-                        bestScore = score;
-                        bestMove = { type: ACTION.action_build, unitType: name, q: pos.q, r: pos.r, poolHex: poolHexRef };
-                    }
-                }
-            }
+					if (score > bestScore && score > 0) {
+						bestScore = score;
+						bestMove = { type: ACTION.action_build, unitType: name, q: pos.q, r: pos.r, poolHex: poolHexRef };
+					}
+				}
+			}
 
-            // --- EVALUATE SOLDIERS ---
-            for (let name in SOLDIER_DATA) {
-                let data = SOLDIER_DATA[name];
-                
-                if (!isPlacementValid(name, {q: pos.q, r: pos.r}, player, poolHexRef).valid) continue;
-                
-                let balanceAfter = (totalSavings - data.cost) + totalIncome - (totalWages + data.wage);
-                if (totalSavings >= data.cost && balanceAfter >= MIN_BALANCE_BUFFER) {
-                    if (data.level <= enemyDefense) continue;
+			// --- EVALUATE SOLDIERS ---
+			for (let name in SOLDIER_DATA) {
+				let data = SOLDIER_DATA[name];
+				
+				if (!isPlacementValid(name, {q: pos.q, r: pos.r}, player, poolHexRef).valid) continue;
+				
+				let balanceAfter = (totalSavings - data.cost) + totalIncome - (totalWages + data.wage);
+				if (totalSavings >= data.cost && balanceAfter >= MIN_BALANCE_BUFFER) {
+					if (data.level <= enemyDefense) continue;
 
-                    let score = 0;
-                    if (targetTile.ownerIndex === -1) {
-                        // Neutral land priority
-                        score += (name === "peasant") ? 180 : 40; 
-                    } else if (targetUnit) {
-                        // Aggressive Combat: Prioritize killing your units/castles
-                        score += 250 + (getUnitLevel(targetUnit.type) * 120);
-                        // Bonus for efficiency (using a unit just 1 level higher)
-                        if (data.level === enemyDefense + 1) score += 60; 
-                    } else if (pos.isBorder) {
-                        // Expansion into enemy land
-                        score += 130;
-                    }
+					let score = 0;
+					if (targetTile.ownerIndex === -1) {
+						// Neutral land priority
+						score += (name === "peasant") ? 180 : 40; 
+					} else if (targetUnit) {
+						// Aggressive Combat: Prioritize killing your units/castles
+						score += 250 + (getUnitLevel(targetUnit.type) * 120);
+						// Bonus for efficiency (using a unit just 1 level higher)
+						if (data.level === enemyDefense + 1) score += 60; 
+					} else if (pos.isBorder) {
+						// Expansion into enemy land
+						score += 130;
+					}
 
-                    // Low penalty to ensure the AI actually uses its money for combat
-                    score -= (data.cost * 0.6); 
+					// Low penalty to ensure the AI actually uses its money for combat
+					score -= (data.cost * 0.6); 
 
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestMove = { type: ACTION.action_build, unitType: name, q: pos.q, r: pos.r, poolHex: poolHexRef };
-                    }
-                }
-            }
-        }
-    }
-    return bestMove;
+					if (score > bestScore) {
+						bestScore = score;
+						bestMove = { type: ACTION.action_build, unitType: name, q: pos.q, r: pos.r, poolHex: poolHexRef };
+					}
+				}
+			}
+		}
+	}
+	return bestMove;
 }
 
 
 function ai_find_best_build_move5(player) {
-    let bestMove = null;
-    let bestScore = -Infinity;
-    
-    const MIN_BALANCE_BUFFER = 9; 
-    const DRAGON_BALANCE_BUFFER = 30;
+	let bestMove = null;
+	let bestScore = -Infinity;
+	
+	const MIN_BALANCE_BUFFER = 9; 
+	const DRAGON_BALANCE_BUFFER = 30;
 
-    let pools = findEconomyPools(player.playerIndex);
+	let pools = findEconomyPools(player.playerIndex);
 
-    for (let pool of pools) {
-        let { totalSavings, totalIncome, totalWages, hexes, soldiers } = pool;
-        let currentProjectedBalance = (totalSavings + totalIncome) - totalWages;
-        const poolHexRef = { q: hexes[0].q, r: hexes[0].r };
+	for (let pool of pools) {
+		let { totalSavings, totalIncome, totalWages, hexes, soldiers } = pool;
+		let currentProjectedBalance = (totalSavings + totalIncome) - totalWages;
+		const poolHexRef = { q: hexes[0].q, r: hexes[0].r };
 
-        // 1. SURVIVAL
-        if (currentProjectedBalance < 0) {
-            let sellable = soldiers.filter(s => !s.hasMoved);
-            if (sellable.length > 0) {
-                sellable.sort((a, b) => (SOLDIER_DATA[b.type]?.wage || 0) - (SOLDIER_DATA[a.type]?.wage || 0));
-                return { type: ACTION.action_sell, unitId: sellable[0].id, poolHex: poolHexRef };
-            }
-        }
+		// 1. SURVIVAL
+		if (currentProjectedBalance < 0) {
+			let sellable = soldiers.filter(s => !s.hasMoved);
+			if (sellable.length > 0) {
+				sellable.sort((a, b) => (SOLDIER_DATA[b.type]?.wage || 0) - (SOLDIER_DATA[a.type]?.wage || 0));
+				return { type: ACTION.action_sell, unitId: sellable[0].id, poolHex: poolHexRef };
+			}
+		}
 
-        // 2. CANDIDATES
-        let candidates = new Map();
-        for (let hex of hexes) {
-            candidates.set(`${hex.q},${hex.r}`, { q: hex.q, r: hex.r, isBorder: false });
-            for (let n of getHexNeighbors(hex.q, hex.r)) {
-                let key = `${n.q},${n.r}`;
-                if (!candidates.has(key) && isHexLand(n.q, n.r)) {
-                    candidates.set(key, { q: n.q, r: n.r, isBorder: true });
-                }
-            }
-        }
+		// 2. CANDIDATES
+		let candidates = new Map();
+		for (let hex of hexes) {
+			candidates.set(`${hex.q},${hex.r}`, { q: hex.q, r: hex.r, isBorder: false });
+			for (let n of getHexNeighbors(hex.q, hex.r)) {
+				let key = `${n.q},${n.r}`;
+				if (!candidates.has(key) && isHexLand(n.q, n.r)) {
+					candidates.set(key, { q: n.q, r: n.r, isBorder: true });
+				}
+			}
+		}
 
-        for (let [key, pos] of candidates) {
-            let targetTile = getTileAt(pos.q, pos.r);
-            let targetUnit = getUnitAt(pos.q, pos.r);
-            if (!targetTile || (targetUnit && targetUnit.ownerIndex === player.playerIndex)) continue;
+		for (let [key, pos] of candidates) {
+			let targetTile = getTileAt(pos.q, pos.r);
+			let targetUnit = getUnitAt(pos.q, pos.r);
+			if (!targetTile || (targetUnit && targetUnit.ownerIndex === player.playerIndex)) continue;
 
-            let enemyDefense = getEnemyDefenseLevel(pos.q, pos.r, targetTile, player.playerIndex);
+			let enemyDefense = getEnemyDefenseLevel(pos.q, pos.r, targetTile, player.playerIndex);
 
-            // --- EVALUATE CASTLES ---
-            for (let name in CASTLE_DATA) {
-                if (name === "shipyard") continue;
-                let data = CASTLE_DATA[name];
-                if (!isPlacementValid(name, {q: pos.q, r: pos.r}, player, poolHexRef).valid) continue;
-                
-                let balanceAfter = (totalSavings - data.cost) + totalIncome - totalWages;
-                if (totalSavings >= data.cost && balanceAfter >= MIN_BALANCE_BUFFER) {
-                    
-                    let score = 0;
-                    // If enemy is level 2 (Knight/Castle), a Hut (Level 1) is a waste of money.
-                    // We need a Castle (Level 2) to actually provide a defense radius that stops them.
-                    if (enemyDefense >= data.level) {
-                        score = 0; 
-                    } else {
-                        if (name === "hut") score = pos.isBorder ? 100 : 30;
-                        if (name === "castle") score = (enemyDefense === 1) ? 150 : 70; // High priority if it blocks level 1 enemies
-                        if (name === "fortress") score = (enemyDefense === 2) ? 200 : 80;
-                    }
+			// --- EVALUATE CASTLES ---
+			for (let name in CASTLE_DATA) {
+				if (name === "shipyard") continue;
+				let data = CASTLE_DATA[name];
+				if (!isPlacementValid(name, {q: pos.q, r: pos.r}, player, poolHexRef).valid) continue;
+				
+				let balanceAfter = (totalSavings - data.cost) + totalIncome - totalWages;
+				if (totalSavings >= data.cost && balanceAfter >= MIN_BALANCE_BUFFER) {
+					
+					let score = 0;
+					// If enemy is level 2 (Knight/Castle), a Hut (Level 1) is a waste of money.
+					// We need a Castle (Level 2) to actually provide a defense radius that stops them.
+					if (enemyDefense >= data.level) {
+						score = 0; 
+					} else {
+						if (name === "hut") score = pos.isBorder ? 100 : 30;
+						if (name === "castle") score = (enemyDefense === 1) ? 150 : 70; // High priority if it blocks level 1 enemies
+						if (name === "fortress") score = (enemyDefense === 2) ? 200 : 80;
+					}
 
-                    if (hasNearbyCastle(pos, player.playerIndex)) score -= 100;
+					if (hasNearbyCastle(pos, player.playerIndex)) score -= 100;
 
-                    if (score > bestScore && score > 0) {
-                        bestScore = score;
-                        bestMove = { type: ACTION.action_build, unitType: name, q: pos.q, r: pos.r, poolHex: poolHexRef };
-                    }
-                }
-            }
+					if (score > bestScore && score > 0) {
+						bestScore = score;
+						bestMove = { type: ACTION.action_build, unitType: name, q: pos.q, r: pos.r, poolHex: poolHexRef };
+					}
+				}
+			}
 
-            // --- EVALUATE SOLDIERS ---
-            for (let name in SOLDIER_DATA) {
-                let data = SOLDIER_DATA[name];
-                if (!isPlacementValid(name, {q: pos.q, r: pos.r}, player, poolHexRef).valid) continue;
-                
-                let balanceAfter = (totalSavings - data.cost) + totalIncome - (totalWages + data.wage);
-                if (totalSavings >= data.cost && balanceAfter >= MIN_BALANCE_BUFFER) {
-                    if (data.level <= enemyDefense) continue;
+			// --- EVALUATE SOLDIERS ---
+			for (let name in SOLDIER_DATA) {
+				let data = SOLDIER_DATA[name];
+				if (!isPlacementValid(name, {q: pos.q, r: pos.r}, player, poolHexRef).valid) continue;
+				
+				let balanceAfter = (totalSavings - data.cost) + totalIncome - (totalWages + data.wage);
+				if (totalSavings >= data.cost && balanceAfter >= MIN_BALANCE_BUFFER) {
+					if (data.level <= enemyDefense) continue;
 
-                    let score = 0;
-                    if (targetTile.ownerIndex === -1) {
-                        score += (name === "peasant") ? 180 : 40; 
-                    } else if (targetUnit) {
-                        // KILL BONUS: The bigger the unit killed, the higher the score
-                        // We also give a bonus for "Just barely enough" strength to encourage efficiency
-                        score += 200 + (getUnitLevel(targetUnit.type) * 100);
-                        if (data.level === enemyDefense + 1) score += 50; 
-                    } else if (pos.isBorder) {
-                        score += 120;
-                    }
+					let score = 0;
+					if (targetTile.ownerIndex === -1) {
+						score += (name === "peasant") ? 180 : 40; 
+					} else if (targetUnit) {
+						// KILL BONUS: The bigger the unit killed, the higher the score
+						// We also give a bonus for "Just barely enough" strength to encourage efficiency
+						score += 200 + (getUnitLevel(targetUnit.type) * 100);
+						if (data.level === enemyDefense + 1) score += 50; 
+					} else if (pos.isBorder) {
+						score += 120;
+					}
 
-                    // Lowered cost penalty from 1.5 to 0.7 to make AI bolder
-                    score -= (data.cost * 0.7); 
+					// Lowered cost penalty from 1.5 to 0.7 to make AI bolder
+					score -= (data.cost * 0.7); 
 
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestMove = { type: ACTION.action_build, unitType: name, q: pos.q, r: pos.r, poolHex: poolHexRef };
-                    }
-                }
-            }
-        }
-    }
-    return bestMove;
+					if (score > bestScore) {
+						bestScore = score;
+						bestMove = { type: ACTION.action_build, unitType: name, q: pos.q, r: pos.r, poolHex: poolHexRef };
+					}
+				}
+			}
+		}
+	}
+	return bestMove;
 }
 
 
 function ai_find_best_build_move4(player) {
-    let bestMove = null;
-    let bestScore = -Infinity;
-    
-    const MIN_BALANCE_BUFFER = 9; 
-    const DRAGON_BALANCE_BUFFER = 30;
+	let bestMove = null;
+	let bestScore = -Infinity;
+	
+	const MIN_BALANCE_BUFFER = 9; 
+	const DRAGON_BALANCE_BUFFER = 30;
 
-    let pools = findEconomyPools(player.playerIndex);
+	let pools = findEconomyPools(player.playerIndex);
 
-    for (let pool of pools) {
-        let { totalSavings, totalIncome, totalWages, hexes, soldiers } = pool;
-        let currentProjectedBalance = (totalSavings + totalIncome) - totalWages;
-        
-        // poolHex is required for the action and the validation check
-        const poolHexRef = { q: hexes[0].q, r: hexes[0].r };
+	for (let pool of pools) {
+		let { totalSavings, totalIncome, totalWages, hexes, soldiers } = pool;
+		let currentProjectedBalance = (totalSavings + totalIncome) - totalWages;
+		
+		// poolHex is required for the action and the validation check
+		const poolHexRef = { q: hexes[0].q, r: hexes[0].r };
 
-        // 1. SURVIVAL CHECK
-        if (currentProjectedBalance < 0) {
-            let sellable = soldiers.filter(s => !s.hasMoved);
-            if (sellable.length > 0) {
-                sellable.sort((a, b) => (SOLDIER_DATA[b.type]?.wage || 0) - (SOLDIER_DATA[a.type]?.wage || 0));
-                return {
-                    type: ACTION.action_sell,
-                    unitId: sellable[0].id,
-                    poolHex: poolHexRef
-                };
-            }
-        }
+		// 1. SURVIVAL CHECK
+		if (currentProjectedBalance < 0) {
+			let sellable = soldiers.filter(s => !s.hasMoved);
+			if (sellable.length > 0) {
+				sellable.sort((a, b) => (SOLDIER_DATA[b.type]?.wage || 0) - (SOLDIER_DATA[a.type]?.wage || 0));
+				return {
+					type: ACTION.action_sell,
+					unitId: sellable[0].id,
+					poolHex: poolHexRef
+				};
+			}
+		}
 
-        // 2. CANDIDATE TILES
-        let candidates = new Map();
-        for (let hex of hexes) {
-            candidates.set(`${hex.q},${hex.r}`, { q: hex.q, r: hex.r, isBorder: false });
-            for (let n of getHexNeighbors(hex.q, hex.r)) {
-                let key = `${n.q},${n.r}`;
-                if (!candidates.has(key) && isHexLand(n.q, n.r)) {
-                    candidates.set(key, { q: n.q, r: n.r, isBorder: true });
-                }
-            }
-        }
+		// 2. CANDIDATE TILES
+		let candidates = new Map();
+		for (let hex of hexes) {
+			candidates.set(`${hex.q},${hex.r}`, { q: hex.q, r: hex.r, isBorder: false });
+			for (let n of getHexNeighbors(hex.q, hex.r)) {
+				let key = `${n.q},${n.r}`;
+				if (!candidates.has(key) && isHexLand(n.q, n.r)) {
+					candidates.set(key, { q: n.q, r: n.r, isBorder: true });
+				}
+			}
+		}
 
-        // 3. EVALUATE
-        for (let [key, pos] of candidates) {
-            let targetTile = getTileAt(pos.q, pos.r);
-            let targetUnit = getUnitAt(pos.q, pos.r);
-            
-            if (!targetTile || (targetUnit && targetUnit.ownerIndex === player.playerIndex)) continue;
+		// 3. EVALUATE
+		for (let [key, pos] of candidates) {
+			let targetTile = getTileAt(pos.q, pos.r);
+			let targetUnit = getUnitAt(pos.q, pos.r);
+			
+			if (!targetTile || (targetUnit && targetUnit.ownerIndex === player.playerIndex)) continue;
 
-            let enemyDefense = getEnemyDefenseLevel(pos.q, pos.r, targetTile, player.playerIndex);
+			let enemyDefense = getEnemyDefenseLevel(pos.q, pos.r, targetTile, player.playerIndex);
 
-            // --- EVALUATE CASTLES ---
-            for (let name in CASTLE_DATA) {
-                if (name === "shipyard") continue;
-                let data = CASTLE_DATA[name];
+			// --- EVALUATE CASTLES ---
+			for (let name in CASTLE_DATA) {
+				if (name === "shipyard") continue;
+				let data = CASTLE_DATA[name];
 
-                // Validation check first
-                if (!isPlacementValid(name, {q: pos.q, r: pos.r}, player, poolHexRef).valid) continue;
-                
-                let balanceAfter = (totalSavings - data.cost) + totalIncome - totalWages;
+				// Validation check first
+				if (!isPlacementValid(name, {q: pos.q, r: pos.r}, player, poolHexRef).valid) continue;
+				
+				let balanceAfter = (totalSavings - data.cost) + totalIncome - totalWages;
 
-                if (totalSavings >= data.cost && balanceAfter >= MIN_BALANCE_BUFFER) {
-                    // Specific Logic to prevent Fortress Spam:
-                    if (name === "fortress" && (totalIncome < 60 || totalSavings < 400)) continue; 
-                    if (name === "castle" && totalIncome < 40) continue;
-                    
-                    // Don't build defensive structures on top of enemies or inside enemy ZoC
-                    if (targetUnit || enemyDefense > 0) continue;
-                    if (hasNearbyCastle(pos, player.playerIndex)) continue; 
+				if (totalSavings >= data.cost && balanceAfter >= MIN_BALANCE_BUFFER) {
+					// Specific Logic to prevent Fortress Spam:
+					if (name === "fortress" && (totalIncome < 60 || totalSavings < 400)) continue; 
+					if (name === "castle" && totalIncome < 40) continue;
+					
+					// Don't build defensive structures on top of enemies or inside enemy ZoC
+					if (targetUnit || enemyDefense > 0) continue;
+					if (hasNearbyCastle(pos, player.playerIndex)) continue; 
 
-                    let score = 0;
-                    if (name === "hut") {
-                        // High priority for Huts on borders (cheap defense)
-                        score = pos.isBorder ? 120 : 40; 
-                    } else if (name === "castle") {
-                        score = 80;
-                    } else if (name === "fortress") {
-                        score = 90; // Higher than castle, but gated by the income check above
-                    }
+					let score = 0;
+					if (name === "hut") {
+						// High priority for Huts on borders (cheap defense)
+						score = pos.isBorder ? 120 : 40; 
+					} else if (name === "castle") {
+						score = 80;
+					} else if (name === "fortress") {
+						score = 90; // Higher than castle, but gated by the income check above
+					}
 
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestMove = { type: ACTION.action_build, unitType: name, q: pos.q, r: pos.r, poolHex: poolHexRef };
-                    }
-                }
-            }
+					if (score > bestScore) {
+						bestScore = score;
+						bestMove = { type: ACTION.action_build, unitType: name, q: pos.q, r: pos.r, poolHex: poolHexRef };
+					}
+				}
+			}
 
-            // --- EVALUATE SOLDIERS ---
-            for (let name in SOLDIER_DATA) {
-                let data = SOLDIER_DATA[name];
+			// --- EVALUATE SOLDIERS ---
+			for (let name in SOLDIER_DATA) {
+				let data = SOLDIER_DATA[name];
 
-                if (!isPlacementValid(name, {q: pos.q, r: pos.r}, player, poolHexRef).valid) continue;
-                
-                let balanceAfter = (totalSavings - data.cost) + totalIncome - (totalWages + data.wage);
+				if (!isPlacementValid(name, {q: pos.q, r: pos.r}, player, poolHexRef).valid) continue;
+				
+				let balanceAfter = (totalSavings - data.cost) + totalIncome - (totalWages + data.wage);
 
-                if (totalSavings >= data.cost && balanceAfter >= MIN_BALANCE_BUFFER) {
-                    if (data.level <= enemyDefense) continue;
+				if (totalSavings >= data.cost && balanceAfter >= MIN_BALANCE_BUFFER) {
+					if (data.level <= enemyDefense) continue;
 
-                    if (name === "dragon") {
-                        if (!targetUnit || targetUnit.name !== "fortress" || balanceAfter < DRAGON_BALANCE_BUFFER) continue;
-                    }
+					if (name === "dragon") {
+						if (!targetUnit || targetUnit.name !== "fortress" || balanceAfter < DRAGON_BALANCE_BUFFER) continue;
+					}
 
-                    let score = 0;
-                    // Neutral expansion is the highest priority for the economy
-                    if (targetTile.ownerIndex === -1) {
-                        score += (name === "peasant") ? 200 : 30; 
-                    } 
-                    // Combat: Killing enemy units
-                    else if (targetUnit) {
-                        score += 150 + (getUnitLevel(targetUnit.type) * 60);
-                    } 
-                    // Aggression: Stealing enemy tiles
-                    else if (pos.isBorder) {
-                        score += 100;
-                    }
+					let score = 0;
+					// Neutral expansion is the highest priority for the economy
+					if (targetTile.ownerIndex === -1) {
+						score += (name === "peasant") ? 200 : 30; 
+					} 
+					// Combat: Killing enemy units
+					else if (targetUnit) {
+						score += 150 + (getUnitLevel(targetUnit.type) * 60);
+					} 
+					// Aggression: Stealing enemy tiles
+					else if (pos.isBorder) {
+						score += 100;
+					}
 
-                    // HEAVY penalty for overspending on soldiers
-                    // This prevents buying a Knight when a Peasant can take the tile.
-                    score -= (data.cost * 1.5); 
+					// HEAVY penalty for overspending on soldiers
+					// This prevents buying a Knight when a Peasant can take the tile.
+					score -= (data.cost * 1.5); 
 
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestMove = { type: ACTION.action_build, unitType: name, q: pos.q, r: pos.r, poolHex: poolHexRef };
-                    }
-                }
-            }
-        }
-    }
+					if (score > bestScore) {
+						bestScore = score;
+						bestMove = { type: ACTION.action_build, unitType: name, q: pos.q, r: pos.r, poolHex: poolHexRef };
+					}
+				}
+			}
+		}
+	}
 
-    return bestMove;
+	return bestMove;
 }
 
 
 
 function ai_find_best_build_move3(player) {
-    let bestMove = null;
-    let bestScore = -Infinity;
-    
-    // Safety buffers to prevent "accidental" starvation from tile loss
-    const MIN_BALANCE_BUFFER = 9; 
-    const DRAGON_BALANCE_BUFFER = 30;
+	let bestMove = null;
+	let bestScore = -Infinity;
+	
+	// Safety buffers to prevent "accidental" starvation from tile loss
+	const MIN_BALANCE_BUFFER = 9; 
+	const DRAGON_BALANCE_BUFFER = 30;
 
-    let pools = findEconomyPools(player.playerIndex);
+	let pools = findEconomyPools(player.playerIndex);
 
-    for (let pool of pools) {
-        // The current state provided by findEconomyPools()
-        let { totalSavings, totalIncome, totalWages, hexes, soldiers } = pool;
-        let currentProjectedBalance = (totalSavings + totalIncome) - totalWages;
+	for (let pool of pools) {
+		// The current state provided by findEconomyPools()
+		let { totalSavings, totalIncome, totalWages, hexes, soldiers } = pool;
+		let currentProjectedBalance = (totalSavings + totalIncome) - totalWages;
 
-        // ---------------------------------------------------------
-        // 1. EMERGENCY SELL CHECK
-        // If current settings lead to starvation, sell the most expensive wage-taker
-        // ---------------------------------------------------------
-        if (currentProjectedBalance < 0) {
-            let sellable = soldiers.filter(s => !s.hasMoved);
-            if (sellable.length > 0) {
-                // Sort to find the highest wage to cut costs effectively
-                sellable.sort((a, b) => (SOLDIER_DATA[b.type]?.wage || 0) - (SOLDIER_DATA[a.type]?.wage || 0));
-                return {
-                    type: ACTION.action_sell,
-                    unitId: sellable[0].id,
+		// ---------------------------------------------------------
+		// 1. EMERGENCY SELL CHECK
+		// If current settings lead to starvation, sell the most expensive wage-taker
+		// ---------------------------------------------------------
+		if (currentProjectedBalance < 0) {
+			let sellable = soldiers.filter(s => !s.hasMoved);
+			if (sellable.length > 0) {
+				// Sort to find the highest wage to cut costs effectively
+				sellable.sort((a, b) => (SOLDIER_DATA[b.type]?.wage || 0) - (SOLDIER_DATA[a.type]?.wage || 0));
+				return {
+					type: ACTION.action_sell,
+					unitId: sellable[0].id,
 					poolHex: {q:hexes[0].q, r:hexes[0].r},
-                };
-            }
-        }
+				};
+			}
+		}
 
-        // ---------------------------------------------------------
-        // 2. MAP OUT CANDIDATE TILES (Inside pool + 1 hex out)
-        // ---------------------------------------------------------
-        let candidates = new Map();
-        for (let hex of hexes) {
-            // Internal hexes
-            candidates.set(`${hex.q},${hex.r}`, { q: hex.q, r: hex.r, isBorder: false });
-            
-            // Neighbors (potentially outside the pool)
-            for (let n of getHexNeighbors(hex.q, hex.r)) {
-                let key = `${n.q},${n.r}`;
-                if (!candidates.has(key) && isHexLand(n.q, n.r)) {
-                    candidates.set(key, { q: n.q, r: n.r, isBorder: true });
-                }
-            }
-        }
+		// ---------------------------------------------------------
+		// 2. MAP OUT CANDIDATE TILES (Inside pool + 1 hex out)
+		// ---------------------------------------------------------
+		let candidates = new Map();
+		for (let hex of hexes) {
+			// Internal hexes
+			candidates.set(`${hex.q},${hex.r}`, { q: hex.q, r: hex.r, isBorder: false });
+			
+			// Neighbors (potentially outside the pool)
+			for (let n of getHexNeighbors(hex.q, hex.r)) {
+				let key = `${n.q},${n.r}`;
+				if (!candidates.has(key) && isHexLand(n.q, n.r)) {
+					candidates.set(key, { q: n.q, r: n.r, isBorder: true });
+				}
+			}
+		}
 
-        // ---------------------------------------------------------
-        // 3. EVALUATE ALL POSSIBLE BUILDS
-        // ---------------------------------------------------------
-        for (let [key, pos] of candidates) {
-            let targetTile = getTileAt(pos.q, pos.r);
-            let targetUnit = getUnitAt(pos.q, pos.r);
-            
-            // Cannot build on our own units
-            if (!targetTile || (targetUnit && targetUnit.ownerIndex === player.playerIndex)) continue;
+		// ---------------------------------------------------------
+		// 3. EVALUATE ALL POSSIBLE BUILDS
+		// ---------------------------------------------------------
+		for (let [key, pos] of candidates) {
+			let targetTile = getTileAt(pos.q, pos.r);
+			let targetUnit = getUnitAt(pos.q, pos.r);
+			
+			// Cannot build on our own units
+			if (!targetTile || (targetUnit && targetUnit.ownerIndex === player.playerIndex)) continue;
 
-            // Calculate "Zone of Control" defense level of this tile
-            let enemyDefense = getEnemyDefenseLevel(pos.q, pos.r, targetTile, player.playerIndex);
+			// Calculate "Zone of Control" defense level of this tile
+			let enemyDefense = getEnemyDefenseLevel(pos.q, pos.r, targetTile, player.playerIndex);
 
-            // CHECK CASTLES
-            for (let name in CASTLE_DATA) {
-                if (name === "shipyard") continue;
-                let data = CASTLE_DATA[name];
-                
-                // Castle math: Savings - Cost + Income - Wages (Castles have 0 wage)
-                let balanceAfter = (totalSavings - data.cost) + totalIncome - totalWages;
+			// CHECK CASTLES
+			for (let name in CASTLE_DATA) {
+				if (name === "shipyard") continue;
+				let data = CASTLE_DATA[name];
+				
+				// Castle math: Savings - Cost + Income - Wages (Castles have 0 wage)
+				let balanceAfter = (totalSavings - data.cost) + totalIncome - totalWages;
 
-                if (totalSavings >= data.cost && balanceAfter >= MIN_BALANCE_BUFFER) {
-                    if (name === "castle" && totalIncome < 40) continue; // Only build "castle" if rich
-                    if (targetUnit || enemyDefense > 0) continue; // Can't build castles on units or in ZoC
-                    if (hasNearbyCastle(pos, player.playerIndex)) continue; // Keep castles spread out
+				if (totalSavings >= data.cost && balanceAfter >= MIN_BALANCE_BUFFER) {
+					if (name === "castle" && totalIncome < 40) continue; // Only build "castle" if rich
+					if (targetUnit || enemyDefense > 0) continue; // Can't build castles on units or in ZoC
+					if (hasNearbyCastle(pos, player.playerIndex)) continue; // Keep castles spread out
 
-                    let score = (name === "hut") ? 45 : 75;
-                    if (pos.isBorder) score += 20; 
-                    
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestMove = { type: ACTION.action_build, unitType: name, q: pos.q, r: pos.r, poolHex: {q:hexes[0].q, r:hexes[0].r}, };
-                    }
-                }
-            }
+					let score = (name === "hut") ? 45 : 75;
+					if (pos.isBorder) score += 20; 
+					
+					if (score > bestScore) {
+						bestScore = score;
+						bestMove = { type: ACTION.action_build, unitType: name, q: pos.q, r: pos.r, poolHex: {q:hexes[0].q, r:hexes[0].r}, };
+					}
+				}
+			}
 
-            // CHECK SOLDIERS
-            for (let name in SOLDIER_DATA) {
-                let data = SOLDIER_DATA[name];
-                
-                // Soldier math: Savings - Cost + Income - (Wages + New Wage)
-                let balanceAfter = (totalSavings - data.cost) + totalIncome - (totalWages + data.wage);
+			// CHECK SOLDIERS
+			for (let name in SOLDIER_DATA) {
+				let data = SOLDIER_DATA[name];
+				
+				// Soldier math: Savings - Cost + Income - (Wages + New Wage)
+				let balanceAfter = (totalSavings - data.cost) + totalIncome - (totalWages + data.wage);
 
-                if (totalSavings >= data.cost && balanceAfter >= MIN_BALANCE_BUFFER) {
-                    // Must be higher level than the tile's defense
-                    if (data.level <= enemyDefense) continue;
+				if (totalSavings >= data.cost && balanceAfter >= MIN_BALANCE_BUFFER) {
+					// Must be higher level than the tile's defense
+					if (data.level <= enemyDefense) continue;
 
-                    // Dragon special rules
-                    if (name === "dragon") {
-                        if (!targetUnit || targetUnit.name !== "fortress" || balanceAfter < DRAGON_BALANCE_BUFFER) continue;
-                    }
+					// Dragon special rules
+					if (name === "dragon") {
+						if (!targetUnit || targetUnit.name !== "fortress" || balanceAfter < DRAGON_BALANCE_BUFFER) continue;
+					}
 
-                    let score = 0;
-                    if (targetTile.ownerIndex === -1) {
-                        // Expansion logic
-                        score += (name === "peasant") ? 60 : 20; 
-                    } else if (targetUnit) {
-                        // Combat logic: massive bonus for killing units
-                        score += 150 + (getUnitLevel(targetUnit.type) * 50);
-                    } else if (pos.isBorder) {
-                        // Stealing empty enemy land
-                        score += 40;
-                    }
+					let score = 0;
+					if (targetTile.ownerIndex === -1) {
+						// Expansion logic
+						score += (name === "peasant") ? 60 : 20; 
+					} else if (targetUnit) {
+						// Combat logic: massive bonus for killing units
+						score += 150 + (getUnitLevel(targetUnit.type) * 50);
+					} else if (pos.isBorder) {
+						// Stealing empty enemy land
+						score += 40;
+					}
 
-                    // Penalize using overkill (don't buy a Knight if a Peasant can take the land)
-                    score -= (data.cost * 0.4);
+					// Penalize using overkill (don't buy a Knight if a Peasant can take the land)
+					score -= (data.cost * 0.4);
 
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestMove = { type: ACTION.action_build, unitType: name, q: pos.q, r: pos.r, poolHex: {q:hexes[0].q, r:hexes[0].r}, };
-                    }
-                }
-            }
-        }
-    }
+					if (score > bestScore) {
+						bestScore = score;
+						bestMove = { type: ACTION.action_build, unitType: name, q: pos.q, r: pos.r, poolHex: {q:hexes[0].q, r:hexes[0].r}, };
+					}
+				}
+			}
+		}
+	}
 
-    return bestMove;
+	return bestMove;
 }
 
 /**
@@ -17731,36 +17772,36 @@ function ai_find_best_build_move3(player) {
  * If unowned, it's 0. If owned, it's the highest level unit on or adjacent to it.
  */
 function getEnemyDefenseLevel(q, r, tile, myIndex) {
-    if (tile.ownerIndex === -1) return 0;
-    
-    let enemyIndex = tile.ownerIndex;
-    let highestLevel = 0;
+	if (tile.ownerIndex === -1) return 0;
+	
+	let enemyIndex = tile.ownerIndex;
+	let highestLevel = 0;
 
-    // Check the tile itself
-    let unitOn = getUnitAt(q, r);
-    if (unitOn && unitOn.ownerIndex === enemyIndex) {
-        highestLevel = getUnitLevel(unitOn.type);
-    }
+	// Check the tile itself
+	let unitOn = getUnitAt(q, r);
+	if (unitOn && unitOn.ownerIndex === enemyIndex) {
+		highestLevel = getUnitLevel(unitOn.type);
+	}
 
-    // Check neighbors for Zone of Control
-    let neighbors = getHexNeighbors(q, r);
-    for (let n of neighbors) {
-        let u = getUnitAt(n.q, n.r);
-        if (u && u.ownerIndex === enemyIndex) {
-            highestLevel = Math.max(highestLevel, getUnitLevel(u.type));
-        }
-    }
-    return highestLevel;
+	// Check neighbors for Zone of Control
+	let neighbors = getHexNeighbors(q, r);
+	for (let n of neighbors) {
+		let u = getUnitAt(n.q, n.r);
+		if (u && u.ownerIndex === enemyIndex) {
+			highestLevel = Math.max(highestLevel, getUnitLevel(u.type));
+		}
+	}
+	return highestLevel;
 }
 
 /**
  * Helper to ensure we don't clump castles together.
  */
 function hasNearbyCastle(pos, myIndex) {
-    return getHexNeighbors(pos.q, pos.r).some(n => {
-        let u = getUnitAt(n.q, n.r);
-        return u && u.ownerIndex === myIndex && isTypeCastle(u.internalType);
-    });
+	return getHexNeighbors(pos.q, pos.r).some(n => {
+		let u = getUnitAt(n.q, n.r);
+		return u && u.ownerIndex === myIndex && isTypeCastle(u.internalType);
+	});
 }
 
 
@@ -17781,106 +17822,106 @@ const yieldToMainThread = () => new Promise(resolve => setTimeout(resolve, 0));
 
 // 2. Mark function as ASYNC
 async function executeAIMoveSequentially(player) {
-    if (!isHost() || gameState.settings.gameOver) return;
+	if (!isHost() || gameState.settings.gameOver) return;
 
-    const currentPlayer = gameState.players[gameState.turn.currentPlayerIndex];
-    if (!currentPlayer || currentPlayer.id !== player.id || !currentPlayer.isAI) {
-        return;
-    }
+	const currentPlayer = gameState.players[gameState.turn.currentPlayerIndex];
+	if (!currentPlayer || currentPlayer.id !== player.id || !currentPlayer.isAI) {
+		return;
+	}
 
-    // --- START BATCH MODE ---
-    isAiBatching = true;
-    aiBatchBuffer = [];
-    console.log(`AI ${player.name} starting batch calculation...`);
+	// --- START BATCH MODE ---
+	isAiBatching = true;
+	aiBatchBuffer = [];
+	console.log(`AI ${player.name} starting batch calculation...`);
 
-    let keepPlaying = true;
-    let movesCount = 0;
-    const MAX_MOVES = 200;
+	let keepPlaying = true;
+	let movesCount = 0;
+	const MAX_MOVES = 200;
 
-    // Start a timer to track how long we've been calculating
-    let startTime = performance.now();
+	// Start a timer to track how long we've been calculating
+	let startTime = performance.now();
 
-    while (keepPlaying && movesCount < MAX_MOVES) {
-        const bestMove = ai_find_best_move(player);
+	while (keepPlaying && movesCount < MAX_MOVES) {
+		const bestMove = ai_find_best_move(player);
 
-        if (bestMove) {
+		if (bestMove) {
 			handleClientData(player.id, bestMove);
 
-            movesCount++;
-            
-            // --- THE MAGIC FIX ---
-            // Every 5 moves (or if 16ms has passed), pause for 0ms to let the UI update.
-            // This prevents the "Freezing" / "Page Unresponsive" warning.
-            if (movesCount % 5 === 0 || (performance.now() - startTime) > 15) {
-                await yieldToMainThread(); 
-                startTime = performance.now(); // Reset timer
-                
-                // CRITICAL: Re-check game state after resuming!
-                // Since we paused, the game state *might* have changed (e.g. game over).
-                if (gameState.settings.gameOver) {
-                    keepPlaying = false; 
-                    break;
-                }
-            }
-        }else{
+			movesCount++;
+			
+			// --- THE MAGIC FIX ---
+			// Every 5 moves (or if 16ms has passed), pause for 0ms to let the UI update.
+			// This prevents the "Freezing" / "Page Unresponsive" warning.
+			if (movesCount % 5 === 0 || (performance.now() - startTime) > 15) {
+				await yieldToMainThread(); 
+				startTime = performance.now(); // Reset timer
+				
+				// CRITICAL: Re-check game state after resuming!
+				// Since we paused, the game state *might* have changed (e.g. game over).
+				if (gameState.settings.gameOver) {
+					keepPlaying = false; 
+					break;
+				}
+			}
+		}else{
 			keepPlaying = false;
 		}
-    }
+	}
 	
 	// call build units function:
-    keepPlaying = true;
-    movesCount = 0;
+	keepPlaying = true;
+	movesCount = 0;
 	startTime = performance.now();
 
-    while (keepPlaying && movesCount < MAX_MOVES) {
+	while (keepPlaying && movesCount < MAX_MOVES) {
 		const bestBuildMove = ai_find_best_build_move(player);
 
-        if (bestBuildMove) {
+		if (bestBuildMove) {
 			handleClientData(player.id, bestBuildMove);
 			
-            movesCount++;
-            
-            // --- THE MAGIC FIX ---
-            // Every 5 moves (or if 16ms has passed), pause for 0ms to let the UI update.
-            // This prevents the "Freezing" / "Page Unresponsive" warning.
-            if (movesCount % 5 === 0 || (performance.now() - startTime) > 15) {
-                await yieldToMainThread(); 
-                startTime = performance.now(); // Reset timer
-                
-                // CRITICAL: Re-check game state after resuming!
-                // Since we paused, the game state *might* have changed (e.g. game over).
-                if (gameState.settings.gameOver) {
-                    keepPlaying = false; 
-                    break;
-                }
-            }
-        }else{
+			movesCount++;
+			
+			// --- THE MAGIC FIX ---
+			// Every 5 moves (or if 16ms has passed), pause for 0ms to let the UI update.
+			// This prevents the "Freezing" / "Page Unresponsive" warning.
+			if (movesCount % 5 === 0 || (performance.now() - startTime) > 15) {
+				await yieldToMainThread(); 
+				startTime = performance.now(); // Reset timer
+				
+				// CRITICAL: Re-check game state after resuming!
+				// Since we paused, the game state *might* have changed (e.g. game over).
+				if (gameState.settings.gameOver) {
+					keepPlaying = false; 
+					break;
+				}
+			}
+		}else{
 			keepPlaying = false;
 		}
-    }
+	}
 	
 	
 
-    handleClientData(player.id, { type: ACTION.action_end_turn });
+	handleClientData(player.id, { type: ACTION.action_end_turn });
 
-    // --- END BATCH MODE ---
-    isAiBatching = false;
+	// --- END BATCH MODE ---
+	isAiBatching = false;
 	
 
-    if (aiBatchBuffer.length > 0) {
-        const bigMessage = {
-            type: ACTION.multiple_actions,
-            actions: aiBatchBuffer
-        };
+	if (aiBatchBuffer.length > 0) {
+		const bigMessage = {
+			type: ACTION.multiple_actions,
+			actions: aiBatchBuffer
+		};
 
-        for (const [peerId, conn] of connections.entries()) {
-            conn.send(bigMessage);
-        }
-        
-        console.log(`AI Batch sent: ${aiBatchBuffer.length} sub-actions.`);
-    }
+		for (const [peerId, conn] of connections.entries()) {
+			conn.send(bigMessage);
+		}
+		
+		console.log(`AI Batch sent: ${aiBatchBuffer.length} sub-actions.`);
+	}
 
-    aiBatchBuffer = []; 
+	aiBatchBuffer = []; 
 }
 
 
@@ -23947,6 +23988,10 @@ function handleOutside(e) {
 	if (!gameSettingsUiWrapper2.contains(e.target)) {
 		gameSettingsUi.style.display = "none";
 	}
+	//if (!endTurnPopupWrapper.contains(e.target)) {
+	//	endTurnPopup.classList.remove('active');
+	//}
+	
 	
 	// Game stats
 	if (!gameStatsPopupUiWrapper2.contains(e.target)) {
@@ -23988,6 +24033,7 @@ document.addEventListener('mousedown', (e) => {
 	mouseDownInsidePopup =
 		pickerWrapper.contains(e.target) ||
 		gameSettingsUiWrapper2.contains(e.target) ||
+		//endTurnPopupWrapper.contains(e.target) || // todo: fix it to cancel by clicking outside.
 		gameStatsPopupUiWrapper2.contains(e.target) ||
 		//endgamePopupUiWrapper2.contains(e.target) || // dont allow closing endgame popup by clicking outside.
 		//moveConfirmationWrapper2.contains(e.target) || // not used, popup must be closen by ok button.
@@ -24958,7 +25004,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 	previousUnitBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
 	previousUnitBtn.tabIndex = -1; //remove it from the tab order
 	
-	
+	/*
 	endTurnBtn.onclick = () => {
 		if (!REPLAY_ENABLED && !endTurnBtn.disabled && isMyTurn()) {
 			// end turn, and clear shielding units tips ("stop" image display)
@@ -24966,6 +25012,34 @@ window.addEventListener('DOMContentLoaded', async () => {
 			sendToHost({ type: ACTION.action_end_turn });
 		}
 	};
+	*/
+	endTurnBtn.onclick = () => {
+		if (!REPLAY_ENABLED && !endTurnBtn.disabled && isMyTurn()) {
+			// Check if there are any units belonging to the player that haven't moved
+			const myPlayerIndex = getMyPlayer().playerIndex;
+			const hasUnmovedUnits = gameState.units.some(unit => 
+				unit.ownerIndex === myPlayerIndex && !unit.hasMoved
+			);
+
+			if (hasUnmovedUnits) {
+				// Show the confirmation popup
+				endTurnPopup.classList.add('active');
+			} else {
+				// No unmoved units, end turn immediately
+				performEndTurn();
+			}
+		}
+	};
+
+	// Handle popup button clicks
+	confirmYes.onclick = () => {
+		performEndTurn();
+	};
+
+	confirmNo.onclick = () => {
+		endTurnPopup.classList.remove('active');
+	};
+	
 	endTurnBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
 	endTurnBtn.tabIndex = -1; //remove it from the tab order
 	
