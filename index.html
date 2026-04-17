@@ -1139,7 +1139,17 @@ button.redbutton:hover {
 	margin-bottom: 0;
 	border-top-left-radius: 0;
 	border-top-right-radius: 0;
+	border-bottom-left-radius: 0;
 }
+
+#game-settings-stats-btn2 {
+	border-radius: 27px;
+	margin-bottom: 0;
+	border-top-right-radius: 0;
+	border-top-left-radius: 0;
+	border-bottom-right-radius: 0;
+}
+
 
 #endgame-popup-message {
 	text-align: center;
@@ -1885,6 +1895,9 @@ input.disabled {
 				
 				<div class="input-group" style="margin-top: auto;">
 					<div style="flex: 1;">
+						<button id="game-settings-stats-btn2" class="gamebutton largefont">Stats graph</button>
+					</div>
+					<div style="flex: 1;">
 						<button id="close-endgame-popup-btn" class="gamebutton largefont">Close</button>
 					</div>
 				</div>
@@ -2099,7 +2112,7 @@ input.disabled {
 				
 				<div>
 					<div class="settings-title">
-						<span style="color:yellow">Undo is disabled if:</span> Unit dies on a mine, Enemy tile is claimed, Unit is unloaded from boat.<br>
+						<span style="color:yellow">Undo is disabled if:</span> Unit dies on a mine, Unit is unloaded from boat.<br>
 						<br>
 					</div>
 				</div>
@@ -3495,6 +3508,7 @@ lobbyPlayerNameInput.addEventListener("input", () => {
 
 
 const gameSettingsStatsBtn = document.getElementById("game-settings-stats-btn");
+const gameSettingsStatsBtn2 = document.getElementById("game-settings-stats-btn2");
 const gameSettingsStatsCloseBtn = document.getElementById("close-gamestats-popup-btn");
 
 const gameStatsPopup = document.getElementById("gamestats-popup-ui");
@@ -3504,6 +3518,14 @@ const gameStatsPopupUiWrapper2 = document.getElementById('gamestats-popup-ui-wra
 gameSettingsStatsBtn.addEventListener("click", () => {
 	closeGameSettings();
 	openStatsPopup();
+});
+gameSettingsStatsBtn2.addEventListener("click", () => {
+	closeEndgamePopup();
+	closeGameSettings();
+	// need delay since it thinks i clicked outside and closes it immediately after.
+	setTimeout(function(){
+		openStatsPopup();
+	}, 30);
 });
 
 gameSettingsStatsCloseBtn.addEventListener("click", () => {
@@ -5363,13 +5385,14 @@ let gameState = {
 		useBoats: true,
 		useLandmines: true,
 		initialMines: 4, // how many mines can be built at the start of game
-		initialBoats: 2, // how many boats can be built at the start of game
-		minesPerWeek: 2, // how many mines can be built at the start of game
-		boatsPerWeek: 5, // how many boats can be built at the start of game
+		initialBoats: 3, // how many boats can be built at the start of game
+		minesPerWeek: 4,
+		boatsPerWeek: 7,
 		maxMines: 10,
-		maxBoats: 10,
-		mineCost: 5,
+		maxBoats: 30,
+		mineCost: 7,
 		boatCost: 5,
+		undoAC: true, // "allow undo after claiming"
 	},
 	players: [], // { id, name, color, isSpectator, isAI }
 
@@ -14203,7 +14226,9 @@ function openBuildPopup(type) {
 					isDisabled = true;
 				}
 				if(item.type === "boat" && isSubtypeShipyard(selectedUnit.type)){
-					isDisabled = false;
+					if(totalBoats > 0){
+						isDisabled = false;
+					}
 				}
 			}
 		}
@@ -15306,7 +15331,9 @@ function executeAction(playerId, action) {
 					
 					// dont allow undo if claiming enemy tile:
 					if(didClaimEnemy){
-						preventUndo();
+						if(!gameState.settings.undoAC){
+							preventUndo();
+						}
 					}
 					
 					
@@ -15505,6 +15532,7 @@ function executeAction(playerId, action) {
 						updates.push({ type: ACTION.unit_removed, unitId: unitCopy.id });
 						
 						// clear undo stack when unit died by move:
+						// note: currently no undo possible for boats at all. this line is redundant.
 						preventUndo();
 					}
 					
@@ -16199,7 +16227,9 @@ function executeAction(playerId, action) {
 						
 						// dont allow undo if claiming enemy tile:
 						if(didClaimEnemy){
-							preventUndo();
+							if(!gameState.settings.undoAC){
+								preventUndo();
+							}
 						}
 					}
 				}
@@ -18270,7 +18300,7 @@ function getPlayingPlayers(){
 }
 
 
-function calculateBalanceAndKillSoldiersAllPlayers(curPlayerIndex){
+function calculateBalanceAndKillSoldiersAllPlayers(curPlayerIndex, allowKilling){
 	let batchActions = [];
 	let playingPlayers = getPlayingPlayers();
 	let killedPlayers = [];
@@ -18286,7 +18316,7 @@ function calculateBalanceAndKillSoldiersAllPlayers(curPlayerIndex){
 		}else{
 			//pools = findEconomyPools(player.playerIndex);
 		}
-		let killdata = calculateBalanceAndKillSoldiers(pools, null, addMoney, player.playerIndex);
+		let killdata = calculateBalanceAndKillSoldiers(pools, null, addMoney, player.playerIndex, allowKilling);
 		if(killdata.batchActions){
 			batchActions.push(...killdata.batchActions);
 		}
@@ -18306,7 +18336,7 @@ function calculateBalanceAndKillSoldiersAllPlayers(curPlayerIndex){
 }
 
 
-function calculateBalanceAndKillSoldiers(pools, addedUnit = null, addMoney = true, playerIndex = -1){
+function calculateBalanceAndKillSoldiers(pools, addedUnit = null, addMoney = true, playerIndex = -1, allowKilling = true){
 	// check if soldiers will be killed.
 	
 	console.warn("calculateBalanceAndKillSoldiers");
@@ -18356,24 +18386,27 @@ function calculateBalanceAndKillSoldiers(pools, addedUnit = null, addMoney = tru
 				}
 			}
 		}else{
-			let tempCalc = clampMoney(pool.totalSavings+pool.totalIncome-pool.totalWages);
-			
-			if (tempCalc < 0) {
-				// Bankrupt!
-				pool.totalSavings = 0;
+			// note: first day wont allow killing by starvation.
+			if(allowKilling){
+				let tempCalc = clampMoney(pool.totalSavings+pool.totalIncome-pool.totalWages);
 				
-				killedPlayers.push({
-					playerIndex: playerIndex, 
-					pool: pool,
-					poolIndex: p, // probably not needed.
-				});
-				
-				// dont reset tile data here.
-				
-				
-				// todo: update modified info to localplayer?
-				for (const soldier of pool.soldiers) {
-					allSoldiersKilled.push(soldier);
+				if (tempCalc < 0) {
+					// Bankrupt!
+					pool.totalSavings = 0;
+					
+					killedPlayers.push({
+						playerIndex: playerIndex, 
+						pool: pool,
+						poolIndex: p, // probably not needed.
+					});
+					
+					// dont reset tile data here.
+					
+					
+					// todo: update modified info to localplayer?
+					for (const soldier of pool.soldiers) {
+						allSoldiersKilled.push(soldier);
+					}
 				}
 			}
 		}
@@ -18669,7 +18702,14 @@ function executeEndTurn(playerIndex) {
 	//let batchActions = killdata.batchActions;
 	//pools = killdata.poolsAfter;
 	
-	let killdata = calculateBalanceAndKillSoldiersAllPlayers(playerIndex);
+	let allowKilling = true;
+	// dont allow starvation deaths for the first day:
+	if(gameState.turn.turnNumber < 2){
+		allowKilling = false;
+		console.warn("Disabling starvation deaths for other than current player for the first day.");
+	}
+	
+	let killdata = calculateBalanceAndKillSoldiersAllPlayers(playerIndex, allowKilling);
 	let batchActions = killdata.batchActions;
 	let pools = killdata.curPlayerPools;
 	let killedPlayers = killdata.killedPlayers;
@@ -23385,6 +23425,12 @@ function rebuildTileLinks(){
 }
 
 
+function applyUnitCostsFromSettings(){
+	OTHER_UNITS_DATA.sailboat.cost = gameState.settings.boatCost;
+	OTHER_UNITS_DATA.landmine.cost = gameState.settings.mineCost;
+}
+
+
 function startGame() {
 	
 
@@ -23428,6 +23474,9 @@ function startGame() {
 			delete gameState.map.tilesData[i].isAppearing;
 			delete gameState.map.tilesData[i].appearStartTime;
 		}
+		
+		// update boats/mines cost from settings:
+		applyUnitCostsFromSettings();
 
 		generateWaterEdgeTiles();
 		
@@ -23508,9 +23557,7 @@ function startGame() {
 		}
 		
 		// set boats/mines cost:
-		OTHER_UNITS_DATA.sailboat.cost = gameState.settings.boatCost;
-		OTHER_UNITS_DATA.landmine.cost = gameState.settings.mineCost;
-
+		applyUnitCostsFromSettings();
 		
 
 		// list playing players for colors: (not sure what is this for)
