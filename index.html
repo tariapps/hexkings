@@ -194,6 +194,10 @@ button {
 	cursor: pointer;
 }
 
+button.nomargin {
+    margin-bottom: 0;
+}
+
 button[disabled] {
 	filter: brightness(0.5);
 }
@@ -905,6 +909,14 @@ button.redbutton:hover {
 	align-items: center;
 }
 
+.popup-overlay-noncenter {
+	display: none;
+	position: fixed;
+	inset: 0;
+	background: rgba(0,0,0,0.5);
+	z-index: 1000;
+}
+
 /* Popup box */
 .popup {
 	background: black;
@@ -1219,14 +1231,30 @@ button.redbutton:hover {
 #end-turn-confirmation-wrapper {
 	display: flex;
 	flex-direction: column;
-	align-items: center;
+	align-items: flex-end;
 	width: 100%;
+	position: absolute;
+	bottom: 0px;
+}
+
+.settings-panel-endturn {
+	width: 100%;
+	max-width: 295px;
+	border: 1px solid #454545;
+	border-radius: 8px;
+	padding: 8px;
+	background-color: black;
 }
 
 .button-row-end-turn {
 	display: flex;
 	gap: 10px;
 	margin-top: 15px;
+	margin-bottom: 0px;
+}
+.popup-title-endturn {
+	font-size:24px;
+	text-align:center;
 }
 
 
@@ -1845,13 +1873,13 @@ input.disabled {
 	</div>
 </div>
 
-<div id="end-turn-confirmation-popup" class="popup-overlay">
+<div id="end-turn-confirmation-popup" class="popup-overlay-noncenter">
 	<div id="end-turn-confirmation-wrapper" class="popup-container">
-		<div class="settings-panel trans-panel">
-			<div class="popup-title">You have unmoved units, end turn?</div>
+		<div class="settings-panel-endturn trans-panel">
+			<div class="popup-title-endturn">You have unmoved units, end turn?</div>
 			<div class="button-row-end-turn">
-				<button id="confirm-end-turn-yes" class="primary">Yes</button>
-				<button id="confirm-end-turn-no" class="danger">No</button>
+				<button id="confirm-end-turn-yes" class="primary nomargin">Yes</button>
+				<button id="confirm-end-turn-no" class="danger nomargin">No</button>
 			</div>
 		</div>
 	</div>
