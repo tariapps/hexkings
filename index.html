@@ -5533,6 +5533,33 @@ function resetGameState(){
 
 
 
+// Secret function to check server connections
+window.showPeers = async function() {
+    // Dynamically get the current server URL from your config or servers list
+    // If you have a specific Render URL, you can hardcode it here too.
+    const server = serversList[selectedServerIndex];
+    const url = server.fetchUrl;
+
+    console.log(`%c Fetching connections from: ${url} `, "background: #222; color: #bada55; font-weight: bold;");
+
+    try {
+        const response = await fetch(`${url}/connections`);
+        const data = await response.json();
+
+        console.table({
+            "Total Connected Peers": data.totalConnections,
+            "SSE Listeners (Events)": data.sseClientsActive,
+            "Active Game Lobbies": data.activeHostedGames
+        });
+
+        console.log("Connected Peer IDs:", data.connectedPeerIds);
+    } catch (err) {
+        console.error("Could not fetch secret connection list:", err);
+    }
+};
+
+
+
 
 function getPlayer(playerId) {
 	return gameState.players.find(p => p.id === playerId);
