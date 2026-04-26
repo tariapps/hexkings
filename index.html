@@ -4350,11 +4350,11 @@ let gameSounds = {
 	sell:         {filename: "sounds/sell.mp3",    gain: 0.15,   filter: false},
 	claimGrass:   {filename: "sounds/claim-grass.mp3",     gain: 0.4,   filter: false},
 	claimTree:    {filename: "sounds/claim-tree.mp3",      gain: 0.1,   filter: false},
-	claimRock:    {filename: "sounds/kill-castle-short.mp3",     gain: 0.2,   filter: false},
+	claimRock:    {filename: "sounds/kill-rock.mp3",     gain: 0.2,   filter: false},
 	claimMine:    {filename: "sounds/mine-explosion.mp3",     gain: 0.2,   filter: false},
 	
 	// used for: soldier kills castle.
-	killCastle:   {filename: "sounds/kill-castle-short.mp3",     gain: 0.2,   filter: false},
+	killCastle:   {filename: "sounds/kill-castle2.mp3",     gain: 0.2,   filter: false},
 	killBoat:     {filename: "sounds/mine-explosion.mp3",        gain: 0.2,   filter: false},
 	
 	// used for: knight kills peasant, horse kills knight.
@@ -5491,6 +5491,7 @@ let gameSettings = {
 	drawPoolEdges: true,
 	drawPointers: true,
 	drawWater: true,
+	drawOwnerTooltip: true,
 	
 	autosave: true,
 	country: null, // {code:"FI", name:"Finland"} etc.
@@ -10431,16 +10432,16 @@ function drawUnits(){
 }
 
 
-function drawStrokedText(text, offset = 0){
-	ctx.font = "14px sans-serif";
+function drawStrokedText(text, offsetY = 0, offsetX = 0, color = "white", font = "14px sans-serif"){
+	ctx.font = font;
 	ctx.lineWidth = 3; // outline thickness
 	ctx.strokeStyle = "black";
-	ctx.fillStyle = "white";
+	ctx.fillStyle = color;
 	ctx.lineJoin = "round"; // prevents sharp corners on letters
-	ctx.strokeText(text, 0, offset);
+	ctx.strokeText(text, offsetX, offsetY);
 
-	ctx.fillStyle = "white";
-	ctx.fillText(text, 0, offset);
+	ctx.fillStyle = color;
+	ctx.fillText(text, offsetX, offsetY);
 }
 
 
@@ -11561,6 +11562,39 @@ function drawRouteLines(route, color = "#FFFFFF", dashed = false, speedMulti = 1
 }
 
 
+
+function drawTileOwnerTooltip(){
+	if(focusedHex){
+		
+		let tile = getTileAt(focusedHex.q, focusedHex.r);
+		if(tile){
+			let myPlayerIndex = getMyPlayer().playerIndex;
+			
+			if(tile.ownerIndex !== myPlayerIndex && tile.ownerIndex !== -1){
+				
+				let enemyPlayer = getPlayerByIndex(tile.ownerIndex);
+				let enemyName = enemyPlayer.name;
+				let enemyColor = lightenHexColor(enemyPlayer.color, 0.6);
+
+				if(focusedPoint){
+					// draw tooltip for pool owner:
+					const x = axialToPixelX(focusedHex.q, focusedHex.r);
+					const y = axialToPixelY(focusedHex.q, focusedHex.r);
+
+					ctx.save();
+					ctx.translate(x, y);
+					ctx.rotate(-viewport.rotation);
+					drawStrokedText(enemyName, 0, 0, enemyColor, "24px sans-serif");
+					ctx.restore();
+				}
+			}
+		}
+	}
+}
+
+
+
+
 let drawAllTiles = true;
 
 
@@ -11704,6 +11738,7 @@ function render() {
 		drawFocusedHex();
 	}
 	
+
 	
 	// UNIT SELECTION DRAWING:
 	if(!previewdraw){
@@ -11733,6 +11768,15 @@ function render() {
 	
 	drawLastActionHexes();
 	drawLastActionMoves();
+	
+	
+
+	if(gameSettings.drawOwnerTooltip){
+		drawTileOwnerTooltip();
+	}
+	
+	
+	
 	
 	ctx.restore();
 	
@@ -12588,11 +12632,11 @@ function isMyTurn() {
 	return currentTurnPlayer && currentTurnPlayer.id === localPlayer.id;
 }
 
-function hasUnmovedUnits(){
+function hasUnmovedUnits(playerIndex = -1){
 	if(!isMyTurn()){
 		return false;
 	}
-	const player = getMyPlayer();
+	const player = (playerIndex === -1) ? getMyPlayer() : getPlayerByIndex(playerIndex);
 	for(let i = 0; i < gameState.units.length; i++){
 		let unit = gameState.units[i];
 
@@ -25072,11 +25116,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 		if (!REPLAY_ENABLED && !endTurnBtn.disabled && isMyTurn()) {
 			// Check if there are any units belonging to the player that haven't moved
 			const myPlayerIndex = getMyPlayer().playerIndex;
-			const hasUnmovedUnits = gameState.units.some(unit => 
-				unit.ownerIndex === myPlayerIndex && !unit.hasMoved
-			);
 
-			if (hasUnmovedUnits) {
+			if (hasUnmovedUnits(myPlayerIndex)) {
 				// Show the confirmation popup
 				endTurnPopup.classList.add('active');
 			} else {
