@@ -410,6 +410,57 @@ label {
 }
 
 
+
+
+.player-list-item-top {
+	display: inline-block;
+	padding: 5px;
+	border-bottom: 1px solid var(--border-color);
+	word-break: break-all;
+	background-color:rgba(0,0,0,0.5);
+	margin-right:2px;
+}
+
+.player-list-item-top:last-child {
+	border-bottom: none;
+}
+
+.ai-player-item-top {
+
+}
+.ai-player-item-top:hover::after {
+
+}
+
+#player-ui-list-top {
+	max-height: 68px;
+
+	border-top: 1px solid #3e3e3e;
+	border-bottom: 1px solid #3e3e3e;
+}
+
+#player-ui-list-top .player-list-item-top {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.player-turn-indicator-top {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: var(--warn-color);
+	margin-right: 5px;
+	visibility: hidden;
+}
+
+.player-list-item-top.current-turn .player-turn-indicator-top {
+	visibility: visible;
+}
+
+
+
 .color-picker {
 	display: flex;
 	flex-wrap: wrap;
@@ -1294,10 +1345,12 @@ button.redbutton:hover {
 	background: rgba(0, 0, 0, 0.6);
 }
 
+
+
 #top-float-ui {
-	display: none;
+	display: block;
 	flex-direction: column;
-	padding-left: 4px;
+	----padding-left: 4px;
 	position: absolute;
 	top: 0;
 	left: 0;
@@ -1310,6 +1363,7 @@ button.redbutton:hover {
 }
 
 #top-float-ui-messages {
+	padding-left: 5px;
 	flex-grow: 1;
 	overflow-y: hidden;
 	text-shadow: 2px 2px 1px rgba(0, 0, 0, 1), 0px 0px 2px rgba(0, 0, 0, 1), 0px 0px 4px rgba(0, 0, 0, 1);
@@ -1873,7 +1927,7 @@ input.disabled {
 	</div>
 </div>
 
-<div id="end-turn-confirmation-popup" class="popup-overlay-noncenter">
+<div id="end-turn-confirmation-popup" class="popup-overlay-noncenter no-select">
 	<div id="end-turn-confirmation-wrapper" class="popup-container">
 		<div class="settings-panel-endturn trans-panel">
 			<div class="popup-title-endturn">You have unmoved units, end turn?</div>
@@ -2608,7 +2662,10 @@ input.disabled {
 	
 	</div>
 	
+
+	
 	<div id="top-float-ui">
+		<div id="top-float-ui-players"></div>
 		<div id="top-float-ui-messages"></div>
 	</div>
 	
@@ -2702,7 +2759,7 @@ input.disabled {
 				</div>
 				<div class="info-right" id="info-right">
 					<div class="button-row" id="ui-right-button-row1-id">
-						<button id="sell-unit-btn" class="gamebutton" title="Sell soldier"></button>
+						<button id="sell-unit-btn" class="gamebutton" title="Sell unit"></button>
 						<button id="build-other-btn" class="gamebutton" title="Build item"></button>
 						<button id="build-soldier-btn" class="gamebutton" title="Recruit soldier"></button>
 						<button id="build-castle-btn" class="gamebutton" title="Build castle"></button>
@@ -4347,18 +4404,18 @@ let gameSounds = {
 	build2:        {filename: "sounds/build.mp3",    gain: 0.4,   filter: false},
 	build3:        {filename: "sounds/build.mp3",    gain: 0.4,   filter: false},
 
-	sell:         {filename: "sounds/sell.mp3",    gain: 0.15,   filter: false},
+	sell:         {filename: "sounds/sell.mp3",            gain: 0.15,   filter: false},
 	claimGrass:   {filename: "sounds/claim-grass.mp3",     gain: 0.4,   filter: false},
 	claimTree:    {filename: "sounds/claim-tree.mp3",      gain: 0.1,   filter: false},
-	claimRock:    {filename: "sounds/kill-rock.mp3",     gain: 0.2,   filter: false},
-	claimMine:    {filename: "sounds/mine-explosion.mp3",     gain: 0.2,   filter: false},
+	claimRock:    {filename: "sounds/kill-rock.mp3",       gain: 0.2,   filter: false},
+	claimMine:    {filename: "sounds/mine-explosion.mp3",  gain: 0.2,   filter: false},
 	
 	// used for: soldier kills castle.
 	killCastle:   {filename: "sounds/kill-castle2.mp3",     gain: 0.2,   filter: false},
-	killBoat:     {filename: "sounds/mine-explosion.mp3",        gain: 0.2,   filter: false},
+	killBoat:     {filename: "sounds/mine-explosion.mp3",   gain: 0.2,   filter: false},
 	
 	// used for: knight kills peasant, horse kills knight.
-	swordKill:    {filename: "sounds/sword-kill.mp3",      gain: 1,   filter: false},
+	swordKill:    {filename: "sounds/sword-kill.mp3",          gain: 1,   filter: false},
 
 	diedByStarving: {filename: "sounds/died-by-starving.mp3",  gain: 0.6,   filter: false},
 };
@@ -6865,6 +6922,8 @@ ctx = canvas.getContext('2d');
 const playerUIList = document.getElementById('player-ui-list');
 const chatMessages = document.getElementById('chat-messages');
 const topFloatUiChatMessages = document.getElementById('top-float-ui-messages');
+const topFloatUiPlayers = document.getElementById('top-float-ui-players');
+
 
 
 const lobbyChatMessages = document.getElementById('lobby-chat-messages');
@@ -6901,6 +6960,21 @@ const buildCastleBtn = document.getElementById('build-castle-btn');
 const endTurnBtn = document.getElementById('end-turn-btn');
 const undoBtn = document.getElementById('undo-btn');
 const sellUnitBtn = document.getElementById('sell-unit-btn');
+
+sellUnitBtn.addEventListener("mouseenter", () => {
+	if(!sellUnitBtn.disabled){
+		if(selectedUnit){
+			const unitInfo = getUnitInfo(selectedUnit.type);
+			sellUnitBtn.title = `Sell for ${unitInfo.sell}`;
+		}
+	}
+});
+
+sellUnitBtn.addEventListener("mouseleave", () => {
+	sellUnitBtn.title = "Sell unit";
+});
+
+
 const buildPopup = document.getElementById('build-popup');
 
 const buildPopupTitle = document.getElementById('build-popup-title');
@@ -6913,6 +6987,8 @@ const quitGameBtn = document.getElementById('quit-game-btn');
 const saveGameBtn = document.getElementById('save-game-btn');
 
 //const settingsBtn = document.getElementById('settings-btn');
+
+
 
 
 
@@ -8003,14 +8079,15 @@ function clearTimeouts(){
 
 function hideTopFloatUi(){
 	clearTimeouts();
-	topFloatUi.style.transition = 'opacity 1.0s';
-	topFloatUi.style.opacity = '1';
-	topFloatUi.style.display = 'flex';
+	topFloatUiChatMessages.style.transition = 'opacity 1.0s';
+	topFloatUiChatMessages.style.opacity = '1';
+	topFloatUiChatMessages.style.display = 'block';
+
 	
 	hideTimeout = setTimeout(() => {
-		topFloatUi.style.opacity = '0';
+		topFloatUiChatMessages.style.opacity = '0';
 		hideTimeout2 = setTimeout(() => {
-			topFloatUi.style.display = 'none';
+			topFloatUiChatMessages.style.display = 'none';
 		}, 1000); // matches the topFloatUi.style.transition time.
 	}, 10000); // 10 sec delay until hides top chat.
 }
@@ -8030,14 +8107,14 @@ function toggleUiTopLeft(toggleValue = null){
 	
 	if(showTopLeftUi){
 		uiLeft.style.display = 'flex';
-		topFloatUi.style.display = 'none';
-		topFloatUi.style.opacity = '0';
+		topFloatUiChatMessages.style.display = 'none';
+		topFloatUiChatMessages.style.opacity = '0';
 		chatMessages.scrollTop = chatMessages.scrollHeight;
 		chatInput.focus();
 	}else{
 		uiLeft.style.display = 'none';
-		topFloatUi.style.display = 'flex';
-		topFloatUi.style.opacity = '1';
+		topFloatUiChatMessages.style.display = 'block';
+		topFloatUiChatMessages.style.opacity = '1';
 		topFloatUiChatMessages.scrollTop = topFloatUiChatMessages.scrollHeight;
 		hideTopFloatUi();
 	}
@@ -12656,7 +12733,46 @@ function updateGameUI() {
 	const myPlayer = getMyPlayer();
 	const currentTurnPlayer = getCurrentTurnPlayer();
 	
-	// Update player list
+	// Update player list (on top)
+	topFloatUiPlayers.innerHTML = '';
+
+	gameState.players.forEach(p => {
+		const item = document.createElement('div');
+		item.className = 'player-list-item-top';
+		if (p.id === currentTurnPlayer?.id) {
+			item.classList.add('current-turn');
+		}
+		
+		item.dataset.peer = p.id;
+
+		if(p.id	!== localPlayer.id && !p.isAI){
+			item.classList.add("ai-player-item-top");	
+		}
+		
+		let color = p.textColor;
+		let specTag = "";
+		if(p.isSpectator){
+			color = "white";
+			specTag = "(spec)";
+		}
+
+		if(p.isAI){
+			specTag = "(AI)";
+		}
+		
+		if(!p.quitted && !p.isDead && !p.isSpectator){
+			item.innerHTML = `
+				<span class="player-turn-indicator-top"></span>
+				<span style="color: ${color}; font-weight: bold;" class="namevals"></span>
+			`;
+			const safeName = document.createTextNode(`${p.name} ${specTag}`);
+			item.querySelector("span.namevals").appendChild(safeName);
+
+			topFloatUiPlayers.appendChild(item);
+		}
+	});
+	
+	// Update player list (in chatbox)
 	playerUIList.innerHTML = '';
 	gameState.players.forEach(p => {
 		const item = document.createElement('div');
@@ -23858,9 +23974,22 @@ document.addEventListener('keydown', (event) => {
 		const key = event.key;
 		const code = event.code;
 
+/*
+const endTurnPopup = document.getElementById('end-turn-confirmation-popup');
+const endTurnPopupWrapper = document.getElementById('end-turn-confirmation-wrapper');
+const confirmYes = document.getElementById('confirm-end-turn-yes');
+const confirmNo = document.getElementById('confirm-end-turn-no');
+performEndTurn();
+*/
 		if(gameStarted()){
 			if (key === 'Enter') { // event.key matches enter and numpad enter.
-				toggleUiTopLeft();
+				// end turn if end-turn popup is visible:
+				if(endTurnPopup.classList.contains('active')){
+					performEndTurn();
+				}else{
+					// otherwise toggle ui:
+					toggleUiTopLeft();
+				}
 			}
 			
 			if(code === 'KeyQ') { // q "q" 'q'
@@ -25148,6 +25277,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 	undoBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
 	undoBtn.tabIndex = -1; //remove it from the tab order
 	
+	
+
+
 	sellUnitBtn.onclick = () => {
 		if (!REPLAY_ENABLED && isMyTurn()) {
 			console.log("action_sell");
