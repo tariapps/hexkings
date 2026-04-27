@@ -1117,6 +1117,49 @@ button.redbutton:hover {
 
 
 
+.compact-input {
+	padding:0px;
+}
+
+
+
+#host-player-settings-list {
+	
+}
+
+
+
+#player-settings-ui-wrapper {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	width:100%;
+	height:100%;
+}
+
+#player-settings-ui-wrapper2 {
+	height:100%;
+}
+
+/* Popup container */
+#player-settings-ui {
+	position: fixed;
+	inset: 0;
+	display: none;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	---background: rgba(0, 0, 0, 0.7);
+	z-index: 9999;
+}
+
+/* Visible state */
+#player-settings-ui.active {
+	display: flex;
+}
+
+
+
 
 
 
@@ -1611,6 +1654,14 @@ input.disabled {
 	background-image: url('images/ui/settings-icon.png');
 }
 
+.settings-btn-icon {
+	background-image: url('images/ui/settings-icon.png');
+}
+
+#player-settings-btn {
+    height: 46px;
+}
+
 #game-settings-btn,
 #game-settings-btn2,
 #lobby-game-settings-btn {
@@ -2020,6 +2071,33 @@ input.disabled {
 		</div>
 	</div>
 </div>
+
+<!-- player settings -->
+<div id="player-settings-ui">
+	<div id="player-settings-ui-wrapper">
+		<div id="player-settings-ui-wrapper2" class="ui-menu ui-panel settings-panel scrollable">
+
+			<div class="input-group">
+				<div style="flex: 4; padding: 10px 0 10px 0; font-size: 20px; font-weight:bold">
+					Player Settings
+				</div>
+				<div style="flex: 3;" class="ingame-class hidden">
+					
+				</div>
+				<div style="flex: 3;" class="ingame-class hidden">
+					
+				</div>
+				<div style="flex: 1;">
+					<button id="close-player-settings-btn" class="gamebutton largefont">×</button>
+				</div>
+			</div>
+			
+			<div id="host-player-settings-list" class=""></div>
+			
+		</div>
+	</div>
+</div>
+
 
 <!-- lobby settings -->
 <div id="game-settings-ui">
@@ -2481,8 +2559,13 @@ input.disabled {
 				<span class="label joined-players-text">Players:</span>
 				<div id="host-player-list" class="player-list scrollable"></div>
 				
-				<div class="input-group">
-					<button id="add-ai-btn">Add AI</button>
+				<div class="input-group" style="gap: 3px;">
+					<div style="flex:1">
+						<button id="add-ai-btn">Add AI</button>
+					</div>
+					<div style="flex:0.5">
+						<button id="player-settings-btn" title="Player Settings" class="lobbybutton settings-btn-icon"></button>
+					</div>
 				</div>
 			</div>
 			
@@ -2541,7 +2624,7 @@ input.disabled {
 		</div>
 
 		<div class="input-group">
-			<button id="load-map-btn">Select Map</button>
+			<button id="load-map-btn">Browse Maps</button>
 			<button id="load-random-map-btn">Random map</button>
 			<button id="load-game-btn" style="display:block">Load Game</button>
 		</div>
@@ -6989,6 +7072,41 @@ const saveGameBtn = document.getElementById('save-game-btn');
 //const settingsBtn = document.getElementById('settings-btn');
 
 
+
+
+const playerSettingsBtn = document.getElementById('player-settings-btn');
+const closePlayerSettingsBtn = document.getElementById('close-player-settings-btn');
+
+const playerSettingsUi = document.getElementById('player-settings-ui');
+const playerSettingsUiWrapper = document.getElementById('player-settings-ui-wrapper');
+const playerSettingsUiWrapper2 = document.getElementById('player-settings-ui-wrapper2');
+
+const hostPlayerSettingsList = document.getElementById('host-player-settings-list');
+
+
+function openPlayerSettings(){
+	// unfocus chatinput:
+	chatInput.blur();
+	
+	playerSettingsUi.style.display = "flex";
+	
+	addPopupState(playerSettingsUi);
+}
+function closePlayerSettings(){
+	playerSettingsUi.style.display = "none";
+	
+	removePopupState(playerSettingsUi);
+}
+
+playerSettingsBtn.addEventListener("click", (e) => {
+	e.stopPropagation(); // needed or it will close the popup instantly due to check of handleOutside()
+	openPlayerSettings();
+	hideConfirmationView();
+});
+
+closePlayerSettingsBtn.addEventListener("click", () => {
+	closePlayerSettings();
+});
 
 
 
@@ -21474,10 +21592,141 @@ function getCountryFlagImageInfo(country){
 }
 
 
+
+// Helper function to prevent XSS (HTML Injection)
+// This converts characters like < and > into safe text equivalents
+function escapeHTML(str) {
+	if (!str) return '';
+	return str.replace(/[&<>'"]/g, tag => ({
+		'&': '&amp;',
+		'<': '&lt;',
+		'>': '&gt;',
+		"'": '&#39;',
+		'"': '&quot;'
+	}[tag]));
+}
+
+function updateHostPlayerSettingsList() {
+	// Build an array of HTML strings, then join them at the end.
+	// This is much faster than editing the DOM inside a loop.
+	let listHTML = '';
+
+	gameState.players.forEach(p => {
+		if (!p.quitted && !p.isSpectator) {
+			
+			// 1. Sanitize the user-generated data FIRST
+			let specTag = p.isSpectator ? ' (spec)' : '';
+			let safePlayerName = escapeHTML(`${p.name}${specTag}`);
+			let nameColor = escapeHTML(p.isSpectator ? SPECTATOR_COLOR : p.textColor);
+
+			// 2. Generate flag HTML if applicable
+			let flagHTML = '';
+			if (p.country !== undefined && p.country !== null) {
+				let flagInfo = getCountryFlagImageInfo(p.country);
+				// Also good practice to escape image URLs and titles
+				flagHTML = `<img src="${escapeHTML(flagInfo.url)}" title="${escapeHTML(flagInfo.name)}" class="playerflag" style="margin-right: 6px;">`;
+			}
+
+			// 3. Build the row using a template literal
+			listHTML += `
+			<div class="player-list-item" data-peer="${p.id}" style="display: flex; align-items: center; gap: 8px;">
+				
+				<div class="player-name-cell" style="flex-grow: 1; display: flex; align-items: center; overflow: hidden;">
+					<span style="color: ${nameColor}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+						${safePlayerName}
+					</span>
+				</div>
+
+				<div class="player-team-cell">
+					<select class="player-team-select compact-input" title="Team" data-peer="${p.id}" style="width: 60px; flex-shrink: 0;">
+						<option>Team</option>
+						<option>None</option>
+					</select>
+				</div>
+				
+
+				<div class="player-spots-cell">
+					<select class="player-spots-select compact-input" title="How many spawn points given" data-peer="${p.id}" style="width: 60px; flex-shrink: 0;">
+						<option>Spots</option>
+						<option>1</option>
+					</select>
+				</div>
+				
+				<div class="player-grow-cell">
+					<select class="player-grow-select compact-input" title="How many extra tiles a pool will get" data-peer="${p.id}" style="width: 60px; flex-shrink: 0;">
+						<option>Grow</option>
+						<option>0</option>
+					</select>
+				</div>
+
+				
+				<div class="player-moneymulti-cell">
+					<select class="player-moneymulti-select compact-input" title="Start tiles money multiplier" data-peer="${p.id}" style="width: 48px; flex-shrink: 0;">
+						<option>$</option>
+						<option>1.0x (No tile money multiplier)</option>
+						<option>1.5x</option>
+						<option>2.0x</option>
+						<option>2.5x</option>
+						<option>3.0x</option>
+						<option>3.5x</option>
+						<option>4.0x</option>
+					</select>
+				</div>
+
+				<div class="player-is-starting">
+					<input type="radio" title="Starting player" style="height:50px" name="starting-player-radio" data-peer="${p.id}">
+				</div>
+
+			</div>`;
+		}
+	});
+
+	// 4. Inject the entire HTML string into the DOM at once
+	hostPlayerSettingsList.innerHTML = listHTML;
+}
+
+
+
+function updateHostPlayerSettingsList2(){
+
+	// for host player:
+	hostPlayerSettingsList.innerHTML = '';
+
+	gameState.players.forEach(p => {
+		// only show playing players in player settings list:
+		if (!p.quitted && !p.isSpectator) {
+			const item = document.createElement('div');
+			item.className = 'player-list-item';
+			item.dataset.peer = p.id;
+
+			if(p.country !== undefined && p.country !== null){
+				let flagInfo = getCountryFlagImageInfo(p.country);
+				
+				const flagElem = document.createElement('img');
+				flagElem.src = flagInfo.url;
+				flagElem.title = flagInfo.name;
+				flagElem.classList.add("playerflag");
+
+				item.appendChild(flagElem);
+			}
+
+			let specTag = p.isSpectator ? ' (spec)' : '';
+			item.style.color = p.isSpectator ? SPECTATOR_COLOR : p.textColor;
+
+			let nameText = document.createTextNode(`${p.name}${specTag}`);
+			item.appendChild(nameText);
+
+			hostPlayerSettingsList.appendChild(item);
+		}
+	});
+}
+
 function updateHostLobbyUI() {
 	updateJoinedPlayersText();
 	
 	updateHostPreviewTile(getMyPlayer().color);
+	
+	updateHostPlayerSettingsList();
 	
 	// for host player:
 	hostPlayerList.innerHTML = '';
@@ -24221,6 +24470,12 @@ function handleOutside(e) {
 	//}
 	
 	
+	// player settings
+	if (!playerSettingsUiWrapper2.contains(e.target)) {
+		playerSettingsUi.style.display = "none";
+	}
+	
+	
 	// Game stats
 	if (!gameStatsPopupUiWrapper2.contains(e.target)) {
 		gameStatsPopup.style.display = "none";
@@ -24261,6 +24516,7 @@ document.addEventListener('mousedown', (e) => {
 	mouseDownInsidePopup =
 		pickerWrapper.contains(e.target) ||
 		gameSettingsUiWrapper2.contains(e.target) ||
+		playerSettingsUiWrapper2.contains(e.target) ||
 		//endTurnPopupWrapper.contains(e.target) || // todo: fix it to cancel by clicking outside.
 		gameStatsPopupUiWrapper2.contains(e.target) ||
 		//endgamePopupUiWrapper2.contains(e.target) || // dont allow closing endgame popup by clicking outside.
