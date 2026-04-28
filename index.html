@@ -19145,11 +19145,11 @@ function executeEndTurn(playerIndex) {
 					// none of the tiles had income:
 					if(!foundIncomeTile){
 						// check if any pool has enough savings to buy anything:
-						//let pools = findEconomyPools(player.playerIndex);
+						let playerPools = (playerIndex === player.playerIndex) ? pools : findEconomyPools(player.playerIndex); // use returned pools if current player in turn (it may have different values than using findEconomyPools() at this point in code.
 
 						let canBuy = false;
-						for(let i = 0; i < pools.length; i++){
-							let pool = pools[i];
+						for(let i = 0; i < playerPools.length; i++){
+							let pool = playerPools[i];
 							if(canBuyAnything(pool.totalSavings)){
 								canBuy = true;
 							}
@@ -20556,6 +20556,7 @@ function handleHostData(data) {
 			}
 
 			addSystemChatMessage(`>>> Player ${player.name} has died!`, "#FFFFFF");
+			updateGameUI();
 			//}
 		}
 		break;
