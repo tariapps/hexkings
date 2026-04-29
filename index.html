@@ -386,9 +386,21 @@ label {
 	background: #000000;
 	border:1px solid #333333;
 	border-radius: 6px;
-	height: 160px;
+	height: 131px;
 	overflow-y:auto;
 	----margin-top: 15px;
+}
+
+
+.cursor-help {
+	cursor:help;
+}
+
+.disable-inputs input,
+.disable-inputs select,
+.disable-inputs textarea {
+	pointer-events: none;
+	opacity: 0.6; /* optional: make it look disabled */
 }
 
 .player-list-item {
@@ -2073,9 +2085,9 @@ input.disabled {
 </div>
 
 <!-- player settings -->
-<div id="player-settings-ui">
+<div id="player-settings-ui" class="no-select">
 	<div id="player-settings-ui-wrapper">
-		<div id="player-settings-ui-wrapper2" class="ui-menu ui-panel settings-panel scrollable">
+		<div id="player-settings-ui-wrapper2" class="ui-menu ui-panel settings-panel scrollable disable-inputs">
 
 			<div class="input-group">
 				<div style="flex: 4; padding: 10px 0 10px 0; font-size: 20px; font-weight:bold">
@@ -2092,7 +2104,7 @@ input.disabled {
 				</div>
 			</div>
 			
-			<div id="host-player-settings-list" class=""></div>
+			<div id="host-player-settings-list"></div>
 			
 		</div>
 	</div>
@@ -2681,10 +2693,18 @@ input.disabled {
 				</div>
 				
 			</div>
+
 			<div style="flex:1">
 				<span class="label joined-players-text">Players:</span>
 				<div id="lobby-player-list" class="lobby-player-list scrollable"></div>
+				
+				<div class="input-group">
+					<div style="flex:1">
+						<button id="lobby-player-settings-btn" title="Player Settings" class="lobbybutton settings-btn-icon"></button>
+					</div>
+				</div>
 			</div>
+			
 		</div>
 		
 		<div id="lobby-game-settings" style="display:none">
@@ -7089,11 +7109,17 @@ const saveGameBtn = document.getElementById('save-game-btn');
 
 
 const playerSettingsBtn = document.getElementById('player-settings-btn');
+const lobbyPlayerSettingsBtn = document.getElementById('lobby-player-settings-btn');
+
+
 const closePlayerSettingsBtn = document.getElementById('close-player-settings-btn');
 
 const playerSettingsUi = document.getElementById('player-settings-ui');
 const playerSettingsUiWrapper = document.getElementById('player-settings-ui-wrapper');
 const playerSettingsUiWrapper2 = document.getElementById('player-settings-ui-wrapper2');
+
+
+
 
 const hostPlayerSettingsList = document.getElementById('host-player-settings-list');
 
@@ -7101,73 +7127,79 @@ const hostPlayerSettingsList = document.getElementById('host-player-settings-lis
 
 // Add a single 'change' event listener to the container
 hostPlayerSettingsList.addEventListener('change', function(event) {
-	const target = event.target;
+	if(isHost()){
+		const target = event.target;
 
-	// Check if the element that triggered the change is a select or our radio button
-	const isSelect = target.tagName.toLowerCase() === 'select';
-	const isRadio = target.tagName.toLowerCase() === 'input' && target.type === 'radio';
+		// Check if the element that triggered the change is a select or our radio button
+		const isSelect = target.tagName.toLowerCase() === 'select';
+		const isRadio = target.tagName.toLowerCase() === 'input' && target.type === 'radio';
 
-	if (isSelect || isRadio) {
-		// Grab the data-peer attribute using the dataset property
-		const peerId = target.dataset.peer;
-		let player = getPlayer(peerId);
-		
-		// Grab the new value that was just selected/checked
-		const newValue = target.value;
+		if (isSelect || isRadio) {
+			// Grab the data-peer attribute using the dataset property
+			const peerId = target.dataset.peer;
+			let player = getPlayer(peerId);
+			
+			// Grab the new value that was just selected/checked
+			const newValue = target.value;
 
-		// --- Handle specific changes based on the element's class or name ---
-		
-		if (target.classList.contains('player-moneyadd-select')) {
-			let startMoneyAdd = parseFloat(newValue);
-			player.startMoneyAdd = startMoneyAdd;
+			// --- Handle specific changes based on the element's class or name ---
 			
-			console.log(`Tile money add for peer ${peerId} changed to ${startMoneyAdd}`);
-			// Update your gameState here, e.g.,
-			// let player = gameState.players.find(p => p.id == peerId);
-			// if (player) player.moneyMulti = parseFloat(newValue);
+			if (target.classList.contains('player-moneyadd-select')) {
+				let startMoneyAdd = parseFloat(newValue);
+				player.startMoneyAdd = startMoneyAdd;
+				
+				console.log(`Tile money add for peer ${peerId} changed to ${startMoneyAdd}`);
+				// Update your gameState here, e.g.,
+				// let player = gameState.players.find(p => p.id == peerId);
+				// if (player) player.moneyMulti = parseFloat(newValue);
 
-		} else if (target.classList.contains('player-team-select')) {
-			let teamIndex = parseInt(newValue);
-			player.teamIndex = teamIndex;
+			} else if (target.classList.contains('player-team-select')) {
+				let teamIndex = parseInt(newValue);
+				player.teamIndex = teamIndex;
+				
+				console.log(`Team for peer ${peerId} changed to ${teamIndex}`);
+				
+			} else if (target.classList.contains('player-spots-select')) {
+				let totalSpots = parseInt(newValue);
+				player.totalSpots = totalSpots;
+				
+				console.log(`Spots for peer ${peerId} changed to ${totalSpots}`);
+				
+			} else if (target.classList.contains('player-grow-select')) {
+				let tileGrow = parseInt(newValue);
+				player.tileGrow = tileGrow;
+				
+				console.log(`Grow for peer ${peerId} changed to ${tileGrow}`);
+				
+			}
 			
-			console.log(`Team for peer ${peerId} changed to ${teamIndex}`);
-			
-		} else if (target.classList.contains('player-spots-select')) {
-			let totalSpots = parseInt(newValue);
-			player.totalSpots = totalSpots;
-			
-			console.log(`Spots for peer ${peerId} changed to ${totalSpots}`);
-			
-		} else if (target.classList.contains('player-grow-select')) {
-			let tileGrow = parseInt(newValue);
-			player.tileGrow = tileGrow;
-			
-			console.log(`Grow for peer ${peerId} changed to ${tileGrow}`);
-			
+			broadcastLobbyState();
 		}
 	}
 });
 
 // handle radio button (start player) change and unselecting by clicking selected radio again:
 hostPlayerSettingsList.addEventListener('click', function(event) {
-	const target = event.target;
-	
-	// Check if the clicked element is our specific radio button
-	const isRadio = target.tagName.toLowerCase() === 'input' && target.type === 'radio';
+	if(isHost()){
+		const target = event.target;
+		
+		// Check if the clicked element is our specific radio button
+		const isRadio = target.tagName.toLowerCase() === 'input' && target.type === 'radio';
 
-	if (isRadio && target.name === 'starting-player-radio') {
-		const peerId = target.dataset.peer;
-		let player = getPlayer(peerId);
+		if (isRadio && target.name === 'starting-player-radio') {
+			const peerId = target.dataset.peer;
+			let player = getPlayer(peerId);
 
-		if(gameState.settings.startPlayerId === peerId){
-			gameState.settings.startPlayerId = -1;
-			target.checked = false;
-			console.log(`Start player is now random.`);
-		}else{
-			gameState.settings.startPlayerId = peerId;
-			console.log(`Peer ${peerId} (${player.name}) is now the starting player.`);
+			if(gameState.settings.startPlayerId === peerId){
+				gameState.settings.startPlayerId = -1;
+				target.checked = false;
+				console.log(`Start player is now random.`);
+			}else{
+				gameState.settings.startPlayerId = peerId;
+				console.log(`Peer ${peerId} (${player.name}) is now the starting player.`);
+			}
+			broadcastLobbyState();
 		}
-		broadcastLobbyState();
 	}
 });
 
@@ -7241,7 +7273,39 @@ function updateHostPlayerSettingsList() {
 	// This is much faster than editing the DOM inside a loop.
 	let listHTML = '';
 	
+	listHTML += `
+	<div class="player-list-item" style="display: flex; align-items: center; gap: 8px;">
+		
+		<div class="player-name-cell" style="flex-grow: 1; display: flex; align-items: center; overflow: hidden;">
+			<span style="color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+				Player
+			</span>
+		</div>
 
+		<div class="player-team-cell cursor-help" style="width: 60px; display:none">
+			Team
+		</div>
+		
+
+		<div class="player-spots-cell cursor-help" style="width: 60px; display:none">
+			Spots
+		</div>
+		
+		<div class="player-grow-cell cursor-help" title="How many extra tiles around starting lands" style="width: 60px; flex-shrink: 0;">
+			Grow
+		</div>
+
+		
+		<div class="player-moneyadd-cell cursor-help" title="Extra money per tile at start" style="width: 60px; flex-shrink: 0;">
+			+Money
+		</div>
+
+		<div class="player-is-starting cursor-help" title="Starting player" style="width: 60px; flex-shrink: 0;">
+			Starter
+		</div>
+
+	</div>`;
+		
 	gameState.players.forEach(p => {
 		if (!p.quitted && !p.isSpectator) {
 			
@@ -7299,41 +7363,43 @@ function updateHostPlayerSettingsList() {
 			<div class="player-list-item" data-peer="${p.id}" style="display: flex; align-items: center; gap: 8px;">
 				
 				<div class="player-name-cell" style="flex-grow: 1; display: flex; align-items: center; overflow: hidden;">
-					<span style="color: ${nameColor}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+					<span style="max-width: 160px; color: ${nameColor}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
 						${safePlayerName}
 					</span>
 				</div>
 
-				<div class="player-team-cell" style="display:none">
-					<select class="player-team-select compact-input" title="Team" data-peer="${p.id}" style="width: 60px; flex-shrink: 0;">
+				<div class="player-team-cell" style="width: 60px; display:none">
+					<select class="player-team-select compact-input" title="Team" data-peer="${p.id}" style="flex-shrink: 0;">
 						<option>Team</option>
 						<option>None</option>
 					</select>
 				</div>
 				
 
-				<div class="player-spots-cell" style="display:none">
-					<select class="player-spots-select compact-input" title="How many spawn points given" data-peer="${p.id}" style="width: 60px; flex-shrink: 0;">
+				<div class="player-spots-cell" style="width: 60px; display:none">
+					<select class="player-spots-select compact-input" title="How many spawn points given" data-peer="${p.id}" style="flex-shrink: 0;">
 						<option>Spots</option>
 						<option>1</option>
 					</select>
 				</div>
 				
-				<div class="player-grow-cell">
-					<select class="player-grow-select compact-input" title="How many extra tiles a pool will get" data-peer="${p.id}" style="width: 60px; flex-shrink: 0;">
+				<div class="player-grow-cell" style="width: 60px;">
+					<select class="player-grow-select compact-input" title="How many extra tiles a pool will get" data-peer="${p.id}" style="flex-shrink: 0;">
 						${tileGrowOptions}
 					</select>
 				</div>
 
 				
-				<div class="player-moneyadd-cell">
-					<select class="player-moneyadd-select compact-input" title="Start tiles money add" data-peer="${p.id}" style="width: 48px; flex-shrink: 0;">
+				<div class="player-moneyadd-cell" style="width: 60px;">
+					<select class="player-moneyadd-select compact-input" title="Start tiles money add" data-peer="${p.id}" style="flex-shrink: 0;">
 						${startTileMoneyOptions}
 					</select>
 				</div>
 
-				<div class="player-is-starting">
-					<input type="radio" title="Starting player" style="height:50px" name="starting-player-radio" data-peer="${p.id}" ${startPlayerSelected}>
+				<div class="player-is-starting" style="width: 60px;">
+					<label style="display:inline-block; width:60px;">
+						<input type="radio" title="Starting player (Click again to disable)" style="width:20px; height:50px" name="starting-player-radio" data-peer="${p.id}" ${startPlayerSelected}>
+					</label>
 				</div>
 
 			</div>`;
@@ -7365,10 +7431,19 @@ playerSettingsBtn.addEventListener("click", (e) => {
 	openPlayerSettings();
 	hideConfirmationView();
 });
+lobbyPlayerSettingsBtn.addEventListener("click", (e) => {
+	e.stopPropagation(); // needed or it will close the popup instantly due to check of handleOutside()
+	openPlayerSettings();
+	hideConfirmationView();
+});
+
 
 closePlayerSettingsBtn.addEventListener("click", () => {
 	closePlayerSettings();
 });
+
+
+
 
 
 
@@ -20084,6 +20159,7 @@ function handleHostData(data) {
 			GAME_START_TIME = msNowFloor();
 			
 			closeGameSettings();
+			closePlayerSettings();
 			
 			markDirty();
 			gameState = data.state;
@@ -21896,6 +21972,8 @@ function updateHostPlayerSettingsList2(){
 }
 
 function updateHostLobbyUI() {
+	playerSettingsUiWrapper2.classList.remove("disable-inputs");
+	
 	updateJoinedPlayersText();
 	
 	updateHostPreviewTile(getMyPlayer().color);
@@ -22048,6 +22126,8 @@ function updateLobbyUI() {
 	updateJoinedPlayersText();
 	
 	updateLobbyPreviewTile(getMyPlayer().color);
+	
+	updateHostPlayerSettingsList();
 
 	// Update settings info
 	lobbyRoomNameTitle.textContent = `Joined: ${gameState.settings.roomName}`;
@@ -24112,6 +24192,7 @@ function applyUnitCostsFromSettings(){
 }
 
 
+// claims extra tiles, if set in player settings before game start.
 function applyTileGrow(){
 	for(let p = 0; p < gameState.players.length; p++){
 		let player = gameState.players[p];
@@ -24141,7 +24222,6 @@ function applyTileGrow(){
 					let shufflableList = [];
 					
 					for (const [key, value] of Object.entries(possibleTiles)) {
-						//console.log(key, value);
 						shufflableList.push(value);
 					}
 					
@@ -24646,6 +24726,8 @@ let mouseDownInsidePopup = false;
 
 // handlePointer bugged, if x or y is zero, causes error.
 function handleOutside(e) {
+	const path = e.composedPath();
+	
 	if (e.target.classList.contains("tab-game-settings")){
 		const tabClass = e.target.dataset.tabclass;
 		
@@ -24703,8 +24785,10 @@ function handleOutside(e) {
 	
 	
 	// player settings
-	if (!playerSettingsUiWrapper2.contains(e.target)) {
-		playerSettingsUi.style.display = "none";
+	//if (!playerSettingsUiWrapper2.contains(e.target)) {
+	if (!path.includes(playerSettingsUiWrapper2)) {
+		closePlayerSettings();
+		//playerSettingsUi.style.display = "none";
 	}
 	
 	
