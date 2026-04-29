@@ -398,7 +398,8 @@ label {
 
 .disable-inputs input,
 .disable-inputs select,
-.disable-inputs textarea {
+.disable-inputs textarea,
+.disable-inputs label {
 	pointer-events: none;
 	opacity: 0.6; /* optional: make it look disabled */
 }
@@ -427,15 +428,14 @@ label {
 .player-list-item-top {
 	display: inline-block;
 	padding: 5px;
-	border-bottom: 1px solid var(--border-color);
+	border-bottom: 1px solid rgba(255, 255, 255, 0.3);
 	word-break: break-all;
 	background-color:rgba(0,0,0,0.5);
-	margin-right:2px;
+
+	margin-right: 4px;
+	border-left: 2px solid rgba(255, 255, 255, 0.3);
 }
 
-.player-list-item-top:last-child {
-	border-bottom: none;
-}
 
 .ai-player-item-top {
 
@@ -2093,12 +2093,6 @@ input.disabled {
 				<div style="flex: 4; padding: 10px 0 10px 0; font-size: 20px; font-weight:bold">
 					Player Settings
 				</div>
-				<div style="flex: 3;" class="ingame-class hidden">
-					
-				</div>
-				<div style="flex: 3;" class="ingame-class hidden">
-					
-				</div>
 				<div style="flex: 1;">
 					<button id="close-player-settings-btn" class="gamebutton largefont">×</button>
 				</div>
@@ -2313,6 +2307,7 @@ input.disabled {
 			<div class="tab tab-game active">
 				<div class="ingame-class hidden">
 					<button id="game-settings-stats-btn" class="gamebutton" style="width:40%">Open game stats</button>
+					<button id="ingame-player-settings-btn" class="gamebutton" style="width:40%">Player settings</button>
 				</div>
 				
 				<div>
@@ -7110,6 +7105,7 @@ const saveGameBtn = document.getElementById('save-game-btn');
 
 const playerSettingsBtn = document.getElementById('player-settings-btn');
 const lobbyPlayerSettingsBtn = document.getElementById('lobby-player-settings-btn');
+const ingamePlayerSettingsBtn = document.getElementById('ingame-player-settings-btn');
 
 
 const closePlayerSettingsBtn = document.getElementById('close-player-settings-btn');
@@ -7127,7 +7123,7 @@ const hostPlayerSettingsList = document.getElementById('host-player-settings-lis
 
 // Add a single 'change' event listener to the container
 hostPlayerSettingsList.addEventListener('change', function(event) {
-	if(isHost()){
+	if(isHost() && !gameStarted()){
 		const target = event.target;
 
 		// Check if the element that triggered the change is a select or our radio button
@@ -7180,7 +7176,7 @@ hostPlayerSettingsList.addEventListener('change', function(event) {
 
 // handle radio button (start player) change and unselecting by clicking selected radio again:
 hostPlayerSettingsList.addEventListener('click', function(event) {
-	if(isHost()){
+	if(isHost() && !gameStarted()){
 		const target = event.target;
 		
 		// Check if the clicked element is our specific radio button
@@ -7436,6 +7432,13 @@ lobbyPlayerSettingsBtn.addEventListener("click", (e) => {
 	openPlayerSettings();
 	hideConfirmationView();
 });
+ingamePlayerSettingsBtn.addEventListener("click", (e) => {
+	e.stopPropagation(); // needed or it will close the popup instantly due to check of handleOutside()
+	hideConfirmationView();
+	closeGameSettings();
+	openPlayerSettings();
+});
+
 
 
 closePlayerSettingsBtn.addEventListener("click", () => {
@@ -20161,6 +20164,9 @@ function handleHostData(data) {
 			closeGameSettings();
 			closePlayerSettings();
 			
+			// disable player settings inputs when game starts:
+			playerSettingsUiWrapper2.classList.add("disable-inputs");
+			
 			markDirty();
 			gameState = data.state;
 			
@@ -21972,7 +21978,10 @@ function updateHostPlayerSettingsList2(){
 }
 
 function updateHostLobbyUI() {
-	playerSettingsUiWrapper2.classList.remove("disable-inputs");
+	if(!gameStarted()){
+		// enable player settings inputs for host:
+		playerSettingsUiWrapper2.classList.remove("disable-inputs");
+	}
 	
 	updateJoinedPlayersText();
 	
