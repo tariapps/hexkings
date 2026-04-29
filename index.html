@@ -3572,6 +3572,13 @@ function getSelectedServer(){
 
 
 
+function getLocalStorageObject(name){
+	return JSON.parse(localStorage.getItem(APP_NAME+"_"+name));
+}
+function setLocalStorageObject(name, value){
+	return localStorage.setItem(APP_NAME+"_"+name, JSON.stringify(value));
+}
+
 function getLocalStorageItem(name){
 	return localStorage.getItem(APP_NAME+"_"+name);
 }
@@ -3703,18 +3710,21 @@ function isValidName(name){
 
 // if player types own nick, it will remember it:
 playerNameInput.addEventListener("input", () => {
-	if(isValidName(playerNameInput.value)){
-		setLocalStorageItem("playerName", playerNameInput.value.trim());
+	let name = sanitizeName(playerNameInput.value);
+	if(isValidName(name)){
+		setLocalStorageItem("playerName", name);
 	}
 });
 hostRoomPlayerNameInput.addEventListener("input", () => {
-	if(isValidName(hostRoomPlayerNameInput.value)){
-		setLocalStorageItem("playerName", hostRoomPlayerNameInput.value.trim());
+	let name = sanitizeName(hostRoomPlayerNameInput.value);
+	if(isValidName(name)){
+		setLocalStorageItem("playerName", name);
 	}
 });
 lobbyPlayerNameInput.addEventListener("input", () => {
-	if(isValidName(lobbyPlayerNameInput.value)){
-		setLocalStorageItem("playerName", lobbyPlayerNameInput.value.trim());
+	let name = sanitizeName(lobbyPlayerNameInput.value);
+	if(isValidName(name)){
+		setLocalStorageItem("playerName", name);
 	}
 });
 
@@ -4332,6 +4342,7 @@ async function renderMapList(category) {
 			// <div>${map.width} x ${map.height}</div>
 			div.addEventListener('click', () => {
 				loadMap(category, index);
+				setLocalStorageObject("currentMap", {category:category, index:index});
 				console.log("map loaded: "+category+index);
 
 				closePopup();
@@ -5089,6 +5100,7 @@ let REPLAY_ENABLED = 0;
 let MAX_MESSAGE_LEN = 200;
 let MAX_LOBBY_MESSAGE_LEN = 100;
 
+let MAX_PLAYER_NAME_LEN = 16;
 
 
 // list of messages sent to clients:
@@ -5803,6 +5815,61 @@ function escapeHTML(str) {
 		"'": '&#39;',
 		'"': '&quot;'
 	}[tag]));
+}
+
+
+function limitSequentialChars(str, max = 3) {
+	if (!str) return "";
+
+	let result = str[0];
+	let count = 1;
+
+	for (let i = 1; i < str.length; i++) {
+		if (str[i] === str[i - 1]) {
+			count++;
+			if (count <= max) {
+				result += str[i];
+			}
+		} else {
+			count = 1;
+			result += str[i];
+		}
+	}
+
+	return result;
+}
+
+function limitSequentialCharsAndSpaces(str, maxChars = 3, maxSpaces = 1) {
+	if (!str) return "";
+
+	let result = str[0];
+	let count = 1;
+
+	for (let i = 1; i < str.length; i++) {
+		const current = str[i];
+		const prev = str[i - 1];
+
+		const isSpace = /\s/.test(current);
+
+		if (current === prev) {
+			count++;
+
+			const limit = isSpace ? maxSpaces : maxChars;
+
+			if (count <= limit) {
+				result += current;
+			}
+		} else {
+			count = 1;
+			result += current;
+		}
+	}
+
+	return result;
+}
+
+function sanitizeName(name){
+	return limitSequentialCharsAndSpaces(name).trim().slice(0, MAX_PLAYER_NAME_LEN);
 }
 
 
@@ -21176,7 +21243,7 @@ function handleClientData(peerId, data) {
 		}
 		break;
 		case ACTION.join:
-			player.name = data.name;
+			player.name = sanitizeName(data.name);
 			
 			if (!gameStarted()) {
 				let colors = getNextFreeColors();
@@ -21228,7 +21295,7 @@ function handleClientData(peerId, data) {
 			break;
 		case ACTION.player_update:
 			if(data.name !== undefined){
-				player.name = data.name;
+				player.name = sanitizeName(data.name);
 			}
 			if(data.color !== undefined){
 				player.color = data.color;
@@ -21663,7 +21730,7 @@ function executeJoin(hostPeerId) {
 
 function joinGame(isSpectator) {
 	localPlayer.isSpectator = isSpectator;
-	localPlayer.name = playerNameInput.value;
+	localPlayer.name = sanitizeName(playerNameInput.value);
 	if (isSpectator) {
 		localPlayer.color = SPECTATOR_COLOR;
 		localPlayer.textColor = SPECTATOR_COLOR;
@@ -21722,7 +21789,7 @@ function hostGame() {
 			myPeerId = id;
 			localPlayer.id = id;
 			localPlayer.isHost = true;
-			localPlayer.name = playerNameInput.value;
+			localPlayer.name = sanitizeName(playerNameInput.value);
 			
 			let colors = getNextFreeColors();
 			localPlayer.color = colors.color;
@@ -22953,7 +23020,13 @@ let currentCategory = "all";
 	//console.warn(customMaps.normal[0]);
 
 	// load default map, first in array:
-	loadMap(loadedMapCategory, loadedMapIndex);
+	//loadMap(loadedMapCategory, loadedMapIndex);
+	// load preiously used map:
+	
+	let currentMap = getLocalStorageObject("currentMap") || {category:"all", index:0};
+	loadMap(currentMap.category, currentMap.index);
+
+	
 })();
 
 
@@ -22966,10 +23039,15 @@ function loadMap(category, index) {
 	// unload loaded game so it wont mess up new game:
 	unloadGame();
 	
+	// default to first possible map if not found:
+	if(!customMaps[category] || !customMaps[category][index]){
+		category = "all";
+		index = 0;
+	}
 	loadedMapCategory = category;
 	loadedMapIndex = index;
 	
-	const map = getCustomMap(category, index);//customMaps[category][index];
+	const map = getCustomMap(category, index);
 	console.log('Loading map:', category, index, map.name);
 	loadedMapImg.src = map.imageData;
 	
@@ -24429,7 +24507,7 @@ function startGame() {
 			let tile = gameState.map.tilesData[i];
 			if(tile.ownerIndex !== -1){
 				let tilePlayer = getPlayerByIndex(tile.ownerIndex);
-				let startMoneyAdd = tilePlayer.startMoneyAdd ?? 1;
+				let startMoneyAdd = tilePlayer.startMoneyAdd ?? 0;
 				tile.savings += gameState.settings.startMoneyPerHex + startMoneyAdd;
 			}
 		}
@@ -25403,7 +25481,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 	
 	playerNameInput.onchange = () => {
 		if(isValidName(playerNameInput.value)){
-			playerNameInput.value = playerNameInput.value.trim();
+			playerNameInput.value = sanitizeName(playerNameInput.value);
 			localPlayer.name = playerNameInput.value;
 		}
 	}
@@ -25411,7 +25489,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 	// --- Host Page ---
 	hostRoomPlayerNameInput.onchange = () => {
 		if(isValidName(hostRoomPlayerNameInput.value)){
-			hostRoomPlayerNameInput.value = hostRoomPlayerNameInput.value.trim();
+			hostRoomPlayerNameInput.value = sanitizeName(hostRoomPlayerNameInput.value);
 			localPlayer.name = hostRoomPlayerNameInput.value;
 			broadcastLobbyState();
 		}
@@ -25462,7 +25540,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 	// --- Lobby Page ---
 	lobbyPlayerNameInput.onchange = (e) => {
 		if(isValidName(e.target.value)){
-			lobbyPlayerNameInput.value = e.target.value.trim();
+			lobbyPlayerNameInput.value = sanitizeName(e.target.value);
 			localPlayer.name = lobbyPlayerNameInput.value;
 			sendToHost({
 				type: ACTION.player_update,
