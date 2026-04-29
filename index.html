@@ -7196,13 +7196,14 @@ let playerSettingsInputs = {
 		list: [], // generated later. contains final options list.
 		settings: {
 			min: 1,
-			max: 6,
+			max: 10,
 			step: 1,
 		},
 	},
 };
 
 generatePlayerSettingsInputs();
+
 
 function generatePlayerSettingsListPopulate(key){
 
@@ -7229,10 +7230,8 @@ function generatePlayerSettingsListPopulate(key){
 }
 
 function generatePlayerSettingsInputs(){
-	
 	generatePlayerSettingsListPopulate('moneyAdd');
 	generatePlayerSettingsListPopulate('tileGrow');
-
 }
 
 
@@ -24113,6 +24112,58 @@ function applyUnitCostsFromSettings(){
 }
 
 
+function applyTileGrow(){
+	for(let p = 0; p < gameState.players.length; p++){
+		let player = gameState.players[p];
+		let tileGrow = player.tileGrow ?? 0;
+		
+		if(tileGrow && !player.isSpectator){
+
+			let pools = findEconomyPools(player.playerIndex);
+			
+			if(pools){
+				for(let i = 0; i < pools.length; i++){
+					let pool = pools[i];
+					
+					let possibleTiles = {};
+					
+					for(let h = 0; h < pool.hexes.length; h++){
+						let hex = pool.hexes[h];
+						let neigh = getHexNeighbors(hex.q, hex.r);
+						for(let n = 0; n < neigh.length; n++){
+							let tile = getTileAt(neigh[n].q, neigh[n].r);
+							if(tile && tile.ownerIndex === -1){
+								possibleTiles[`${tile.q},${tile.r}`] = tile;
+							}
+						}
+					}
+					
+					let shufflableList = [];
+					
+					for (const [key, value] of Object.entries(possibleTiles)) {
+						//console.log(key, value);
+						shufflableList.push(value);
+					}
+					
+					let extraTiles = shuffle(shufflableList).slice(0, tileGrow);
+					
+					// set the extra tiles to be owned by the player:
+					for(let h = 0; h < extraTiles.length; h++){
+						let newTile = extraTiles[h];
+						newTile.ownerIndex = player.playerIndex;
+					}
+
+					
+				}
+			}
+		}
+	}
+	
+}
+
+
+
+
 function startGame() {
 	
 
@@ -24274,6 +24325,9 @@ function startGame() {
 		generateWaterEdgeTiles();
 		
 		spawnPlayers();
+		
+		applyTileGrow();
+		
 		spawnTrees();
 		spawnRocks();
 		
