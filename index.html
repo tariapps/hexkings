@@ -5777,6 +5777,20 @@ function getDirtTileName(){
 
 
 
+// Helper function to prevent XSS (HTML Injection)
+// This converts characters like < and > into safe text equivalents
+function escapeHTML(str) {
+	if (!str) return '';
+	return str.replace(/[&<>'"]/g, tag => ({
+		'&': '&amp;',
+		'<': '&lt;',
+		'>': '&gt;',
+		"'": '&#39;',
+		'"': '&quot;'
+	}[tag]));
+}
+
+
 
 let startMoneyPerHexInput = document.getElementById('start-money-per-hex');
 startMoneyPerHexInput.value = gameState.settings.startMoneyPerHex;
@@ -7082,6 +7096,255 @@ const playerSettingsUiWrapper = document.getElementById('player-settings-ui-wrap
 const playerSettingsUiWrapper2 = document.getElementById('player-settings-ui-wrapper2');
 
 const hostPlayerSettingsList = document.getElementById('host-player-settings-list');
+
+
+
+// Add a single 'change' event listener to the container
+hostPlayerSettingsList.addEventListener('change', function(event) {
+	const target = event.target;
+
+	// Check if the element that triggered the change is a select or our radio button
+	const isSelect = target.tagName.toLowerCase() === 'select';
+	const isRadio = target.tagName.toLowerCase() === 'input' && target.type === 'radio';
+
+	if (isSelect || isRadio) {
+		// Grab the data-peer attribute using the dataset property
+		const peerId = target.dataset.peer;
+		let player = getPlayer(peerId);
+		
+		// Grab the new value that was just selected/checked
+		const newValue = target.value;
+
+		// --- Handle specific changes based on the element's class or name ---
+		
+		if (target.classList.contains('player-moneyadd-select')) {
+			let startMoneyAdd = parseFloat(newValue);
+			player.startMoneyAdd = startMoneyAdd;
+			
+			console.log(`Tile money add for peer ${peerId} changed to ${startMoneyAdd}`);
+			// Update your gameState here, e.g.,
+			// let player = gameState.players.find(p => p.id == peerId);
+			// if (player) player.moneyMulti = parseFloat(newValue);
+
+		} else if (target.classList.contains('player-team-select')) {
+			let teamIndex = parseInt(newValue);
+			player.teamIndex = teamIndex;
+			
+			console.log(`Team for peer ${peerId} changed to ${teamIndex}`);
+			
+		} else if (target.classList.contains('player-spots-select')) {
+			let totalSpots = parseInt(newValue);
+			player.totalSpots = totalSpots;
+			
+			console.log(`Spots for peer ${peerId} changed to ${totalSpots}`);
+			
+		} else if (target.classList.contains('player-grow-select')) {
+			let tileGrow = parseInt(newValue);
+			player.tileGrow = tileGrow;
+			
+			console.log(`Grow for peer ${peerId} changed to ${tileGrow}`);
+			
+		}
+	}
+});
+
+// handle radio button (start player) change and unselecting by clicking selected radio again:
+hostPlayerSettingsList.addEventListener('click', function(event) {
+	const target = event.target;
+	
+	// Check if the clicked element is our specific radio button
+	const isRadio = target.tagName.toLowerCase() === 'input' && target.type === 'radio';
+
+	if (isRadio && target.name === 'starting-player-radio') {
+		const peerId = target.dataset.peer;
+		let player = getPlayer(peerId);
+
+		if(gameState.settings.startPlayerId === peerId){
+			gameState.settings.startPlayerId = -1;
+			target.checked = false;
+			console.log(`Start player is now random.`);
+		}else{
+			gameState.settings.startPlayerId = peerId;
+			console.log(`Peer ${peerId} (${player.name}) is now the starting player.`);
+		}
+		broadcastLobbyState();
+	}
+});
+
+
+let playerSettingsInputs = {
+	moneyAdd: {
+		inputName: 'player-moneyadd-select',
+		initialList: [
+			{value: 0, text: '$'},
+			{value: 0, text: '+0 (No start tile money add)'},
+		],
+		list: [], // generated later. contains final options list.
+		settings: {
+			min: 0.5,
+			max: 5,
+			step: 0.5,
+		},
+	},
+	
+	tileGrow: {
+		inputName: 'player-grow-select',
+		initialList: [
+			{value: 0, text: 'Grow'},
+			{value: 0, text: '0 (No extra tiles)'},
+		],
+		list: [], // generated later. contains final options list.
+		settings: {
+			min: 1,
+			max: 6,
+			step: 1,
+		},
+	},
+};
+
+generatePlayerSettingsInputs();
+
+function generatePlayerSettingsListPopulate(key){
+
+	let inputInfo = playerSettingsInputs[key];
+	
+	inputInfo.list = [];
+	
+	// add predefined options with custom texts:
+	for(let i = 0; i < inputInfo.initialList.length; i++){
+		let elem = inputInfo.initialList[i];
+		//startTileMoneyOptions += `<option value="${elem.value}">${elem.text}</option>`;
+		inputInfo.list.push({value: elem.value, text: elem.text});
+	}
+	// populate with input settings:
+	let totalElems = 1+Math.round((inputInfo.settings.max - inputInfo.settings.min) / inputInfo.settings.step);
+	for(let i = 1; i <= totalElems; i++){
+		let curval = i * inputInfo.settings.step;
+		let value = Math.round(curval*10)/10; // make sure we get clean values
+		let text = `+${value}`;
+		//startTileMoneyOptions += `<option value="${value}">${text}</option>`;
+		inputInfo.list.push({value: value, text: text});
+	}
+	
+}
+
+function generatePlayerSettingsInputs(){
+	
+	generatePlayerSettingsListPopulate('moneyAdd');
+	generatePlayerSettingsListPopulate('tileGrow');
+
+}
+
+
+
+function updateHostPlayerSettingsList() {
+	// Build an array of HTML strings, then join them at the end.
+	// This is much faster than editing the DOM inside a loop.
+	let listHTML = '';
+	
+
+	gameState.players.forEach(p => {
+		if (!p.quitted && !p.isSpectator) {
+			
+			// 1. Sanitize the user-generated data FIRST
+			let specTag = p.isSpectator ? ' (spec)' : '';
+			let safePlayerName = escapeHTML(`${p.name}${specTag}`);
+			let nameColor = escapeHTML(p.isSpectator ? SPECTATOR_COLOR : p.textColor);
+
+			// 2. Generate flag HTML if applicable
+			let flagHTML = '';
+			if (p.country !== undefined && p.country !== null) {
+				let flagInfo = getCountryFlagImageInfo(p.country);
+				// Also good practice to escape image URLs and titles
+				flagHTML = `<img src="${escapeHTML(flagInfo.url)}" title="${escapeHTML(flagInfo.name)}" class="playerflag" style="margin-right: 6px;">`;
+			}
+			
+			let startPlayerSelected = (p.id === gameState.settings.startPlayerId) ? "checked" : "";
+			
+			let startMoneyAdd = p.startMoneyAdd ?? null;
+			let tileGrow = p.tileGrow ?? null;
+			
+			let startTileMoneyOptions = "";
+			let startTileSelectedSet = false;
+			
+			for(let i = 0; i < playerSettingsInputs.moneyAdd.list.length; i++){
+				let elem = playerSettingsInputs.moneyAdd.list[i];
+				let selectedStr = "";
+				if(elem.value === startMoneyAdd && !startTileSelectedSet){
+					startTileSelectedSet = true;
+					selectedStr = "selected";
+				}
+				startTileMoneyOptions += `<option value="${elem.value}" ${selectedStr}>${elem.text}</option>`;
+			}
+			
+			let tileGrowOptions = "";
+			let tileGrowSelectedSet = false;
+			
+			for(let i = 0; i < playerSettingsInputs.tileGrow.list.length; i++){
+				let elem = playerSettingsInputs.tileGrow.list[i];
+				let selectedStr = "";
+				if(elem.value === tileGrow && !tileGrowSelectedSet){
+					tileGrowSelectedSet = true;
+					selectedStr = "selected";
+				}
+				tileGrowOptions += `<option value="${elem.value}" ${selectedStr}>${elem.text}</option>`;
+			}
+			
+			//player.startMoneyAdd = startMoneyAdd;
+			// player.teamIndex = teamIndex;
+			// player.totalSpots = totalSpots;
+			// player.tileGrow = tileGrow;
+
+			// 3. Build the row using a template literal
+			listHTML += `
+			<div class="player-list-item" data-peer="${p.id}" style="display: flex; align-items: center; gap: 8px;">
+				
+				<div class="player-name-cell" style="flex-grow: 1; display: flex; align-items: center; overflow: hidden;">
+					<span style="color: ${nameColor}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+						${safePlayerName}
+					</span>
+				</div>
+
+				<div class="player-team-cell" style="display:none">
+					<select class="player-team-select compact-input" title="Team" data-peer="${p.id}" style="width: 60px; flex-shrink: 0;">
+						<option>Team</option>
+						<option>None</option>
+					</select>
+				</div>
+				
+
+				<div class="player-spots-cell" style="display:none">
+					<select class="player-spots-select compact-input" title="How many spawn points given" data-peer="${p.id}" style="width: 60px; flex-shrink: 0;">
+						<option>Spots</option>
+						<option>1</option>
+					</select>
+				</div>
+				
+				<div class="player-grow-cell">
+					<select class="player-grow-select compact-input" title="How many extra tiles a pool will get" data-peer="${p.id}" style="width: 60px; flex-shrink: 0;">
+						${tileGrowOptions}
+					</select>
+				</div>
+
+				
+				<div class="player-moneyadd-cell">
+					<select class="player-moneyadd-select compact-input" title="Start tiles money add" data-peer="${p.id}" style="width: 48px; flex-shrink: 0;">
+						${startTileMoneyOptions}
+					</select>
+				</div>
+
+				<div class="player-is-starting">
+					<input type="radio" title="Starting player" style="height:50px" name="starting-player-radio" data-peer="${p.id}" ${startPlayerSelected}>
+				</div>
+
+			</div>`;
+		}
+	});
+
+	// 4. Inject the entire HTML string into the DOM at once
+	hostPlayerSettingsList.innerHTML = listHTML;
+}
+
 
 
 function openPlayerSettings(){
@@ -21594,97 +21857,8 @@ function getCountryFlagImageInfo(country){
 
 
 
-// Helper function to prevent XSS (HTML Injection)
-// This converts characters like < and > into safe text equivalents
-function escapeHTML(str) {
-	if (!str) return '';
-	return str.replace(/[&<>'"]/g, tag => ({
-		'&': '&amp;',
-		'<': '&lt;',
-		'>': '&gt;',
-		"'": '&#39;',
-		'"': '&quot;'
-	}[tag]));
-}
 
-function updateHostPlayerSettingsList() {
-	// Build an array of HTML strings, then join them at the end.
-	// This is much faster than editing the DOM inside a loop.
-	let listHTML = '';
 
-	gameState.players.forEach(p => {
-		if (!p.quitted && !p.isSpectator) {
-			
-			// 1. Sanitize the user-generated data FIRST
-			let specTag = p.isSpectator ? ' (spec)' : '';
-			let safePlayerName = escapeHTML(`${p.name}${specTag}`);
-			let nameColor = escapeHTML(p.isSpectator ? SPECTATOR_COLOR : p.textColor);
-
-			// 2. Generate flag HTML if applicable
-			let flagHTML = '';
-			if (p.country !== undefined && p.country !== null) {
-				let flagInfo = getCountryFlagImageInfo(p.country);
-				// Also good practice to escape image URLs and titles
-				flagHTML = `<img src="${escapeHTML(flagInfo.url)}" title="${escapeHTML(flagInfo.name)}" class="playerflag" style="margin-right: 6px;">`;
-			}
-
-			// 3. Build the row using a template literal
-			listHTML += `
-			<div class="player-list-item" data-peer="${p.id}" style="display: flex; align-items: center; gap: 8px;">
-				
-				<div class="player-name-cell" style="flex-grow: 1; display: flex; align-items: center; overflow: hidden;">
-					<span style="color: ${nameColor}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-						${safePlayerName}
-					</span>
-				</div>
-
-				<div class="player-team-cell">
-					<select class="player-team-select compact-input" title="Team" data-peer="${p.id}" style="width: 60px; flex-shrink: 0;">
-						<option>Team</option>
-						<option>None</option>
-					</select>
-				</div>
-				
-
-				<div class="player-spots-cell">
-					<select class="player-spots-select compact-input" title="How many spawn points given" data-peer="${p.id}" style="width: 60px; flex-shrink: 0;">
-						<option>Spots</option>
-						<option>1</option>
-					</select>
-				</div>
-				
-				<div class="player-grow-cell">
-					<select class="player-grow-select compact-input" title="How many extra tiles a pool will get" data-peer="${p.id}" style="width: 60px; flex-shrink: 0;">
-						<option>Grow</option>
-						<option>0</option>
-					</select>
-				</div>
-
-				
-				<div class="player-moneymulti-cell">
-					<select class="player-moneymulti-select compact-input" title="Start tiles money multiplier" data-peer="${p.id}" style="width: 48px; flex-shrink: 0;">
-						<option>$</option>
-						<option>1.0x (No tile money multiplier)</option>
-						<option>1.5x</option>
-						<option>2.0x</option>
-						<option>2.5x</option>
-						<option>3.0x</option>
-						<option>3.5x</option>
-						<option>4.0x</option>
-					</select>
-				</div>
-
-				<div class="player-is-starting">
-					<input type="radio" title="Starting player" style="height:50px" name="starting-player-radio" data-peer="${p.id}">
-				</div>
-
-			</div>`;
-		}
-	});
-
-	// 4. Inject the entire HTML string into the DOM at once
-	hostPlayerSettingsList.innerHTML = listHTML;
-}
 
 
 
@@ -24106,11 +24280,14 @@ function startGame() {
 		spawnMines();
 		
 
+		
 		// add money per tile:
 		for(let i = 0; i < gameState.map.tilesData.length; i++){
 			let tile = gameState.map.tilesData[i];
 			if(tile.ownerIndex !== -1){
-				tile.savings += gameState.settings.startMoneyPerHex;
+				let tilePlayer = getPlayerByIndex(tile.ownerIndex);
+				let startMoneyAdd = tilePlayer.startMoneyAdd ?? 1;
+				tile.savings += gameState.settings.startMoneyPerHex + startMoneyAdd;
 			}
 		}
 		
