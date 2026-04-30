@@ -2224,6 +2224,30 @@ input.disabled {
 				<div class="settings-title">
 					Render:
 				</div>
+				
+				<div class="input-group" style="flex-direction: row !important;">
+					
+					<select id="game-settings-gfx-performance-mode">
+						<option value="0">Disabled</option>
+						<option value="2">Simple (with water)</option>
+						<option value="1">Simple</option>
+						<option value="3">Ultra simple</option>
+					</select>
+					<label for="game-settings-gfx-performance-mode">Performance mode</label>
+				</div>
+				<!--
+				<div>
+					<label class="inline">
+						Performance mode:
+						<select id="game-settings-gfx-performance-mode">
+							<option value="0">Disabled</option>
+							<option value="2">Simple (with water)</option>
+							<option value="1">Simple</option>
+							<option value="3">Ultra simple</option>
+						</select>
+					</label>
+				</div>
+				-->
 
 				<div>
 					<label class="inline">
@@ -2261,6 +2285,12 @@ input.disabled {
 					<label class="inline">
 						<input type="checkbox" id="game-settings-gfx-water" checked>
 						Water
+					</label>
+				</div>
+				<div>
+					<label class="inline">
+						<input type="checkbox" id="game-settings-gfx-landtextures" checked>
+						Land textures
 					</label>
 				</div>
 				
@@ -3609,7 +3639,7 @@ playerFlagList.addEventListener('click', function (e) {
 	const flagURL = `images/flags/w80/${code.toLowerCase()}.png`;
 
 	// set selected flag
-	gameSettings.country = { code: code, name: countryName };
+	setSetting('country', { code: code, name: countryName });
 
 	// update main button
 	playerFlagBtn.style.backgroundImage = `url('${flagURL}')`;
@@ -3683,7 +3713,7 @@ function openFlagBrowser(){
 			// create button here with flagURL as background and using class "player-flag-btn" and "player-flag-list-btn" for it
 			// add data-code with code in it to later be used in the click listener to select flag
 			// and add general click listener to listen all buttons with class "player-flag-list-btn"
-			// set gameSettings.country = {code: code, name: countriesList[code]} after clicking the flag
+			// set gameSettings .country = {code: code, name: countriesList[code]} after clicking the flag
 			// then update:
 			// playerFlagBtn.style.backgroundImage = `url('${flagURL}')`;
 			// playerFlagBtn.title = countriesList[code];
@@ -5649,8 +5679,10 @@ let gameState = {
 	// Economy pools are calculated, not stored directly
 };
 
+
 // changeable render settings, in the settings popup:
 let gameSettings = {
+	performanceMode: 0, // 0-3
 	drawShoresShading: true,
 	drawWaterShading: true,
 	drawLandShading: true,
@@ -5658,6 +5690,7 @@ let gameSettings = {
 	drawPoolEdges: true,
 	drawPointers: true,
 	drawWater: true,
+	drawLandTextures: true, // drawtextures
 	drawOwnerTooltip: true,
 	
 	autosave: true,
@@ -5666,6 +5699,41 @@ let gameSettings = {
 	mapThemeOverride: 0, // 0 = no override, 1 = summer, 2 = winter
 };
 
+
+
+function setSetting(key, value){
+	gameSettings[key] = value;
+}
+
+function getSetting(key){
+	if(gameSettings.performanceMode === 1){
+		if(key === 'drawShoresShading' ||
+			key === 'drawWater' ||
+			key === 'drawPoolEdges' ||
+			key === 'drawLandTextures'
+		){
+			return false;
+		}
+	}else if(gameSettings.performanceMode === 2){
+		if(key === 'drawPoolEdges' ||
+			key === 'drawLandTextures'
+		){
+			return false;
+		}
+	}else if(gameSettings.performanceMode === 3){
+		if(key === 'drawShoresShading' ||
+			key === 'drawWater' ||
+			key === 'drawWaterShading' ||
+			key === 'drawLandShading' ||
+			key === 'drawParticles' ||
+			key === 'drawPoolEdges' ||
+			key === 'drawLandTextures'
+		){
+			return false;
+		}
+	}
+	return gameSettings[key];
+}
 
 
 //clientSettings: {
@@ -5791,8 +5859,8 @@ function getPlayerStats(playerIndex = -1){
 
 
 function isSummer(){
-	if(gameSettings.mapThemeOverride){
-		return gameSettings.mapThemeOverride === 1;
+	if(getSetting('mapThemeOverride')){
+		return getSetting('mapThemeOverride') === 1;
 	}
 	return gameState.settings.mapTheme === 1; // gameState.settings.mapTheme === 'summer'
 }
@@ -5890,10 +5958,10 @@ let mapThemeOverrideList = document.getElementById('map-theme-override');
 let mapThemeOverrideWrapper = document.getElementById('map-theme-override-wrapper');
 
 
-mapThemeOverrideList.value = gameSettings.mapThemeOverride;
+mapThemeOverrideList.value = getSetting('mapThemeOverride');
 
 mapThemeOverrideList.addEventListener('change', e => {
-	gameSettings.mapThemeOverride = Number(e.target.value);
+	setSetting('mapThemeOverride', Number(e.target.value));
 	
 	updateSettingsImages();
 });
@@ -6746,6 +6814,9 @@ function drawPaletteImage(ctx2, bmp, dx = 0, dy = 0) {
 }
 
 
+let waterAllPath = "images/water-all.bmp";
+let lavaAllPath = "images/lava-all.bmp";
+
 
 async function loadImages() {
 	const loadPromises = [];
@@ -6780,7 +6851,7 @@ async function loadImages() {
 									const outputSize = gridSize * tileW;
 									
 									// load 13 images at once from single image:
-									let waterAllPath = "images/water-all.bmp";
+									
 									let bmpAll = await load8BitBMP(waterAllPath);
 
 									// Create shuffled pool of frame indices 0–12, repeated 5 times
@@ -10000,7 +10071,7 @@ let scaleMatrix = new DOMMatrix();
 let matrixInfiniteWater = new DOMMatrix();
 let hex_pad = 0;
 let reversed = 0;
-let drawtextures = 1;
+
 
 
 
@@ -10242,6 +10313,7 @@ function drawMapTiles(){
 		
 
 		
+		
 		let drawTile = true;
 		
 
@@ -10424,7 +10496,7 @@ function drawMapTiles(){
 					// Draw the gray texture (owned land) with multiply operation:
 					const player = getPlayerByIndex(ownerIndex);
 					
-					if(drawtextures){
+					if(getSetting('drawLandTextures')){
 						
 						let textureType = 0;
 						
@@ -10460,6 +10532,9 @@ function drawMapTiles(){
 						ctx.fillStyle = color; // e.g. "#ff0000"
 						ctx.fillRect(dx, dy, dWidth, dHeight);
 						ctx.globalCompositeOperation = "source-over";
+					}else{
+						ctx.fillStyle = darkenHexColor(player.color, 0.56);
+						ctx.fillRect(dx, dy, dWidth, dHeight);
 					}
 					
 					// draw tile savings debug info:
@@ -10475,7 +10550,7 @@ function drawMapTiles(){
 				}else{
 					// draw dirt image:
 					
-					if(drawtextures){
+					if(getSetting('drawLandTextures')){
 						if(use_fill){
 							// slower... todo: think how to speed up.
 							fillPattern(ctx, imageName);
@@ -10483,6 +10558,14 @@ function drawMapTiles(){
 							drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
 						}
 
+					}else{
+						if(isSummer()){
+							ctx.fillStyle = "#705D4A";
+						}else{
+							ctx.fillStyle = "#B8B8BF";
+						}
+						
+						ctx.fillRect(dx, dy, dWidth, dHeight);
 					}
 					
 					
@@ -10658,7 +10741,7 @@ function drawHighlights(){
 						
 					}else{
 						let drawEdges = true;
-						if(!gameSettings.drawPoolEdges && !poolSelected){
+						if(!getSetting('drawPoolEdges') && !poolSelected){
 							drawEdges = false;
 						}
 						if(drawEdges){
@@ -11203,7 +11286,7 @@ const randomRange = (min, max) => randomFunc() * (max - min) + min;
 
 // Creates an explosion with bouncing physics.
 function createExplosion(ep) {
-	if(!gameSettings.drawParticles){
+	if(!getSetting('drawParticles')){
 		return;
 	}
 	let x = ep.x;
@@ -12231,7 +12314,7 @@ function render() {
 	// Save the context state
 	ctx.save();
 	
-	if(gameSettings.drawWater){
+	if(getSetting('drawWater')){
 		drawInfiniteWater();
 	}else{
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -12258,10 +12341,10 @@ function render() {
 
 	
 	// MAP WATER SHADING (3d effect):
-	if(gameSettings.drawShoresShading && gameSettings.drawWater){
+	if(getSetting('drawShoresShading') && getSetting('drawWater')){
 		drawMapShading(1); // shores
 	}
-	if(gameSettings.drawWaterShading){
+	if(getSetting('drawWaterShading')){
 		drawMapShading(0); // water 3d effect
 	}
 	
@@ -12271,7 +12354,7 @@ function render() {
 	}
 	
 	// MAP LAND SHADING (3d effect):
-	if(gameSettings.drawLandShading){
+	if(getSetting('drawLandShading')){
 		drawMapShading(2); // land shading
 	}
 
@@ -12282,7 +12365,7 @@ function render() {
 	}
 	
 	// draw under objects: cross explosion particles (death by starvation)
-	if(gameSettings.drawParticles){
+	if(getSetting('drawParticles')){
 		renderParticles("crossExplosion");
 	}
 
@@ -12347,7 +12430,7 @@ function render() {
 		drawUnitSelection();
 	}
 	
-	if(gameSettings.drawParticles){
+	if(getSetting('drawParticles')){
 		// explosion particles (default type = exp)
 		renderParticles("exp");
 	}
@@ -12373,7 +12456,7 @@ function render() {
 	
 	
 
-	if(gameSettings.drawOwnerTooltip){
+	if(getSetting('drawOwnerTooltip')){
 		drawTileOwnerTooltip();
 	}
 	
@@ -12384,7 +12467,7 @@ function render() {
 	
 	
 	// draw dots for unmoved units outside of screen:
-	if(gameSettings.drawPointers){
+	if(getSetting('drawPointers')){
 		drawMoveDirectionsOverlay();
 	}
 	
@@ -17528,6 +17611,10 @@ function findEconomyPools(playerIndex, log_enabled = false) {
 		const qq = tile.q;
 		const rr = tile.r;
 		let elem = `${qq},${rr},${t}`;
+		
+		if(isTileWater(tile)){
+			continue;
+		}
 
 		if (tile.ownerIndex !== playerIndex || visited.has(elem)) {
 			continue;
@@ -17576,7 +17663,7 @@ function findEconomyPools(playerIndex, log_enabled = false) {
 			for (const n of getHexNeighbors(q, r)) {
 				const nTile = getTileAt(n.q, n.r);
 				
-				if (nTile && nTile.ownerIndex === playerIndex){
+				if (nTile && isTileLand(nTile) && nTile.ownerIndex === playerIndex){
 					const nKey = `${n.q},${n.r},${nTile.tileIndex}`;
 					if(!visited.has(nKey)) {
 						visited.add(nKey);
@@ -17768,8 +17855,7 @@ function randomItem(arr){
 	return arr[random(0, arr.length-1)];
 }
 
-// find_ai_best_move findaibestmove aifindbestmove aimove ai_move ai_turn
-// ai turn ai move
+
 function ai_find_best_move2(player) {
 	//console.log("ai_find_best_move (improved)");
 
@@ -17897,6 +17983,8 @@ function ai_find_best_move2(player) {
 
 
 // findbestmove
+// find_ai_best_move findaibestmove aifindbestmove aimove ai_move ai_turn
+// ai turn ai move
 function ai_find_best_move(player) {
 	//console.log("ai_find_best_move (improved)");
 
@@ -17915,7 +18003,7 @@ function ai_find_best_move(player) {
 
 		for (const move of possibleMovesTemp) {
 			const tile = getTileAt(move.q, move.r);
-			if (!tile){// || tile.ownerIndex === player.playerIndex
+			if (!tile || isTileWater(tile)){// || tile.ownerIndex === player.playerIndex
 				continue;
 			}
 			
@@ -17924,9 +18012,13 @@ function ai_find_best_move(player) {
 				possibleMoves.push({move:move, poolHex:{q:unit.q, r:unit.r}});
 			}
 		}
+		
 
 		for (const moveInfo of possibleMoves) {
 			const tile = getTileAt(moveInfo.move.q, moveInfo.move.r);
+			if(isTileWater(tile)){
+				continue;
+			}
 			let score = 0;
 
 			// === Base scoring ===
@@ -17984,7 +18076,7 @@ function ai_find_best_move(player) {
 			let enemyAdj = 0;
 			for (const n of neighbors) {
 				const nt = getTileAt(n.q, n.r);
-				if (nt && nt.ownerIndex !== -1 && nt.ownerIndex !== player.playerIndex){
+				if (nt && isTileLand(nt) && nt.ownerIndex !== -1 && nt.ownerIndex !== player.playerIndex){
 					enemyAdj++;
 				}
 			}
@@ -17994,7 +18086,7 @@ function ai_find_best_move(player) {
 			// Slightly prefer staying near friendly land (less isolation)
 			const friendlyAdj = neighbors.filter(n => {
 				const nt = getTileAt(n.q, n.r);
-				return nt && nt.ownerIndex === player.playerIndex;
+				return nt && isTileLand(nt) && nt.ownerIndex === player.playerIndex;
 			}).length;
 			
 			score += friendlyAdj;
@@ -18026,6 +18118,7 @@ function ai_find_best_move(player) {
 function ai_find_best_build_move(player) {
 	let bestMove = null;
 	let bestScore = -Infinity;
+
 	
 	const MIN_BALANCE_BUFFER = 9; 
 	const DRAGON_BALANCE_BUFFER = 30;
@@ -18133,379 +18226,13 @@ function ai_find_best_build_move(player) {
 					}
 				}
 			}
-		}
-	}
-	return bestMove;
-}
-
-
-function ai_find_best_build_move5(player) {
-	let bestMove = null;
-	let bestScore = -Infinity;
-	
-	const MIN_BALANCE_BUFFER = 9; 
-	const DRAGON_BALANCE_BUFFER = 30;
-
-	let pools = findEconomyPools(player.playerIndex);
-
-	for (let pool of pools) {
-		let { totalSavings, totalIncome, totalWages, hexes, soldiers } = pool;
-		let currentProjectedBalance = (totalSavings + totalIncome) - totalWages;
-		const poolHexRef = { q: hexes[0].q, r: hexes[0].r };
-
-		// 1. SURVIVAL
-		if (currentProjectedBalance < 0) {
-			let sellable = soldiers.filter(s => !s.hasMoved);
-			if (sellable.length > 0) {
-				sellable.sort((a, b) => (SOLDIER_DATA[b.type]?.wage || 0) - (SOLDIER_DATA[a.type]?.wage || 0));
-				return { type: ACTION.action_sell, unitId: sellable[0].id, poolHex: poolHexRef };
-			}
-		}
-
-		// 2. CANDIDATES
-		let candidates = new Map();
-		for (let hex of hexes) {
-			candidates.set(`${hex.q},${hex.r}`, { q: hex.q, r: hex.r, isBorder: false });
-			for (let n of getHexNeighbors(hex.q, hex.r)) {
-				let key = `${n.q},${n.r}`;
-				if (!candidates.has(key) && isHexLand(n.q, n.r)) {
-					candidates.set(key, { q: n.q, r: n.r, isBorder: true });
-				}
-			}
-		}
-
-		for (let [key, pos] of candidates) {
-			let targetTile = getTileAt(pos.q, pos.r);
-			let targetUnit = getUnitAt(pos.q, pos.r);
-			if (!targetTile || (targetUnit && targetUnit.ownerIndex === player.playerIndex)) continue;
-
-			let enemyDefense = getEnemyDefenseLevel(pos.q, pos.r, targetTile, player.playerIndex);
-
-			// --- EVALUATE CASTLES ---
-			for (let name in CASTLE_DATA) {
-				if (name === "shipyard") continue;
-				let data = CASTLE_DATA[name];
-				if (!isPlacementValid(name, {q: pos.q, r: pos.r}, player, poolHexRef).valid) continue;
-				
-				let balanceAfter = (totalSavings - data.cost) + totalIncome - totalWages;
-				if (totalSavings >= data.cost && balanceAfter >= MIN_BALANCE_BUFFER) {
-					
-					let score = 0;
-					// If enemy is level 2 (Knight/Castle), a Hut (Level 1) is a waste of money.
-					// We need a Castle (Level 2) to actually provide a defense radius that stops them.
-					if (enemyDefense >= data.level) {
-						score = 0; 
-					} else {
-						if (name === "hut") score = pos.isBorder ? 100 : 30;
-						if (name === "castle") score = (enemyDefense === 1) ? 150 : 70; // High priority if it blocks level 1 enemies
-						if (name === "fortress") score = (enemyDefense === 2) ? 200 : 80;
-					}
-
-					if (hasNearbyCastle(pos, player.playerIndex)) score -= 100;
-
-					if (score > bestScore && score > 0) {
-						bestScore = score;
-						bestMove = { type: ACTION.action_build, unitType: name, q: pos.q, r: pos.r, poolHex: poolHexRef };
-					}
-				}
-			}
-
-			// --- EVALUATE SOLDIERS ---
-			for (let name in SOLDIER_DATA) {
-				let data = SOLDIER_DATA[name];
-				if (!isPlacementValid(name, {q: pos.q, r: pos.r}, player, poolHexRef).valid) continue;
-				
-				let balanceAfter = (totalSavings - data.cost) + totalIncome - (totalWages + data.wage);
-				if (totalSavings >= data.cost && balanceAfter >= MIN_BALANCE_BUFFER) {
-					if (data.level <= enemyDefense) continue;
-
-					let score = 0;
-					if (targetTile.ownerIndex === -1) {
-						score += (name === "peasant") ? 180 : 40; 
-					} else if (targetUnit) {
-						// KILL BONUS: The bigger the unit killed, the higher the score
-						// We also give a bonus for "Just barely enough" strength to encourage efficiency
-						score += 200 + (getUnitLevel(targetUnit.type) * 100);
-						if (data.level === enemyDefense + 1) score += 50; 
-					} else if (pos.isBorder) {
-						score += 120;
-					}
-
-					// Lowered cost penalty from 1.5 to 0.7 to make AI bolder
-					score -= (data.cost * 0.7); 
-
-					if (score > bestScore) {
-						bestScore = score;
-						bestMove = { type: ACTION.action_build, unitType: name, q: pos.q, r: pos.r, poolHex: poolHexRef };
-					}
-				}
-			}
-		}
-	}
-	return bestMove;
-}
-
-
-function ai_find_best_build_move4(player) {
-	let bestMove = null;
-	let bestScore = -Infinity;
-	
-	const MIN_BALANCE_BUFFER = 9; 
-	const DRAGON_BALANCE_BUFFER = 30;
-
-	let pools = findEconomyPools(player.playerIndex);
-
-	for (let pool of pools) {
-		let { totalSavings, totalIncome, totalWages, hexes, soldiers } = pool;
-		let currentProjectedBalance = (totalSavings + totalIncome) - totalWages;
-		
-		// poolHex is required for the action and the validation check
-		const poolHexRef = { q: hexes[0].q, r: hexes[0].r };
-
-		// 1. SURVIVAL CHECK
-		if (currentProjectedBalance < 0) {
-			let sellable = soldiers.filter(s => !s.hasMoved);
-			if (sellable.length > 0) {
-				sellable.sort((a, b) => (SOLDIER_DATA[b.type]?.wage || 0) - (SOLDIER_DATA[a.type]?.wage || 0));
-				return {
-					type: ACTION.action_sell,
-					unitId: sellable[0].id,
-					poolHex: poolHexRef
-				};
-			}
-		}
-
-		// 2. CANDIDATE TILES
-		let candidates = new Map();
-		for (let hex of hexes) {
-			candidates.set(`${hex.q},${hex.r}`, { q: hex.q, r: hex.r, isBorder: false });
-			for (let n of getHexNeighbors(hex.q, hex.r)) {
-				let key = `${n.q},${n.r}`;
-				if (!candidates.has(key) && isHexLand(n.q, n.r)) {
-					candidates.set(key, { q: n.q, r: n.r, isBorder: true });
-				}
-			}
-		}
-
-		// 3. EVALUATE
-		for (let [key, pos] of candidates) {
-			let targetTile = getTileAt(pos.q, pos.r);
-			let targetUnit = getUnitAt(pos.q, pos.r);
 			
-			if (!targetTile || (targetUnit && targetUnit.ownerIndex === player.playerIndex)) continue;
-
-			let enemyDefense = getEnemyDefenseLevel(pos.q, pos.r, targetTile, player.playerIndex);
-
-			// --- EVALUATE CASTLES ---
-			for (let name in CASTLE_DATA) {
-				if (name === "shipyard") continue;
-				let data = CASTLE_DATA[name];
-
-				// Validation check first
-				if (!isPlacementValid(name, {q: pos.q, r: pos.r}, player, poolHexRef).valid) continue;
-				
-				let balanceAfter = (totalSavings - data.cost) + totalIncome - totalWages;
-
-				if (totalSavings >= data.cost && balanceAfter >= MIN_BALANCE_BUFFER) {
-					// Specific Logic to prevent Fortress Spam:
-					if (name === "fortress" && (totalIncome < 60 || totalSavings < 400)) continue; 
-					if (name === "castle" && totalIncome < 40) continue;
-					
-					// Don't build defensive structures on top of enemies or inside enemy ZoC
-					if (targetUnit || enemyDefense > 0) continue;
-					if (hasNearbyCastle(pos, player.playerIndex)) continue; 
-
-					let score = 0;
-					if (name === "hut") {
-						// High priority for Huts on borders (cheap defense)
-						score = pos.isBorder ? 120 : 40; 
-					} else if (name === "castle") {
-						score = 80;
-					} else if (name === "fortress") {
-						score = 90; // Higher than castle, but gated by the income check above
-					}
-
-					if (score > bestScore) {
-						bestScore = score;
-						bestMove = { type: ACTION.action_build, unitType: name, q: pos.q, r: pos.r, poolHex: poolHexRef };
-					}
-				}
-			}
-
-			// --- EVALUATE SOLDIERS ---
-			for (let name in SOLDIER_DATA) {
-				let data = SOLDIER_DATA[name];
-
-				if (!isPlacementValid(name, {q: pos.q, r: pos.r}, player, poolHexRef).valid) continue;
-				
-				let balanceAfter = (totalSavings - data.cost) + totalIncome - (totalWages + data.wage);
-
-				if (totalSavings >= data.cost && balanceAfter >= MIN_BALANCE_BUFFER) {
-					if (data.level <= enemyDefense) continue;
-
-					if (name === "dragon") {
-						if (!targetUnit || targetUnit.name !== "fortress" || balanceAfter < DRAGON_BALANCE_BUFFER) continue;
-					}
-
-					let score = 0;
-					// Neutral expansion is the highest priority for the economy
-					if (targetTile.ownerIndex === -1) {
-						score += (name === "peasant") ? 200 : 30; 
-					} 
-					// Combat: Killing enemy units
-					else if (targetUnit) {
-						score += 150 + (getUnitLevel(targetUnit.type) * 60);
-					} 
-					// Aggression: Stealing enemy tiles
-					else if (pos.isBorder) {
-						score += 100;
-					}
-
-					// HEAVY penalty for overspending on soldiers
-					// This prevents buying a Knight when a Peasant can take the tile.
-					score -= (data.cost * 1.5); 
-
-					if (score > bestScore) {
-						bestScore = score;
-						bestMove = { type: ACTION.action_build, unitType: name, q: pos.q, r: pos.r, poolHex: poolHexRef };
-					}
-				}
-			}
 		}
 	}
-
 	return bestMove;
 }
 
 
-
-function ai_find_best_build_move3(player) {
-	let bestMove = null;
-	let bestScore = -Infinity;
-	
-	// Safety buffers to prevent "accidental" starvation from tile loss
-	const MIN_BALANCE_BUFFER = 9; 
-	const DRAGON_BALANCE_BUFFER = 30;
-
-	let pools = findEconomyPools(player.playerIndex);
-
-	for (let pool of pools) {
-		// The current state provided by findEconomyPools()
-		let { totalSavings, totalIncome, totalWages, hexes, soldiers } = pool;
-		let currentProjectedBalance = (totalSavings + totalIncome) - totalWages;
-
-		// ---------------------------------------------------------
-		// 1. EMERGENCY SELL CHECK
-		// If current settings lead to starvation, sell the most expensive wage-taker
-		// ---------------------------------------------------------
-		if (currentProjectedBalance < 0) {
-			let sellable = soldiers.filter(s => !s.hasMoved);
-			if (sellable.length > 0) {
-				// Sort to find the highest wage to cut costs effectively
-				sellable.sort((a, b) => (SOLDIER_DATA[b.type]?.wage || 0) - (SOLDIER_DATA[a.type]?.wage || 0));
-				return {
-					type: ACTION.action_sell,
-					unitId: sellable[0].id,
-					poolHex: {q:hexes[0].q, r:hexes[0].r},
-				};
-			}
-		}
-
-		// ---------------------------------------------------------
-		// 2. MAP OUT CANDIDATE TILES (Inside pool + 1 hex out)
-		// ---------------------------------------------------------
-		let candidates = new Map();
-		for (let hex of hexes) {
-			// Internal hexes
-			candidates.set(`${hex.q},${hex.r}`, { q: hex.q, r: hex.r, isBorder: false });
-			
-			// Neighbors (potentially outside the pool)
-			for (let n of getHexNeighbors(hex.q, hex.r)) {
-				let key = `${n.q},${n.r}`;
-				if (!candidates.has(key) && isHexLand(n.q, n.r)) {
-					candidates.set(key, { q: n.q, r: n.r, isBorder: true });
-				}
-			}
-		}
-
-		// ---------------------------------------------------------
-		// 3. EVALUATE ALL POSSIBLE BUILDS
-		// ---------------------------------------------------------
-		for (let [key, pos] of candidates) {
-			let targetTile = getTileAt(pos.q, pos.r);
-			let targetUnit = getUnitAt(pos.q, pos.r);
-			
-			// Cannot build on our own units
-			if (!targetTile || (targetUnit && targetUnit.ownerIndex === player.playerIndex)) continue;
-
-			// Calculate "Zone of Control" defense level of this tile
-			let enemyDefense = getEnemyDefenseLevel(pos.q, pos.r, targetTile, player.playerIndex);
-
-			// CHECK CASTLES
-			for (let name in CASTLE_DATA) {
-				if (name === "shipyard") continue;
-				let data = CASTLE_DATA[name];
-				
-				// Castle math: Savings - Cost + Income - Wages (Castles have 0 wage)
-				let balanceAfter = (totalSavings - data.cost) + totalIncome - totalWages;
-
-				if (totalSavings >= data.cost && balanceAfter >= MIN_BALANCE_BUFFER) {
-					if (name === "castle" && totalIncome < 40) continue; // Only build "castle" if rich
-					if (targetUnit || enemyDefense > 0) continue; // Can't build castles on units or in ZoC
-					if (hasNearbyCastle(pos, player.playerIndex)) continue; // Keep castles spread out
-
-					let score = (name === "hut") ? 45 : 75;
-					if (pos.isBorder) score += 20; 
-					
-					if (score > bestScore) {
-						bestScore = score;
-						bestMove = { type: ACTION.action_build, unitType: name, q: pos.q, r: pos.r, poolHex: {q:hexes[0].q, r:hexes[0].r}, };
-					}
-				}
-			}
-
-			// CHECK SOLDIERS
-			for (let name in SOLDIER_DATA) {
-				let data = SOLDIER_DATA[name];
-				
-				// Soldier math: Savings - Cost + Income - (Wages + New Wage)
-				let balanceAfter = (totalSavings - data.cost) + totalIncome - (totalWages + data.wage);
-
-				if (totalSavings >= data.cost && balanceAfter >= MIN_BALANCE_BUFFER) {
-					// Must be higher level than the tile's defense
-					if (data.level <= enemyDefense) continue;
-
-					// Dragon special rules
-					if (name === "dragon") {
-						if (!targetUnit || targetUnit.name !== "fortress" || balanceAfter < DRAGON_BALANCE_BUFFER) continue;
-					}
-
-					let score = 0;
-					if (targetTile.ownerIndex === -1) {
-						// Expansion logic
-						score += (name === "peasant") ? 60 : 20; 
-					} else if (targetUnit) {
-						// Combat logic: massive bonus for killing units
-						score += 150 + (getUnitLevel(targetUnit.type) * 50);
-					} else if (pos.isBorder) {
-						// Stealing empty enemy land
-						score += 40;
-					}
-
-					// Penalize using overkill (don't buy a Knight if a Peasant can take the land)
-					score -= (data.cost * 0.4);
-
-					if (score > bestScore) {
-						bestScore = score;
-						bestMove = { type: ACTION.action_build, unitType: name, q: pos.q, r: pos.r, poolHex: {q:hexes[0].q, r:hexes[0].r}, };
-					}
-				}
-			}
-		}
-	}
-
-	return bestMove;
-}
 
 /**
  * Checks the defense level of a tile. 
@@ -18592,8 +18319,8 @@ async function executeAIMoveSequentially(player) {
 			// --- THE MAGIC FIX ---
 			// Every 5 moves (or if 16ms has passed), pause for 0ms to let the UI update.
 			// This prevents the "Freezing" / "Page Unresponsive" warning.
-			if (movesCount % 5 === 0 || (performance.now() - startTime) > 15) {
-				await yieldToMainThread(); 
+			//if (performance.now() - startTime > 30) {
+				await yieldToMainThread();
 				startTime = performance.now(); // Reset timer
 				
 				// CRITICAL: Re-check game state after resuming!
@@ -18602,7 +18329,7 @@ async function executeAIMoveSequentially(player) {
 					keepPlaying = false; 
 					break;
 				}
-			}
+			//}
 		}else{
 			keepPlaying = false;
 		}
@@ -18624,7 +18351,7 @@ async function executeAIMoveSequentially(player) {
 			// --- THE MAGIC FIX ---
 			// Every 5 moves (or if 16ms has passed), pause for 0ms to let the UI update.
 			// This prevents the "Freezing" / "Page Unresponsive" warning.
-			if (movesCount % 5 === 0 || (performance.now() - startTime) > 15) {
+			//if (performance.now() - startTime > 30) {
 				await yieldToMainThread(); 
 				startTime = performance.now(); // Reset timer
 				
@@ -18634,7 +18361,7 @@ async function executeAIMoveSequentially(player) {
 					keepPlaying = false; 
 					break;
 				}
-			}
+			//}
 		}else{
 			keepPlaying = false;
 		}
@@ -21146,7 +20873,7 @@ function handleHostData(data) {
 				
 				// save game one last time when game ends:
 				if(data.type === ACTION.game_over){
-					if(gameSettings.autosave){
+					if(getSetting('autosave')){
 						saveGameToDB(gameState);
 					}
 				}
@@ -21166,7 +20893,7 @@ function handleHostData(data) {
 				//       IT WILL make it unplayable though, so loading the game wont work.
 				// maybe catch savings_update as well, so it will keep track of pools savings?
 				//gameState.networkHistory = NETWORK_HISTORY;
-				if(gameSettings.autosave){
+				if(getSetting('autosave')){
 					saveGameToDB(gameState);
 				}
 				
@@ -21710,7 +21437,7 @@ function executeJoin(hostPeerId) {
 			color: colors.color,
 			textColor: colors.textColor,
 			isSpectator: localPlayer.isSpectator,
-			country: gameSettings.country,
+			country: getSetting('country'),
 			userAgent: navigator.userAgent,
 		});
 		
@@ -21794,7 +21521,7 @@ function hostGame() {
 			let colors = getNextFreeColors();
 			localPlayer.color = colors.color;
 			localPlayer.textColor = colors.textColor;
-			localPlayer.country = gameSettings.country;
+			localPlayer.country = getSetting('country');
 			
 			hostPeerId = myPeerId;
 			
@@ -24300,7 +24027,7 @@ function applyTileGrow(){
 						let neigh = getHexNeighbors(hex.q, hex.r);
 						for(let n = 0; n < neigh.length; n++){
 							let tile = getTileAt(neigh[n].q, neigh[n].r);
-							if(tile && tile.ownerIndex === -1){
+							if(tile && isTileLand(tile) && tile.ownerIndex === -1){
 								possibleTiles[`${tile.q},${tile.r}`] = tile;
 							}
 						}
@@ -24720,6 +24447,9 @@ document.addEventListener('keyup', (event) => {
 // id = html element id, key = gameSettings key, elem = document.getElementById(id)
 // later maybe allow adding listenerType : "change" etc.
 let settingsElems = {
+	
+	
+	'game-settings-gfx-performance-mode':	{key: 'performanceMode', type: 'select', datatype: 'integer', saveLocalStorage: true},
 	'game-settings-gfx-shading-land':		{key: 'drawLandShading', type: 'checkbox'},
 	'game-settings-gfx-shading-land3d':		{key: 'drawWaterShading', type: 'checkbox'},
 	'game-settings-gfx-shading-shore':		{key: 'drawShoresShading', type: 'checkbox'},
@@ -24727,6 +24457,7 @@ let settingsElems = {
 	'game-settings-gfx-pointers':			{key: 'drawPointers', type: 'checkbox'},
 	'game-settings-gfx-particles':			{key: 'drawParticles', type: 'checkbox'},
 	'game-settings-gfx-water':				{key: 'drawWater', type: 'checkbox'},
+	'game-settings-gfx-landtextures':		{key: 'drawLandTextures', type: 'checkbox'},
 
 	'game-settings-autosave':				{key: 'autosave', type: 'checkbox'},
 
@@ -24759,9 +24490,43 @@ Object.keys(settingsElems).forEach(id => {
 		return;
 	}
 	
+	if(setting?.saveLocalStorage){
+		let savedValue = getLocalStorageItem("gameSettings_"+setting.key);
+		
+		if(setting.type === 'select'){
+			setting.elem.value = savedValue;
+		}else if(setting.type === 'checkbox'){
+			setting.elem.checked = savedValue ? true : false;
+		}else{
+			setting.elem.value = savedValue;
+		}
+		
+		if(setting?.datatype === 'integer'){
+			gameSettings[setting.key] = parseInt(setting.elem.value);
+		}else{
+			gameSettings[setting.key] = setting.elem.value;
+		}
+	}
+	
 	if(setting.key !== undefined){
 		setting.elem.addEventListener("change", () => {
-			gameSettings[setting.key] = setting.elem.checked;
+			if(setting.type === 'select'){
+				
+				if(setting?.datatype === 'integer'){
+					gameSettings[setting.key] = parseInt(setting.elem.value);
+				}else{
+					gameSettings[setting.key] = setting.elem.value;
+				}
+				console.warn(setting.key, gameSettings[setting.key]);
+			}else if(setting.type === 'checkbox'){
+				gameSettings[setting.key] = setting.elem.checked;
+			}else{
+				gameSettings[setting.key] = setting.elem.value;
+			}
+			
+			if(setting?.saveLocalStorage){
+				setLocalStorageItem("gameSettings_"+setting.key, gameSettings[setting.key]);
+			}
 		});
 	}
 	if(setting.gameStateKey !== undefined){
@@ -24774,6 +24539,8 @@ Object.keys(settingsElems).forEach(id => {
 					gameState.settings[setting.gameStateKey] = setting.elem.checked;
 				}else if(setting.type === 'number'){
 					gameState.settings[setting.gameStateKey] = Number(setting.elem.value);
+				}else if(setting.type === 'select'){
+					gameState.settings[setting.gameStateKey] = setting.elem.value;
 				}else{
 					gameState.settings[setting.gameStateKey] = setting.elem.value;
 				}
@@ -25740,9 +25507,6 @@ window.addEventListener('DOMContentLoaded', async () => {
 					case "/reverse":
 						reverse = !reverse;
 					break;
-					case "/drawtextures":
-						drawtextures = !drawtextures;
-					break;
 					
 					
 				}
@@ -25960,9 +25724,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 	
 	// detect user language:
 	let countryCode = detectUserLanguage(navigator.languages);
-	gameSettings.country = {code: countryCode, name: countryCodeToCountry(countryCode)}
+	setSetting('country', {code: countryCode, name: countryCodeToCountry(countryCode)});
 	
-	let flagInfo = getCountryFlagImageInfo(gameSettings.country);
+	let flagInfo = getCountryFlagImageInfo(getSetting('country'));
 	playerFlagBtn.style.backgroundImage = `url('${flagInfo.url}')`;
 	playerFlagBtn.title = flagInfo.name;
 
