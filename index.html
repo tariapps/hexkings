@@ -21,6 +21,7 @@
 
 	<script src="config.js"></script> <!-- LOCAL=false on public, true on local pc -->
 
+
 <script>
 	
 /*
@@ -436,6 +437,18 @@ label {
 	border-left: 2px solid rgba(255, 255, 255, 0.3);
 }
 
+.player-list-item-top .namevals {
+    text-shadow: 2px 2px 1px rgba(0, 0, 0, 1), 0px 0px 2px rgba(0, 0, 0, 1), 0px 0px 4px rgba(0, 0, 0, 1);
+}
+	
+.player-list-item-top.highlight {
+	---background-color:rgba(80,80,80, 0.4);
+	border-color: yellow;
+}
+
+.player-list-item-top.current-turn {
+    background-color: rgb(139, 139, 0, 0.67);
+}
 
 .ai-player-item-top {
 
@@ -466,6 +479,8 @@ label {
 	margin-right: 5px;
 	visibility: hidden;
 }
+
+
 
 .player-list-item-top.current-turn .player-turn-indicator-top {
 	visibility: visible;
@@ -1756,6 +1771,11 @@ input.disabled {
 	filter: brightness(0.5);
 }
 
+#cycle-unit-type {
+	width:40px;
+	height:44px;
+}
+
 #previous-unit-btn {
 	background-image: url('images/ui/previous.png');
 }
@@ -1917,7 +1937,11 @@ input.disabled {
 }
 
 
+
 </style>
+
+
+
 </head>
 <body>
 
@@ -1926,7 +1950,61 @@ input.disabled {
 <input type="hidden" id="dirty-flag">
 
 
+<style>
+.imageSelectList {
+	position: relative;
+	bottom:0;
+	width: 40px;
+	height: 44px;
+	cursor: pointer;
+}
 
+.imageSelectListSelected {
+	width: 100%;
+	height: 100%;
+
+	border: 1px solid var(--border-color);
+	border-radius: 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: black;
+}
+
+.imageSelectListSelected img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+.imageSelectListOptions {
+	position: absolute;
+	bottom: 100%;
+	left: 0;
+	display: none;
+	flex-direction: column;
+}
+
+.imageSelectList.open .imageSelectListOptions {
+	display: flex;
+}
+
+.imageSelectListOption {
+	width: 40px;
+	height: 44px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: black;
+	border: 1px solid var(--border-color);
+	border-radius: 6px;
+	border-bottom: none;
+}
+
+.imageSelectListOption img {
+	max-width: 100%;
+	max-height: 100%;
+}
+</style>
 
 
 
@@ -2226,28 +2304,15 @@ input.disabled {
 				</div>
 				
 				<div class="input-group" style="flex-direction: row !important;">
-					
 					<select id="game-settings-gfx-performance-mode">
-						<option value="0">Disabled</option>
+						<option value="0">Default</option>
 						<option value="2">Simple (with water)</option>
 						<option value="1">Simple</option>
 						<option value="3">Ultra simple</option>
 					</select>
 					<label for="game-settings-gfx-performance-mode">Performance mode</label>
 				</div>
-				<!--
-				<div>
-					<label class="inline">
-						Performance mode:
-						<select id="game-settings-gfx-performance-mode">
-							<option value="0">Disabled</option>
-							<option value="2">Simple (with water)</option>
-							<option value="1">Simple</option>
-							<option value="3">Ultra simple</option>
-						</select>
-					</label>
-				</div>
-				-->
+	
 
 				<div>
 					<label class="inline">
@@ -2895,6 +2960,24 @@ input.disabled {
 					</div>
 					<div class="button-row" id="ui-right-button-row2-id">
 						<button id="end-turn-btn" class="gamebutton primary" title="End turn"></button>
+						
+
+												
+						<div class="imageSelectList" id="cycle-unit-type">
+							<div class="imageSelectListSelected" data-value="">
+								<img src="images/ui/select-all.png">
+							</div>
+
+							<div class="imageSelectListOptions">
+								<div class="imageSelectListOption" data-value="4"><img src="images/orig-scaled/128x128/soldier4.png"></div>
+								<div class="imageSelectListOption" data-value="3"><img src="images/orig-scaled/128x128/soldier3.png"></div>
+								<div class="imageSelectListOption" data-value="2"><img src="images/orig-scaled/128x128/soldier2.png"></div>
+								<div class="imageSelectListOption" data-value="1"><img src="images/orig-scaled/128x128/soldier1.png"></div>
+								<div class="imageSelectListOption" data-value="-1"><img src="images/ui/select-all.png"></div>
+							</div>
+						</div>
+
+
 						<button id="previous-unit-btn" class="gamebutton" title="Previous unit"></button>
 						<button id="next-unit-btn" class="gamebutton" title="Next unit"></button>
 						
@@ -3018,7 +3101,43 @@ input.disabled {
 
 
 <script>
+const imageSelectList = document.getElementById("cycle-unit-type");
+const imageSelectListSelected = imageSelectList.querySelector(".imageSelectListSelected");
+const imageSelectListOptions = imageSelectList.querySelectorAll(".imageSelectListOption");
+
+// toggle open/close
+imageSelectListSelected.addEventListener("click", () => {
+	imageSelectList.classList.toggle("open");
+});
+
+// handle selection
+imageSelectListOptions.forEach(option => {
+	option.addEventListener("click", () => {
+		const imgSrc = option.querySelector("img").src;
+		const value = option.dataset.value;
+
+		imageSelectListSelected.querySelector("img").src = imgSrc;
+		imageSelectListSelected.dataset.value = value;
+
+		imageSelectList.classList.remove("open");
+
+		console.log("Selected:", value);
+	});
+});
+
+// close on outside click
+document.addEventListener("click", (e) => {
+	if (!imageSelectList.contains(e.target)) {
+		imageSelectList.classList.remove("open");
+	}
+});
+</script>
+
+<script>
 "use strict";
+
+
+
 
 
 // blooddrop blood drop blood dripping blooddripping
@@ -12591,6 +12710,9 @@ function cancelAll(){
 	selectedPool = null;
 	enemySelectedPool = null;
 	updateSelectedPoolUi();
+	
+	// remove top bar player highlight:
+	highlightPlayer(-1);
 }
 
 // seems to be only for desktop mode.
@@ -13352,6 +13474,7 @@ function updateGameUI() {
 		}
 		
 		item.dataset.peer = p.id;
+		item.dataset.playerIndex = p.playerIndex;
 
 		if(p.id	!== localPlayer.id && !p.isAI){
 			item.classList.add("ai-player-item-top");	
@@ -13369,8 +13492,9 @@ function updateGameUI() {
 		}
 		
 		if(!p.quitted && !p.isDead && !p.isSpectator){
+			// <span class="player-turn-indicator-top"></span>
 			item.innerHTML = `
-				<span class="player-turn-indicator-top"></span>
+				
 				<span style="color: ${color}; font-weight: bold;" class="namevals"></span>
 			`;
 			const safeName = document.createTextNode(`${p.name} ${specTag}`);
@@ -13657,6 +13781,11 @@ function updateSelectedPoolInfo(hex){
 	if(enemySelectedPool){
 		enemyHighlightedPool = enemySelectedPool.hexes;
 	}
+	
+	let hextile = getTileAt(hex.q,hex.r);
+	let highlightPlayerIndex = hextile ? hextile.ownerIndex : -1;
+	highlightPlayer(highlightPlayerIndex);
+	
 	
 	updateSelectedPoolUi();
 	console.log("updateSelectedPoolInfo: selectedPool");
@@ -14849,6 +14978,20 @@ function findEnemySelectedPool(poolStartHex){
 	return enemySelectedPool2;
 }
 
+function highlightPlayer(playerIndex) {
+	const players = document.querySelectorAll(
+		'#top-float-ui-players .player-list-item-top'
+	);
+
+	players.forEach(player => {
+		if (player.dataset.playerIndex == playerIndex) {
+			player.classList.add('highlight');
+		} else {
+			player.classList.remove('highlight');
+		}
+	});
+}
+
 function updateHighlights() {
 	// Clear all highlights
 	highlightedPool = [];
@@ -14857,6 +15000,8 @@ function updateHighlights() {
 	invalidMoveHexes = [];
 	validSeaMoveHexes = [];
 	enemySelectedPool = null;
+	
+
 	
 	enemyHighlightedPool = [];
 	
@@ -14904,6 +15049,8 @@ function updateHighlights() {
 				if(enemySelectedPool){
 					enemyHighlightedPool = enemySelectedPool.hexes;
 				}
+				
+				highlightPlayer(tile.ownerIndex);
 				
 				
 				console.warn("enemySelectedPool");
