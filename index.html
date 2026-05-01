@@ -24729,7 +24729,7 @@ Object.keys(settingsElems).forEach(id => {
 	}
 	
 	if(setting?.saveLocalStorage){
-		let savedValue = getLocalStorageItem("gameSettings_"+setting.key);
+		let savedValue = getLocalStorageItem("gameSettings_"+setting.key) ?? 0;
 		
 		if(setting.type === 'select'){
 			setting.elem.value = savedValue;
