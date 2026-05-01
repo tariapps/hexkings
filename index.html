@@ -435,6 +435,10 @@ label {
 
 	margin-right: 4px;
 	border-left: 2px solid rgba(255, 255, 255, 0.3);
+	
+
+	pointer-events: auto;
+
 }
 
 .player-list-item-top .namevals {
@@ -7360,6 +7364,27 @@ const chatMessages = document.getElementById('chat-messages');
 const topFloatUiChatMessages = document.getElementById('top-float-ui-messages');
 const topFloatUiPlayers = document.getElementById('top-float-ui-players');
 
+topFloatUiPlayers.addEventListener('click', (e) => {
+	const item = e.target.closest('.player-list-item-top');
+
+	if (item && topFloatUiPlayers.contains(item)) {
+		let pools = findEconomyPools(parseInt(item.dataset.playerIndex));
+
+		if(pools.length > 0){
+			//enemySelectedPool = pools[0];
+			let pool = pools[0];
+			if(pool){
+				enemyHighlightedPool = pool.hexes;
+				
+				highlightPlayer(-1); // remove all other highlights
+				
+				item.classList.add('highlight');
+
+			}
+		}
+
+	}
+});
 
 
 const lobbyChatMessages = document.getElementById('lobby-chat-messages');
@@ -24684,10 +24709,11 @@ document.addEventListener('keyup', (event) => {
 // for simple settings checkboxes:
 // id = html element id, key = gameSettings key, elem = document.getElementById(id)
 // later maybe allow adding listenerType : "change" etc.
+// localStorageDefaultValue = use this value if localstorage value was not saved yet.
 let settingsElems = {
 	
 	
-	'game-settings-gfx-performance-mode':	{key: 'performanceMode', type: 'select', datatype: 'integer', saveLocalStorage: true},
+	'game-settings-gfx-performance-mode':	{key: 'performanceMode', type: 'select', datatype: 'integer', saveLocalStorage: true, localStorageDefaultValue: 0},
 	'game-settings-gfx-shading-land':		{key: 'drawLandShading', type: 'checkbox'},
 	'game-settings-gfx-shading-land3d':		{key: 'drawWaterShading', type: 'checkbox'},
 	'game-settings-gfx-shading-shore':		{key: 'drawShoresShading', type: 'checkbox'},
@@ -24729,7 +24755,9 @@ Object.keys(settingsElems).forEach(id => {
 	}
 	
 	if(setting?.saveLocalStorage){
-		let savedValue = getLocalStorageItem("gameSettings_"+setting.key) ?? 0;
+		
+		let defaultValue = setting.localStorageDefaultValue ?? 0;
+		let savedValue = getLocalStorageItem("gameSettings_"+setting.key) ?? defaultValue;
 		
 		if(setting.type === 'select'){
 			setting.elem.value = savedValue;
