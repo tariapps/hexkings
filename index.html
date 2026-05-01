@@ -2000,6 +2000,10 @@ input.disabled {
 	border-bottom: none;
 }
 
+.imageSelectListOption .count {
+	width: 38px;
+}
+
 .imageSelectListOption img {
 	max-width: 35px;
 	max-height: 35px;
@@ -3106,12 +3110,23 @@ const cycleUnitTypeListOptions = cycleUnitType.querySelectorAll(".imageSelectLis
 
 let cycleUnitTypeValue = null; // null = cycle all units. otherwise "peasant" etc.
 
+function clearCycleUnitType(){
+	cycleUnitTypeValue = null;
+	
+	cycleUnitTypeListSelected.querySelector("img").src = "images/ui/select-all.png";
+	cycleUnitTypeListSelected.dataset.value = "";
+
+	cycleUnitType.classList.remove("open");
+}
+
+
 // toggle open/close
 cycleUnitTypeListSelected.addEventListener("click", () => {
 	if(!cycleUnitType.classList.contains("open")){
 		//console.log("opening list");
 		
 		let unitCounts = {};
+		unitCounts['*'] = 0;
 		
 		const player = getMyPlayer();
 		for(let i = 0; i < gameState.units.length; i++){
@@ -3123,14 +3138,27 @@ cycleUnitTypeListSelected.addEventListener("click", () => {
 				}else{
 					unitCounts[unit.type]++;
 				}
+				unitCounts['*']++;
 			}
 		}
 		
 		cycleUnitTypeListOptions.forEach(option => {
 			const countEl = option.querySelector(".count");
 			if (countEl) {
-				let val = unitCounts[option.dataset.value] ?? 0;
-				countEl.textContent = val+"x";
+				let key = (option.dataset.value === "") ? "*" : option.dataset.value;
+				let count = unitCounts[key] ?? 0;
+				
+				let color = count ? "#FFFFFF" : "#555555";
+				let opacity = count ? 1 : 0.5;
+
+				countEl.textContent = count+"x";
+				countEl.style.color = color;
+				
+				const imgEl = option.querySelector("img");
+				if(imgEl){
+					imgEl.style.opacity = opacity;
+				}
+				
 			}
 		});
 	}else{
@@ -6429,11 +6457,12 @@ imageAssets = {
 	'ui-music-next':     {path:'images/ui/music-next.png', isUi: true},
 	'ui-music-play':     {path:'images/ui/music-play.png', isUi: true},
 	'ui-music-pause':    {path:'images/ui/music-pause.png', isUi: true},
-	'ui-music-mute':    {path:'images/ui/music-mute.png', isUi: true},
-	'ui-music-unmute':    {path:'images/ui/music-unmute.png', isUi: true},
+	'ui-music-mute':     {path:'images/ui/music-mute.png', isUi: true},
+	'ui-music-unmute':   {path:'images/ui/music-unmute.png', isUi: true},
 	'ui-rotate-left':    {path:'images/ui/rotate-left.png', isUi: true},
 	'ui-rotate-reset':   {path:'images/ui/rotate-reset.png', isUi: true},
 	'ui-rotate-right':   {path:'images/ui/rotate-right.png', isUi: true},
+	'ui-select-all':     {path:'images/ui/select-all.png', isUi: true},
 	
 	'ui-savings':   {path:'images/ui/savings.png', isUi: true},
 	'ui-income':   {path:'images/ui/income.png', isUi: true},
@@ -8369,6 +8398,7 @@ const confirmNo = document.getElementById('confirm-end-turn-no');
 // Helper function to perform the actual turn ending
 function performEndTurn() {
 	clearShieldingUnitsTips();
+	clearCycleUnitType();
 	sendToHost({ type: ACTION.action_end_turn });
 	endTurnPopup.classList.remove('active');
 }
