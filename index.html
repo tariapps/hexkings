@@ -23,7 +23,16 @@
 
 
 <script>
-	
+function getLineNumber() {
+	const err = new Error();
+	const stack = err.stack.split("\n")[2];
+	const match = stack.match(/:(\d+):\d+\)?$/);
+	return match ? match[1] : null;
+}
+
+
+
+
 /*
 
 game logic:
@@ -65,7 +74,7 @@ or if joining two pools together to get the balance positive.
 
 // set debug mode, without debug there will be no console.log/warn at all.
 let DEBUGMODE = 1;
-let KILL_EVERY_MOVE = false;
+
 
 // Save originals ONCE
 const _log = console.log.bind(console);
@@ -6390,7 +6399,7 @@ let enemyHighlightedPool = []; // [{q, r}] for highlighting connected hexes
 let validMoveHexes = []; // [{q, r}] for green move highlight
 let possibleMoveHexes = []; // the hexes with all possible moves even when the move will fail. for being able to click and get feedback.
 let invalidMoveHexes = []; // [{q, r}] for red move highlight
-let selectedPool = [];
+let selectedPool = null;
 let enemySelectedPool = null;
 
 let myCurrentSavings = 0; // Client-side savings
@@ -7376,9 +7385,9 @@ topFloatUiPlayers.addEventListener('click', (e) => {
 			if(pool){
 				enemyHighlightedPool = pool.hexes;
 				
-				highlightPlayer(-1); // remove all other highlights
+				highlightPlayer(item.dataset.playerIndex); // remove all other highlights
 				
-				item.classList.add('highlight');
+				//item.classList.add('highlight');
 
 			}
 		}
@@ -12796,16 +12805,21 @@ function handleCanvasMouseLeave(e) {
 
 
 function cancelAll(){
+	console.warn("cancelAll()");
+		
 	deselectHex();
 	deselectUnit();
 	cancelBuildPopup();
 	updateHighlights();
 	selectedPool = null;
+
 	enemySelectedPool = null;
 	updateSelectedPoolUi();
 	
 	// remove top bar player highlight:
 	highlightPlayer(-1);
+	
+	
 }
 
 // seems to be only for desktop mode.
@@ -13882,6 +13896,7 @@ function updateSelectedPoolUi(){
 		}else{
 		
 			hidePoolInfo();
+			console.log("hidePoolInfo at updateSelectedPoolUi");
 		}
 	}
 }
@@ -13892,7 +13907,22 @@ function updateSelectedPoolInfo(hex){
 	console.warn(hex);
 	console.warn(localPlayerPools);
 	
-	selectedPool = findSelectedPool(hex);
+	let tempPool = findSelectedPool(hex);
+	if(tempPool){
+		selectedPool = tempPool;
+	}else{
+		if(selectedHex){
+			let hextile = getTileAt(selectedHex.q, selectedHex.r);
+			console.warn("hextile", hextile);
+			if(!hextile || hextile.ownerIndex !== getMyPlayer().playerIndex){
+				selectedPool = null;
+			}
+		}else{
+			selectedPool = null;
+		}
+	}
+	
+	
 	enemySelectedPool = findEnemySelectedPool(hex);
 	if(enemySelectedPool){
 		enemyHighlightedPool = enemySelectedPool.hexes;
@@ -16338,15 +16368,25 @@ function executeAction(playerId, action) {
 						}else if(toTile.object === 'rock2'){
 							sounds.push({name:'claimRock', q: toQ, r: toR, action: action.type});
 						}else if(toTile.object === 'mine1'){
-							sounds.push({name:'claimMine', q: toQ, r: toR, action: action.type});
-							killMovedUnit = true;
-							allowHexClaim = false;
+							
+							if(getUnitLevel(unit.type) <= 2){
+								killMovedUnit = true;
+								allowHexClaim = false;
+								sounds.push({name:'claimMine', q: toQ, r: toR, action: action.type});
+							}else{
+								sounds.push({name:'moveunit', q: toQ, r: toR, action: action.type});
+							}
 						}else if(toTile.object === 'landmine'){
 							// only explode if its not your mine:
 							if(!isTileMinePlayerMine(toTile, playerIndex)){
-								sounds.push({name:'claimMine', q: toQ, r: toR, action: action.type});
-								killMovedUnit = true;
-								allowHexClaim = false;
+								
+								if(getUnitLevel(unit.type) <= 2){
+									killMovedUnit = true;
+									allowHexClaim = false;
+									sounds.push({name:'claimMine', q: toQ, r: toR, action: action.type});
+								}else{
+									sounds.push({name:'moveunit', q: toQ, r: toR, action: action.type});
+								}
 							}else{
 								if(!actionForUndo.killedUnit){
 									sounds.push({name:getMoveunitSound(toTile.ownerIndex, unit.ownerIndex), q: toQ, r: toR, action: action.type});
@@ -16420,40 +16460,10 @@ function executeAction(playerId, action) {
 					// push to updates all tile_changed updates that were merged into one:
 					pushMergedUpdates(updates, tileChangedUpdates);
 					
-					console.warn("tileChangedUpdates");
-					console.warn(tileChangedUpdates);
+					//console.warn("tileChangedUpdates");
+					//console.warn(tileChangedUpdates);
 					
 					
-					if(KILL_EVERY_MOVE){
-						// action_move:
-						// if claimed an enemy tile, check if anyone dies:
-						if(hexClaimed && oldOwnerIndex !== -1){ // nobody can die if claimed non-owned land.
-							//checkPlayers.push(oldOwnerIndex);
-							
-							// old owner = oldOwnerIndex
-							let pools = findEconomyPools(oldOwnerIndex);
-							let killdata = calculateBalanceAndKillSoldiers(pools);
-							
-							if(killdata.batchActions && killdata.batchActions.length > 0){
-								let batchActions = killdata.batchActions;
-								//let poolsAfter = killdata.poolsAfter;
-								//let poolsBefore = killdata.poolsBefore;
-								//actionForUndo.batchActions = batchActions;
-								//actionForUndo.poolsBefore = poolsBefore;
-								updates.push(...batchActions);
-								
-								sounds.push({ type: ACTION.sound, name: "diedByStarving", q:0, r:0, playerIndex: -1, action: ACTION.action_move});
-							}
-							// put batchActions into undo history with the current actionForUndo,
-							// maybe add new key for it like actionForUndo.poolActions = batchActions ?
-							// and then put those batchActions into updates so they will be sent to all players?
-							// for undo it has to remember the pool before changing it, so when undoing, it has to revert back to
-							// savings before soldiers died (and make soldiers alive again and remove the 'dead' object).
-							
-							// clear undo stack when units died by pool splitting:
-							preventUndo();
-						}
-					}
 					
 					
 					// dont allow undo if claiming enemy tile:
@@ -16588,15 +16598,25 @@ function executeAction(playerId, action) {
 						}else if(tile.object === 'rock2'){
 							sounds.push({name:'claimRock', q: toQ, r: toR, action: action.type});
 						}else if(tile.object === 'mine1'){
-							sounds.push({name:'claimMine', q: toQ, r: toR, action: action.type});
-							killAddedUnit = true;
-							allowHexClaim = false;
+							
+							if(getUnitLevel(newUnit.type) <= 2){
+								killAddedUnit = true;
+								allowHexClaim = false;
+								sounds.push({name:'claimMine', q: toQ, r: toR, action: action.type});
+							}else{
+								sounds.push({name:'moveunit', q: toQ, r: toR, action: action.type});
+							}
 						}else if(tile.object === 'landmine'){
 							// only explode if its not your mine:
 							if(!isTileMinePlayerMine(tile, playerIndex)){
-								sounds.push({name:'claimMine', q: toQ, r: toR, action: action.type});
-								killAddedUnit = true;
-								allowHexClaim = false;
+								
+								if(getUnitLevel(newUnit.type) <= 2){
+									killAddedUnit = true;
+									allowHexClaim = false;
+									sounds.push({name:'claimMine', q: toQ, r: toR, action: action.type});
+								}else{
+									sounds.push({name:'moveunit', q: toQ, r: toR, action: action.type});
+								}
 							}else{
 								// if not killed unit, just play move sound? not sure about this logic.
 								if(!actionForUndo.killedUnit){
@@ -17066,15 +17086,25 @@ function executeAction(playerId, action) {
 								}else if(tile.object === 'rock2'){
 									sounds.push({name:'claimRock', q: q, r: r, action: action.type});
 								}else if(tile.object === 'mine1'){
-									sounds.push({name:'claimMine', q: q, r: r, action: action.type});
-									killAddedUnit = true;
-									allowHexClaim = false;
+									
+									if(getUnitLevel(newUnit.type) <= 2){
+										killAddedUnit = true;
+										allowHexClaim = false;
+										sounds.push({name:'claimMine', q: q, r: r, action: action.type});
+									}else{
+										sounds.push({name:'moveunit', q: q, r: r, action: action.type});
+									}
 								}else if(tile.object === 'landmine'){
 									// only explode if its not your mine:
 									if(!isTileMinePlayerMine(tile, playerIndex)){
-										sounds.push({name:'claimMine', q: q, r: r, action: action.type});
-										killAddedUnit = true;
-										allowHexClaim = false;
+										
+										if(getUnitLevel(newUnit.type) <= 2){
+											killAddedUnit = true;
+											allowHexClaim = false;
+											sounds.push({name:'claimMine', q: q, r: r, action: action.type});
+										}else{
+											sounds.push({name:'moveunit', q: q, r: r, action: action.type});
+										}
 									}else{
 										// if not killed unit, just play move sound? not sure about this logic.
 										if(!actionForUndo.killedUnit){
@@ -17091,24 +17121,7 @@ function executeAction(playerId, action) {
 							//	playMoveUnit = true;
 							//}
 							
-							/*
-							if(moveUnitType == 0){
-								if(tile.object === 'tree'){
-									sounds.push({name:'claimTree', q: q, r: r, action: action.type});
-								}else if(tile.object === 'grass'){
-									sounds.push({name:'claimGrass', q: q, r: r, action: action.type});
-								}else if(tile.object === 'rock2'){
-									sounds.push({name:'claimRock', q: q, r: r, action: action.type});
-								}else if(tile.object === 'mine1'){
-									sounds.push({name:'claimMine', q: q, r: r, action: action.type});
-								}else{
-									playMoveUnit = true;
-									//sounds.push({name:'moveunit', q: q, r: r, action: action.type});
-								}
-							}else{
-								playMoveUnit = true;
-							}
-							*/
+					
 						
 							
 
@@ -17179,8 +17192,8 @@ function executeAction(playerId, action) {
 						}
 							
 						
-						console.warn("actionForUndo");
-						console.warn(actionForUndo);
+						//console.warn("actionForUndo");
+						//console.warn(actionForUndo);
 						
 						// if batchActions kills your unit, should just add the cross instead?
 						// calculateBalanceAndKillSoldiers doesnt take into account the new unit wages...
@@ -17192,89 +17205,6 @@ function executeAction(playerId, action) {
 						let addedUnitWasKilled = false;
 						
 						
-						if(KILL_EVERY_MOVE){
-							
-							// action_build:
-							// if claimed enemy tile, check if any enemy dies:
-							// Note: must check for attacking player pools too.
-							if(didClaimEnemy){ // (not non-owned tile.)
-								// check if the enemy tile owner will die.
-								//checkPlayers.push(oldOwnerIndex);
-								
-								// check enemy pools:
-								// old owner = oldOwnerIndex
-								let pools = findEconomyPools(oldOwnerIndex);
-								let killdata = calculateBalanceAndKillSoldiers(pools);
-								
-								if(killdata.batchActions && killdata.batchActions.length > 0){
-									
-									console.warn("pool units were killed due to starvation");
-									
-									let batchActions = killdata.batchActions;
-									//let poolsAfter = killdata.poolsAfter;
-									//let poolsBefore = killdata.poolsBefore;
-									//actionForUndo.batchActions = batchActions;
-									//actionForUndo.poolsBefore = poolsBefore;
-									updates.push(...batchActions);
-									
-									sounds.push({ type: ACTION.sound, name: "diedByStarving", q:0, r:0, playerIndex: -1, action: ACTION.action_move});
-									
-									preventUndo();
-								}
-								// put batchActions into undo history with the current actionForUndo,
-								// maybe add new key for it like actionForUndo.poolActions = batchActions ?
-								// and then put those batchActions into updates so they will be sent to all players?
-								// for undo it has to remember the pool before changing it, so when undoing, it has to revert back to
-								// savings before soldiers died (and make soldiers alive again and remove the 'dead' object).
-							}
-							let killedByStarvation = false;
-							
-							if(isSoldier(newUnit)){
-								// if placed soldier, check if that owner will die even if not claimed any hex.
-								//checkPlayers.push(playerIndex);
-								
-								// if placed soldier, check if your soldiers will die:
-								let pools = findEconomyPools(playerIndex);
-								let killdata = calculateBalanceAndKillSoldiers(pools);
-								
-								console.warn("check if added unit was killed:");
-								console.warn(killdata);
-								
-								if(killdata.batchActions && killdata.batchActions.length > 0){
-									let batchActions = killdata.batchActions;
-									
-									console.warn("added unit was killed due to starvation");
-									//addedUnitWasKilled = true;
-									killAddedUnit = true;
-									killedByStarvation = true;
-									
-									
-
-									
-									// add silent kill explosion:
-									//sounds.push({name: 'silentDiedByStarving', q: q, r: r, action: action.type});
-									
-									
-									//let poolsAfter = killdata.poolsAfter;
-									//let poolsBefore = killdata.poolsBefore;
-									
-									//if(!actionForUndo.batchActions){
-									//	actionForUndo.batchActions = [];
-									//}
-									//actionForUndo.batchActions.push(...batchActions);
-
-									////updates.push({ type: ACTION.unit_added, unit: newUnit });
-									
-									//actionForUndo.poolsBefore = poolsBefore;
-									updates.push(...batchActions);
-									
-									sounds.push({ type: ACTION.sound, name: "diedByStarving", q:0, r:0, playerIndex: -1, action: ACTION.action_move});
-									
-									
-									preventUndo();
-								}
-							}
-						}
 					
 						
 						// TODO... fix this: the newly built unit doesnt die with the others:
@@ -17285,27 +17215,7 @@ function executeAction(playerId, action) {
 						updates.push({ type: ACTION.unit_added, unit: newUnit });
 						
 						if(killAddedUnit){
-							// dont add killed unit or it will create that unit after undo...
-							//actionForUndo.killedUnit = { ...unitCopy };
-							
-							/*
-							if(killedByStarvation){
-								
-								// add cross & blood at same object_change process:
-								updates.push({ 
-									type: ACTION.object_changed, 
-									q: newUnit.q, 
-									r: newUnit.r, 
-									object: 'dead',
-									animationStyle: 1,
-								});
-								
-								
-								updates.push({ type: ACTION.unit_removed, unitId: unitCopy.id });
-							}else{
-								updates.push({ type: ACTION.unit_removed, unitId: unitCopy.id });
-							}
-							*/
+
 							
 							updates.push({ type: ACTION.unit_removed, unitId: unitCopy.id });
 							
@@ -17314,38 +17224,6 @@ function executeAction(playerId, action) {
 						}
 						
 						
-						/*
-						if(!addedUnitWasKilled){
-							updates.push({ type: ACTION.unit_added, unit: newUnit });
-						}else{
-
-							// TODO: think how to fix this unit add/remove...
-							//actionForUndo.unit = null; // dont tell we added unit since we didnt.
-							
-							// kill also the added unit:
-							tile.object = 'dead'; // Turn to dead (crosses)
-							tile.actionTurnNumber = gameState.turn.turnNumber;
-							
-							// add animation info for host:
-							tile.creationTime = msNowFloor(); 
-							tile.animationFinished = 0; // ensure no animation will be visible.
-							tile.animationStyle = 1; // 1 = appear from bottom to up, 2 = appear from zero size to normal size
-							
-							// just add the cross object:
-							// TODO: make this into the actionForUndo instead...?
-							tileChangedUpdates.push({ 
-								type: ACTION.object_changed, 
-								q: tile.q, 
-								r: tile.r, 
-								object: tile.object,
-								animationStyle: tile.animationStyle,
-							});
-							
-							
-							//tileChangedUpdates.push({ type: ACTION.tile_changed, q: toQ, r: toR, object: tile.object });
-							
-						}
-						*/
 						
 						
 						// push to updates all tile_changed updates that were merged into one:
@@ -18047,7 +17925,7 @@ function addCost(pools, cost, preferredHex = null, actionType = "unknown") {
 
 
 function getMoveunitSound(tileOwner, unitOwner){
-	console.warn("tileOwner, unitOwner = ", tileOwner, unitOwner);
+	//console.warn("tileOwner, unitOwner = ", tileOwner, unitOwner);
 	if(tileOwner !== unitOwner && tileOwner !== -1){
 		// moved onto enemy tile:
 		return "moveunit2";
