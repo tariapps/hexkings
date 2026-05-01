@@ -1989,7 +1989,7 @@ input.disabled {
 }
 
 .imageSelectListOption {
-	width: 40px;
+	width: 80px;
 	height: 44px;
 	display: flex;
 	align-items: center;
@@ -2001,8 +2001,8 @@ input.disabled {
 }
 
 .imageSelectListOption img {
-	max-width: 100%;
-	max-height: 100%;
+	max-width: 35px;
+	max-height: 35px;
 }
 </style>
 
@@ -2963,16 +2963,16 @@ input.disabled {
 						
 
 						<div class="imageSelectList" id="cycle-unit-type">
-							<div class="imageSelectListSelected" data-value="">
+							<div class="imageSelectListSelected" data-value="" title="Unit type to cycle with previous/next buttons">
 								<img src="images/ui/select-all.png">
 							</div>
 
 							<div class="imageSelectListOptions">
-								<div class="imageSelectListOption" data-value="4"><img src="images/orig-scaled/128x128/soldier4.png"></div>
-								<div class="imageSelectListOption" data-value="3"><img src="images/orig-scaled/128x128/soldier3.png"></div>
-								<div class="imageSelectListOption" data-value="2"><img src="images/orig-scaled/128x128/soldier2.png"></div>
-								<div class="imageSelectListOption" data-value="1"><img src="images/orig-scaled/128x128/soldier1.png"></div>
-								<div class="imageSelectListOption" data-value="-1"><img src="images/ui/select-all.png"></div>
+								<div class="imageSelectListOption" data-value="dragon" title="Dragon"><img src="images/orig-scaled/128x128/soldier4.png"><span class="count">123x</span></div>
+								<div class="imageSelectListOption" data-value="horse" title="Horse"><img src="images/orig-scaled/128x128/soldier3.png"><span class="count">123x</span></div>
+								<div class="imageSelectListOption" data-value="knight" title="Knight"><img src="images/orig-scaled/128x128/soldier2.png"><span class="count">123x</span></div>
+								<div class="imageSelectListOption" data-value="peasant" title="Peasant"><img src="images/orig-scaled/128x128/soldier1.png"><span class="count">123x</span></div>
+								<div class="imageSelectListOption" data-value="" title="Any"><img src="images/ui/select-all.png"><span class="count">123x</span></div>
 							</div>
 						</div>
 
@@ -3100,36 +3100,75 @@ input.disabled {
 
 
 <script>
-const imageSelectList = document.getElementById("cycle-unit-type");
-const imageSelectListSelected = imageSelectList.querySelector(".imageSelectListSelected");
-const imageSelectListOptions = imageSelectList.querySelectorAll(".imageSelectListOption");
+const cycleUnitType = document.getElementById("cycle-unit-type");
+const cycleUnitTypeListSelected = cycleUnitType.querySelector(".imageSelectListSelected");
+const cycleUnitTypeListOptions = cycleUnitType.querySelectorAll(".imageSelectListOption");
+
+let cycleUnitTypeValue = null; // null = cycle all units. otherwise "peasant" etc.
 
 // toggle open/close
-imageSelectListSelected.addEventListener("click", () => {
-	imageSelectList.classList.toggle("open");
-});
+cycleUnitTypeListSelected.addEventListener("click", () => {
+	if(!cycleUnitType.classList.contains("open")){
+		//console.log("opening list");
+		
+		let unitCounts = {};
+		
+		const player = getMyPlayer();
+		for(let i = 0; i < gameState.units.length; i++){
+			let unit = gameState.units[i];
 
-// handle selection
-imageSelectListOptions.forEach(option => {
-	option.addEventListener("click", () => {
-		const imgSrc = option.querySelector("img").src;
-		const value = option.dataset.value;
-
-		imageSelectListSelected.querySelector("img").src = imgSrc;
-		imageSelectListSelected.dataset.value = value;
-
-		imageSelectList.classList.remove("open");
-
-		console.log("Selected:", value);
-	});
+			if(unitTypeCanMove(unit.type) && unit.ownerIndex === player.playerIndex){
+				if(unitCounts[unit.type] === undefined){
+					unitCounts[unit.type] = 1;
+				}else{
+					unitCounts[unit.type]++;
+				}
+			}
+		}
+		
+		cycleUnitTypeListOptions.forEach(option => {
+			const countEl = option.querySelector(".count");
+			if (countEl) {
+				let val = unitCounts[option.dataset.value] ?? 0;
+				countEl.textContent = val+"x";
+			}
+		});
+	}else{
+		//console.log("closing list");
+	}
+	
+	cycleUnitType.classList.toggle("open");
 });
 
 // close on outside click
 document.addEventListener("click", (e) => {
-	if (!imageSelectList.contains(e.target)) {
-		imageSelectList.classList.remove("open");
+	if (!cycleUnitType.contains(e.target)) {
+		cycleUnitType.classList.remove("open");
+		
+		//console.log("closing list");
 	}
 });
+
+// handle selection
+cycleUnitTypeListOptions.forEach(option => {
+	option.addEventListener("click", () => {
+		const imgSrc = option.querySelector("img").src;
+		const value = option.dataset.value;
+
+		cycleUnitTypeListSelected.querySelector("img").src = imgSrc;
+		cycleUnitTypeListSelected.dataset.value = value;
+
+		cycleUnitType.classList.remove("open");
+
+		cycleUnitTypeValue = (value !== "") ? value : null;
+	
+		
+		nextUnitBtn.disabled = !hasUnmovedUnitsByType(cycleUnitTypeValue);
+		previousUnitBtn.disabled = !hasUnmovedUnitsByType(cycleUnitTypeValue);
+		
+	});
+});
+
 </script>
 
 <script>
@@ -13438,6 +13477,29 @@ function isMyTurn() {
 	return currentTurnPlayer && currentTurnPlayer.id === localPlayer.id;
 }
 
+
+
+function hasUnmovedUnitsByType(unitTypeValue, playerIndex = -1){
+	if(!isMyTurn()){
+		return false;
+	}
+	const player = (playerIndex === -1) ? getMyPlayer() : getPlayerByIndex(playerIndex);
+	for(let i = 0; i < gameState.units.length; i++){
+		let unit = gameState.units[i];
+		
+		let validUnitType = true;
+		if(unitTypeValue){ // null if cycle all, otherwise "peasant" etc.
+			validUnitType = (unit.type === unitTypeValue);
+		}
+		
+		if(unitTypeCanMove(unit.type) && validUnitType && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
+		//if(unit.internalType === 'soldier' && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
+			return true;
+		}
+	}
+	return false;
+}
+
 function hasUnmovedUnits(playerIndex = -1){
 	if(!isMyTurn()){
 		return false;
@@ -13556,8 +13618,8 @@ function updateGameUI() {
 		sellUnitBtn.disabled = true;
 		endTurnBtn.disabled = !canPlay;
 		
-		nextUnitBtn.disabled = !hasUnmovedUnits();
-		previousUnitBtn.disabled = !hasUnmovedUnits();
+		nextUnitBtn.disabled = !hasUnmovedUnitsByType(cycleUnitTypeValue);
+		previousUnitBtn.disabled = !hasUnmovedUnitsByType(cycleUnitTypeValue);
 		
 		
 		///////////////////////////////
@@ -25740,7 +25802,12 @@ window.addEventListener('DOMContentLoaded', async () => {
 				const i = (startIndex + offset) % gameState.units.length;
 				let unit = gameState.units[i];
 
-				if(unitTypeCanMove(unit.type) && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
+				let validUnitType = true;
+				if(cycleUnitTypeValue){ // null if cycle all, otherwise "peasant" etc.
+					validUnitType = (unit.type === cycleUnitTypeValue);
+				}
+				
+				if(unitTypeCanMove(unit.type) && validUnitType && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
 				//if(unit.internalType === 'soldier' && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
 					centerAndSelectUnit(unit);
 					playSound('startmove');
@@ -25749,8 +25816,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 			}
 			
 			// disable next button if no next unit can be found:
-			previousUnitBtn.disabled = !hasUnmovedUnits();
-			nextUnitBtn.disabled = !hasUnmovedUnits();
+			previousUnitBtn.disabled = !hasUnmovedUnitsByType(cycleUnitTypeValue);
+			nextUnitBtn.disabled = !hasUnmovedUnitsByType(cycleUnitTypeValue);
 		}
 	};
 	nextUnitBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
@@ -25784,8 +25851,13 @@ window.addEventListener('DOMContentLoaded', async () => {
 				// +gameState.units.length to ensure no negative values given:
 				const i = (startIndex - offset + gameState.units.length) % gameState.units.length;
 				let unit = gameState.units[i];
+				
+				let validUnitType = true;
+				if(cycleUnitTypeValue){ // null if cycle all, otherwise "peasant" etc.
+					validUnitType = (unit.type === cycleUnitTypeValue);
+				}
 
-				if(unitTypeCanMove(unit.type) && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
+				if(unitTypeCanMove(unit.type) && validUnitType && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
 				//if(unit.internalType === 'soldier' && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
 					centerAndSelectUnit(unit);
 					playSound('startmove');
@@ -25794,8 +25866,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 			}
 			
 			// disable next button if no next unit can be found:
-			previousUnitBtn.disabled = !hasUnmovedUnits();
-			nextUnitBtn.disabled = !hasUnmovedUnits();
+			previousUnitBtn.disabled = !hasUnmovedUnitsByType(cycleUnitTypeValue);
+			nextUnitBtn.disabled = !hasUnmovedUnitsByType(cycleUnitTypeValue);
 		}
 	};
 	previousUnitBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
