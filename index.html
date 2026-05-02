@@ -2781,7 +2781,7 @@ input.disabled {
 						<option value="3">3x</option>
 						<option value="4">4x</option>
 					</select>
-					<button id="game-settings-btn" class="lobbybutton" title="More Settings"></button>
+					<button id="game-settings-btn" class="lobbybutton" style="background-position:left; padding-left: 50px;" title="Game Settings">Settings</button>
 				</div>
 				<div class="input-group" style="flex-direction: row !important;">
 					<label for="start-player-list">Start player:</label>
@@ -6396,7 +6396,6 @@ function switchSettings(pageId){
 	
 	if(isStartPage(pageId)){
 		mapThemeOverrideWrapper.style.display = "none";
-		console.warn("pThemeOverrideWrapper.style.display ");
 		mapThemeList.disabled = false;
 		
 		// hide ingame buttons:
@@ -24848,6 +24847,10 @@ performEndTurn();
 				if(editor.isDrawing){
 					sendTileUpdate(pixelToAxial(mousePosCurrent.x, mousePosCurrent.y));
 				}
+			}else if(code === 'KeyZ') {
+				previousUnit();
+			}else if(code === 'KeyC') {
+				nextUnit();
 			}
 		}
 	}
@@ -25389,6 +25392,96 @@ function loadSavedGame(roomKey){
 	}
 }
 
+
+function nextUnit(){
+	let player = getMyPlayer();
+	
+	if(!REPLAY_ENABLED && player && isMyTurn()){
+		let startIndex = 0;
+		
+		if(selectedUnit){
+			for(let i = 0; i < gameState.units.length; i++){
+				let unit = gameState.units[i];
+				if(unit.id === selectedUnit.id){
+					startIndex = i+1;
+					if(startIndex > gameState.units.length-1){
+						startIndex = 0; // start from beginning again.
+					}
+					break;
+				}
+			}
+		}
+		
+		// search forward starting at selected index, wrapping around
+		for (let offset = 0; offset < gameState.units.length; offset++) {
+			const i = (startIndex + offset) % gameState.units.length;
+			let unit = gameState.units[i];
+
+			let validUnitType = true;
+			if(cycleUnitTypeValue){ // null if cycle all, otherwise "peasant" etc.
+				validUnitType = (unit.type === cycleUnitTypeValue);
+			}
+			
+			if(unitTypeCanMove(unit.type) && validUnitType && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
+			//if(unit.internalType === 'soldier' && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
+				centerAndSelectUnit(unit);
+				playSound('startmove');
+				break;
+			}
+		}
+		
+		// disable next button if no next unit can be found:
+		previousUnitBtn.disabled = !countUnmovedUnitsByType(cycleUnitTypeValue);
+		nextUnitBtn.disabled = !countUnmovedUnitsByType(cycleUnitTypeValue);
+	}
+}
+
+function previousUnit(){
+	//refreshCanvas(); // test if this fixes the black bar issue.
+	
+	let player = getMyPlayer();
+	
+	if(!REPLAY_ENABLED && player && isMyTurn()){
+		let startIndex = 0;
+		
+		if(selectedUnit){
+			// search backwards the startIndex:
+			for(let i = gameState.units.length-1; i >= 0; i--){
+				let unit = gameState.units[i];
+				if(unit.id === selectedUnit.id){
+					startIndex = i-1;
+					if(startIndex < 0){
+						startIndex = gameState.units.length-1; // start from end again.
+					}
+					break;
+				}
+			}
+		}
+		
+		// search backwards starting at selected index, wrapping around
+		for (let offset = 0; offset < gameState.units.length; offset++) {
+			// +gameState.units.length to ensure no negative values given:
+			const i = (startIndex - offset + gameState.units.length) % gameState.units.length;
+			let unit = gameState.units[i];
+			
+			let validUnitType = true;
+			if(cycleUnitTypeValue){ // null if cycle all, otherwise "peasant" etc.
+				validUnitType = (unit.type === cycleUnitTypeValue);
+			}
+
+			if(unitTypeCanMove(unit.type) && validUnitType && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
+			//if(unit.internalType === 'soldier' && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
+				centerAndSelectUnit(unit);
+				playSound('startmove');
+				break;
+			}
+		}
+		
+		// disable next button if no next unit can be found:
+		previousUnitBtn.disabled = !countUnmovedUnitsByType(cycleUnitTypeValue);
+		nextUnitBtn.disabled = !countUnmovedUnitsByType(cycleUnitTypeValue);
+	}
+}
 
 
 
@@ -26000,98 +26093,14 @@ window.addEventListener('DOMContentLoaded', async () => {
 	buildPopupClose.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
 	buildPopupClose.tabIndex = -1; //remove it from the tab order
 	
-	
 	nextUnitBtn.onclick = () => {
-		let player = getMyPlayer();
-		
-		if(!REPLAY_ENABLED && player && isMyTurn()){
-			let startIndex = 0;
-			
-			if(selectedUnit){
-				for(let i = 0; i < gameState.units.length; i++){
-					let unit = gameState.units[i];
-					if(unit.id === selectedUnit.id){
-						startIndex = i+1;
-						if(startIndex > gameState.units.length-1){
-							startIndex = 0; // start from beginning again.
-						}
-						break;
-					}
-				}
-			}
-			
-			// search forward starting at selected index, wrapping around
-			for (let offset = 0; offset < gameState.units.length; offset++) {
-				const i = (startIndex + offset) % gameState.units.length;
-				let unit = gameState.units[i];
-
-				let validUnitType = true;
-				if(cycleUnitTypeValue){ // null if cycle all, otherwise "peasant" etc.
-					validUnitType = (unit.type === cycleUnitTypeValue);
-				}
-				
-				if(unitTypeCanMove(unit.type) && validUnitType && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
-				//if(unit.internalType === 'soldier' && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
-					centerAndSelectUnit(unit);
-					playSound('startmove');
-					break;
-				}
-			}
-			
-			// disable next button if no next unit can be found:
-			previousUnitBtn.disabled = !countUnmovedUnitsByType(cycleUnitTypeValue);
-			nextUnitBtn.disabled = !countUnmovedUnitsByType(cycleUnitTypeValue);
-		}
+		nextUnit();
 	};
 	nextUnitBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
 	nextUnitBtn.tabIndex = -1; //remove it from the tab order
 	
-	
 	previousUnitBtn.onclick = () => {
-		//refreshCanvas(); // test if this fixes the black bar issue.
-		
-		let player = getMyPlayer();
-		
-		if(!REPLAY_ENABLED && player && isMyTurn()){
-			let startIndex = 0;
-			
-			if(selectedUnit){
-				// search backwards the startIndex:
-				for(let i = gameState.units.length-1; i >= 0; i--){
-					let unit = gameState.units[i];
-					if(unit.id === selectedUnit.id){
-						startIndex = i-1;
-						if(startIndex < 0){
-							startIndex = gameState.units.length-1; // start from end again.
-						}
-						break;
-					}
-				}
-			}
-			
-			// search backwards starting at selected index, wrapping around
-			for (let offset = 0; offset < gameState.units.length; offset++) {
-				// +gameState.units.length to ensure no negative values given:
-				const i = (startIndex - offset + gameState.units.length) % gameState.units.length;
-				let unit = gameState.units[i];
-				
-				let validUnitType = true;
-				if(cycleUnitTypeValue){ // null if cycle all, otherwise "peasant" etc.
-					validUnitType = (unit.type === cycleUnitTypeValue);
-				}
-
-				if(unitTypeCanMove(unit.type) && validUnitType && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
-				//if(unit.internalType === 'soldier' && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
-					centerAndSelectUnit(unit);
-					playSound('startmove');
-					break;
-				}
-			}
-			
-			// disable next button if no next unit can be found:
-			previousUnitBtn.disabled = !countUnmovedUnitsByType(cycleUnitTypeValue);
-			nextUnitBtn.disabled = !countUnmovedUnitsByType(cycleUnitTypeValue);
-		}
+		previousUnit();
 	};
 	previousUnitBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
 	previousUnitBtn.tabIndex = -1; //remove it from the tab order
