@@ -299,6 +299,15 @@ select.active {
 }
 
 
+#cycle-unit-type-count {
+	position: absolute;
+	bottom: 0;
+	right: 0;
+	color: #DDDDDD;
+	font-size: 14px;
+	text-shadow: 2px 2px 1px rgba(0, 0, 0, 1), 0px 0px 2px rgba(0, 0, 0, 1), 0px 0px 4px rgba(0, 0, 0, 1);
+}
+
 
 
 #build-soldier-btn,
@@ -719,7 +728,7 @@ label {
 	flex: 1 1 auto;     /* grow to fill remaining space */
 	min-width: 0;       /* allows flex children to shrink correctly */
 	display: block;
-	width:282px;
+	width:300px;
 }
 
 .info-editor {
@@ -876,7 +885,7 @@ label {
 	right: 0;
 	z-index: 100;
 	pointer-events: auto;
-	width: 294px;
+	width: 314px;
 	background-color:black;
 
 	border-top-left-radius: 12px;
@@ -1398,7 +1407,7 @@ button.redbutton:hover {
 
 .settings-panel-endturn {
 	width: 100%;
-	max-width: 295px;
+	max-width: 314px;
 	border: 1px solid #454545;
 	border-radius: 8px;
 	padding: 8px;
@@ -2022,10 +2031,11 @@ input.disabled {
 
 .imageSelectListOptions {
 	position: absolute;
-	bottom: 100%;
+	bottom: 0;
 	left: 0;
 	display: none;
 	flex-direction: column;
+	z-index:9999;
 }
 
 .imageSelectList.open .imageSelectListOptions {
@@ -2042,6 +2052,10 @@ input.disabled {
 	border: 1px solid var(--border-color);
 	border-radius: 6px;
 	border-bottom: none;
+}
+
+.imageSelectListOption:last-child {
+	border-bottom: 1px solid var(--border-color);
 }
 
 .imageSelectListOption:hover {
@@ -2125,7 +2139,7 @@ input.disabled {
 		<div class="settings-panel-endturn trans-panel">
 			<div class="popup-title-endturn">You have unmoved units, end turn?</div>
 			<div class="button-row-end-turn">
-				<button id="confirm-end-turn-yes" class="primary nomargin">Yes</button>
+				<button id="confirm-end-turn-yes" style="width:58px" class="primary nomargin">Yes</button>
 				<button id="confirm-end-turn-no" class="danger nomargin">No</button>
 			</div>
 		</div>
@@ -3023,14 +3037,15 @@ input.disabled {
 						<div class="imageSelectList" id="cycle-unit-type">
 							<div class="imageSelectListSelected" data-value="" title="Unit type to cycle with previous/next buttons">
 								<img src="images/ui/select-all.png">
+								<span id="cycle-unit-type-count"></span>
 							</div>
 
 							<div class="imageSelectListOptions">
-								<div class="imageSelectListOption" data-value="dragon" title="Dragon"><img src="images/orig-scaled/128x128/soldier4.png"><span class="count">123x</span></div>
-								<div class="imageSelectListOption" data-value="horse" title="Horse"><img src="images/orig-scaled/128x128/soldier3.png"><span class="count">123x</span></div>
-								<div class="imageSelectListOption" data-value="knight" title="Knight"><img src="images/orig-scaled/128x128/soldier2.png"><span class="count">123x</span></div>
-								<div class="imageSelectListOption" data-value="peasant" title="Peasant"><img src="images/orig-scaled/128x128/soldier1.png"><span class="count">123x</span></div>
-								<div class="imageSelectListOption" data-value="" title="Any"><img src="images/ui/select-all.png"><span class="count">123x</span></div>
+								<div class="imageSelectListOption" data-value="dragon" data-title="Dragon"><img src="images/orig-scaled/128x128/soldier4.png"><span class="count">123x</span></div>
+								<div class="imageSelectListOption" data-value="horse" data-title="Horse"><img src="images/orig-scaled/128x128/soldier3.png"><span class="count">123x</span></div>
+								<div class="imageSelectListOption" data-value="knight" data-title="Knight"><img src="images/orig-scaled/128x128/soldier2.png"><span class="count">123x</span></div>
+								<div class="imageSelectListOption" data-value="peasant" data-title="Peasant"><img src="images/orig-scaled/128x128/soldier1.png"><span class="count">123x</span></div>
+								<div class="imageSelectListOption" data-value="" data-title="Any"><img src="images/ui/select-all.png"><span class="count">123x</span></div>
 							</div>
 						</div>
 
@@ -3162,6 +3177,9 @@ const playerTileIcon = document.getElementById("player-tile-icon");
 const playerTileIconBtn = document.getElementById("player-tile-icon-btn");
 const playerTileEmptyCount = document.getElementById("player-tile-empty-count");
 
+
+const cycleUnitTypeCount = document.getElementById("cycle-unit-type-count");
+
 let currentFocusedPoolIndex = -1;
 
 
@@ -3227,7 +3245,24 @@ playerTileIconBtn.addEventListener("click", () => {
 });
 
 
+function updateUnitTypeCount(){
+	let player = getMyPlayer();
+	let unitCounts = countUnitsByType(player.playerIndex, false);
+	
+	let unitType = cycleUnitTypeValue ?? "*";
+	let count = unitCounts[unitType];
+
+	if(count > 0){
+		cycleUnitTypeCount.textContent = count;
+	}else{
+		cycleUnitTypeCount.textContent = "";
+	}
+}
+
+
 function updatePlayerTileEmptyCount(){
+	updateUnitTypeCount();
+	
 	let count = 0;
 	let player = getMyPlayer();
 	if(player && !player.isSpectator && !player.isDead){
@@ -3269,48 +3304,56 @@ function clearCycleUnitType(){
 	cycleUnitType.classList.remove("open");
 }
 
+function countUnitsByType(playerIndex, ignoreHasMoved = true){
+	let unitCounts = {};
+	unitCounts['*'] = 0;
+	
+	for(let i = 0; i < gameState.units.length; i++){
+		let unit = gameState.units[i];
+
+		if(unitTypeCanMove(unit.type) && (!unit.hasMoved || ignoreHasMoved) && unit.ownerIndex === playerIndex){
+			if(unitCounts[unit.type] === undefined){
+				unitCounts[unit.type] = 1;
+			}else{
+				unitCounts[unit.type]++;
+			}
+			unitCounts['*']++;
+		}
+	}
+	return unitCounts;
+}
+
 
 // toggle open/close
 cycleUnitTypeListSelected.addEventListener("click", () => {
 	if(!cycleUnitType.classList.contains("open")){
 		//console.log("opening list");
 		
-		let unitCounts = {};
-		unitCounts['*'] = 0;
-		
 		const player = getMyPlayer();
-		for(let i = 0; i < gameState.units.length; i++){
-			let unit = gameState.units[i];
-
-			if(unitTypeCanMove(unit.type) && unit.ownerIndex === player.playerIndex){
-				if(unitCounts[unit.type] === undefined){
-					unitCounts[unit.type] = 1;
-				}else{
-					unitCounts[unit.type]++;
-				}
-				unitCounts['*']++;
-			}
-		}
+		let unitCounts = countUnitsByType(player.playerIndex);
 		
 		cycleUnitTypeListOptions.forEach(option => {
 			const countEl = option.querySelector(".count");
 			if (countEl) {
 				let key = (option.dataset.value === "") ? "*" : option.dataset.value;
 				let count = unitCounts[key] ?? 0;
-				option.dataset.count = count;
-				
 				let unitType = option.dataset.value ?? null;
-				let hasUnmovedUnits = hasUnmovedUnitsByType(unitType);
+				let unmovedUnitsCount = countUnmovedUnitsByType(unitType);
+				
+				option.dataset.count = count;
+				option.title = `${option.dataset.title} (${unmovedUnitsCount} unmoved of ${count} total units)`;
+				
+
 				
 				let color = "#FFFFFF";
 				let opacity = 1;
 				
-				if(!hasUnmovedUnits || count === 0){
+				if(unmovedUnitsCount === 0 || count === 0){
 					color = "#555555";
 					opacity = 0.5;
 				}
 
-				countEl.textContent = count+"x";
+				countEl.textContent = `${unmovedUnitsCount}/${count}`;
 				countEl.style.color = color;
 				
 				const imgEl = option.querySelector("img");
@@ -3342,10 +3385,17 @@ cycleUnitTypeListOptions.forEach(option => {
 		const imgSrc = option.querySelector("img").src;
 		const value = option.dataset.value;
 		const count = option.dataset.count;
-		cycleUnitTypeValue = (value !== "") ? value : null;
-		let hasUnmovedUnits = hasUnmovedUnitsByType(cycleUnitTypeValue);
+		let val = (value !== "") ? value : null;
 		
-		if(count > 0 && hasUnmovedUnits){
+		let hasUnmovedUnits = countUnmovedUnitsByType(val);
+		
+		if((count > 0 && hasUnmovedUnits) || !val){
+			
+			cycleUnitTypeValue = val;
+			
+			updateUnitTypeCount();
+			
+			console.warn("cycleUnitTypeValue",cycleUnitTypeValue);
 
 			cycleUnitTypeListSelected.querySelector("img").src = imgSrc;
 			cycleUnitTypeListSelected.dataset.value = value;
@@ -3359,9 +3409,14 @@ cycleUnitTypeListOptions.forEach(option => {
 			
 			
 			cancelBuildPopup();
-			centerAndSelectFirstUnmovedUnitOfType(cycleUnitTypeValue);
-			playSound("startmove");
 			
+			if(count > 0 && hasUnmovedUnits){
+				centerAndSelectFirstUnmovedUnitOfType(cycleUnitTypeValue);
+				playSound("startmove");
+			}
+			
+		}else{
+			cycleUnitType.classList.remove("open");
 		}
 		
 	
@@ -13767,10 +13822,11 @@ function isMyTurn() {
 
 
 
-function hasUnmovedUnitsByType(unitTypeValue, playerIndex = -1){
-	if(!isMyTurn()){
-		return false;
-	}
+function countUnmovedUnitsByType(unitTypeValue, playerIndex = -1){
+	let count = 0;
+	//if(!isMyTurn()){
+	//	return false;
+	//}
 	const player = (playerIndex === -1) ? getMyPlayer() : getPlayerByIndex(playerIndex);
 	for(let i = 0; i < gameState.units.length; i++){
 		let unit = gameState.units[i];
@@ -13782,10 +13838,10 @@ function hasUnmovedUnitsByType(unitTypeValue, playerIndex = -1){
 		
 		if(unitTypeCanMove(unit.type) && validUnitType && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
 		//if(unit.internalType === 'soldier' && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
-			return true;
+			count++;
 		}
 	}
-	return false;
+	return count;
 }
 
 function hasUnmovedUnits(playerIndex = -1){
@@ -13906,8 +13962,8 @@ function updateGameUI() {
 		sellUnitBtn.disabled = true;
 		endTurnBtn.disabled = !canPlay;
 		
-		nextUnitBtn.disabled = !hasUnmovedUnitsByType(cycleUnitTypeValue);
-		previousUnitBtn.disabled = !hasUnmovedUnitsByType(cycleUnitTypeValue);
+		nextUnitBtn.disabled = !countUnmovedUnitsByType(cycleUnitTypeValue);
+		previousUnitBtn.disabled = !countUnmovedUnitsByType(cycleUnitTypeValue);
 		
 		
 		///////////////////////////////
@@ -21149,6 +21205,10 @@ function handleHostData(data) {
 
 			addCurrentTurnChatMessage();
 			
+			if(gameState.turn.currentPlayerIndex === getMyPlayer().playerIndex){
+				updatePlayerTileEmptyCount();
+			}
+			
 			//updateLocalPoolsInfo();
 		}
 		break;
@@ -25979,8 +26039,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 			}
 			
 			// disable next button if no next unit can be found:
-			previousUnitBtn.disabled = !hasUnmovedUnitsByType(cycleUnitTypeValue);
-			nextUnitBtn.disabled = !hasUnmovedUnitsByType(cycleUnitTypeValue);
+			previousUnitBtn.disabled = !countUnmovedUnitsByType(cycleUnitTypeValue);
+			nextUnitBtn.disabled = !countUnmovedUnitsByType(cycleUnitTypeValue);
 		}
 	};
 	nextUnitBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
@@ -26029,8 +26089,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 			}
 			
 			// disable next button if no next unit can be found:
-			previousUnitBtn.disabled = !hasUnmovedUnitsByType(cycleUnitTypeValue);
-			nextUnitBtn.disabled = !hasUnmovedUnitsByType(cycleUnitTypeValue);
+			previousUnitBtn.disabled = !countUnmovedUnitsByType(cycleUnitTypeValue);
+			nextUnitBtn.disabled = !countUnmovedUnitsByType(cycleUnitTypeValue);
 		}
 	};
 	previousUnitBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
