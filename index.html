@@ -3296,9 +3296,18 @@ cycleUnitTypeListSelected.addEventListener("click", () => {
 			if (countEl) {
 				let key = (option.dataset.value === "") ? "*" : option.dataset.value;
 				let count = unitCounts[key] ?? 0;
+				option.dataset.count = count;
 				
-				let color = count ? "#FFFFFF" : "#555555";
-				let opacity = count ? 1 : 0.5;
+				let unitType = option.dataset.value ?? null;
+				let hasUnmovedUnits = hasUnmovedUnitsByType(unitType);
+				
+				let color = "#FFFFFF";
+				let opacity = 1;
+				
+				if(!hasUnmovedUnits || count === 0){
+					color = "#555555";
+					opacity = 0.5;
+				}
 
 				countEl.textContent = count+"x";
 				countEl.style.color = color;
@@ -3331,17 +3340,31 @@ cycleUnitTypeListOptions.forEach(option => {
 	option.addEventListener("click", () => {
 		const imgSrc = option.querySelector("img").src;
 		const value = option.dataset.value;
-
-		cycleUnitTypeListSelected.querySelector("img").src = imgSrc;
-		cycleUnitTypeListSelected.dataset.value = value;
-
-		cycleUnitType.classList.remove("open");
-
+		const count = option.dataset.count;
 		cycleUnitTypeValue = (value !== "") ? value : null;
+		let hasUnmovedUnits = hasUnmovedUnitsByType(cycleUnitTypeValue);
+		
+		if(count > 0 && hasUnmovedUnits){
+
+			cycleUnitTypeListSelected.querySelector("img").src = imgSrc;
+			cycleUnitTypeListSelected.dataset.value = value;
+			
+
+			cycleUnitType.classList.remove("open");
+			
+			
+			nextUnitBtn.disabled = !hasUnmovedUnits;
+			previousUnitBtn.disabled = !hasUnmovedUnits;
+			
+			
+			centerAndSelectFirstUnmovedUnitOfType(cycleUnitTypeValue);
+			playSound("startmove");
+			
+		}
+		
 	
 		
-		nextUnitBtn.disabled = !hasUnmovedUnitsByType(cycleUnitTypeValue);
-		previousUnitBtn.disabled = !hasUnmovedUnitsByType(cycleUnitTypeValue);
+		
 		
 	});
 });
@@ -8894,7 +8917,23 @@ function centerFirstUnit(){
 	return centerAndSelectFirstUnit(false);
 }
 
-
+function centerAndSelectFirstUnmovedUnitOfType(unitType, selectUnit = true){
+	let player = getMyPlayer();
+	
+	//let found = 0;
+	if(player && !player.isSpectator){
+		for (const unit of gameState.units) {
+			let typeMatches = unit.type === unitType || !unitType;
+			if(typeMatches && unitTypeCanMove(unit.type) && !unit.hasMoved && unit.ownerIndex === player.playerIndex){
+				if(selectUnit){
+					return centerAndSelectUnit(unit);
+				}else{
+					return centerToUnit(unit);
+				}
+			}
+		}
+	}
+}
 
 function centerAndSelectFirstUnit(selectUnit = true){
 	let player = getMyPlayer();
