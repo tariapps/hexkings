@@ -276,6 +276,31 @@ select.active {
 }
 
 
+
+#player-tile-icon-btn {
+	width:40px;
+	height:44px;
+	cursor:pointer;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+}
+
+#player-tile-icon {
+	width:40px;
+	height:40px
+}
+
+#player-tile-empty-count {
+	position:absolute;
+	color:#DDDDDD;
+	font-size:18px;
+	text-shadow: 2px 2px 1px rgba(0, 0, 0, 1), 0px 0px 2px rgba(0, 0, 0, 1), 0px 0px 4px rgba(0, 0, 0, 1);
+}
+
+
+
+
 #build-soldier-btn,
 #build-castle-btn,
 #build-other-btn {
@@ -1976,12 +2001,18 @@ input.disabled {
 	width: 100%;
 	height: 100%;
 
-	border: 1px solid var(--border-color);
+	---border: 1px solid var(--border-color);
+	
 	border-radius: 6px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: black;
+
+    background: var(--btn-bg);
+}
+
+.imageSelectListSelected:hover {
+	background: var(--btn-hover-bg);
 }
 
 .imageSelectListSelected img {
@@ -2011,6 +2042,10 @@ input.disabled {
 	border: 1px solid var(--border-color);
 	border-radius: 6px;
 	border-bottom: none;
+}
+
+.imageSelectListOption:hover {
+	background:#111111;
 }
 
 .imageSelectListOption .count {
@@ -2970,6 +3005,12 @@ input.disabled {
 				<div class="info-right" id="info-right">
 					<div class="button-row" id="ui-right-button-row1-id">
 						<button id="sell-unit-btn" class="gamebutton" title="Sell unit"></button>
+						
+						<div id="player-tile-icon-btn" title="Cycle lands without soldiers">
+							<canvas id="player-tile-icon"></canvas>
+							<span id="player-tile-empty-count"></span>
+						</div>
+						
 						<button id="build-other-btn" class="gamebutton" title="Build item"></button>
 						<button id="build-soldier-btn" class="gamebutton" title="Recruit soldier"></button>
 						<button id="build-castle-btn" class="gamebutton" title="Build castle"></button>
@@ -3117,6 +3158,101 @@ input.disabled {
 
 
 <script>
+const playerTileIcon = document.getElementById("player-tile-icon");
+const playerTileIconBtn = document.getElementById("player-tile-icon-btn");
+const playerTileEmptyCount = document.getElementById("player-tile-empty-count");
+
+let currentFocusedPoolIndex = -1;
+
+
+function getPoolCenter(pool){
+	let avgHexPos = {x:0,y:0};
+	if(pool && pool.hexes.length > 0){
+		for(let i = 0; i < pool.hexes.length; i++){
+			let hex = pool.hexes[i];
+			let pixelpos = axialToPixel(hex.q, hex.r);
+			avgHexPos.x += pixelpos.x;
+			avgHexPos.y += pixelpos.y;
+		}
+		avgHexPos.x /= pool.hexes.length;
+		avgHexPos.y /= pool.hexes.length;
+	}
+	return avgHexPos;
+}
+
+
+playerTileIconBtn.addEventListener("click", () => {
+	let player = getMyPlayer();
+
+	if(!REPLAY_ENABLED && player && isMyTurn()){
+		let startIndex = 0;
+		
+		let pools = findEconomyPools(player.playerIndex);
+		
+		if(pools){
+
+			if(currentFocusedPoolIndex !== -1){
+				for(let i = 0; i < pools.length; i++){
+					if(i === currentFocusedPoolIndex){
+						startIndex = i+1;
+						if(startIndex > pools.length-1){
+							startIndex = 0; // start from beginning again.
+						}
+						break;
+					}
+				}
+			}
+			
+			// search forward starting at selected index, wrapping around
+			for (let offset = 0; offset < pools.length; offset++) {
+				const i = (startIndex + offset) % pools.length;
+				let pool = pools[i];
+
+				let validSelection = false;
+				if(pool.soldiers.length === 0){
+					validSelection = true;
+				}
+				
+				if(validSelection){
+					centerAndSelectPool(pool);
+					currentFocusedPoolIndex = i;
+					playSound('startmove');
+					break;
+				}
+			}
+		
+		}
+	}
+});
+
+
+function updatePlayerTileEmptyCount(){
+	let count = 0;
+	let player = getMyPlayer();
+	if(player && !player.isSpectator && !player.isDead){
+		let pools = findEconomyPools(player.playerIndex);
+		if(pools){
+			for(let i = 0; i < pools.length; i++){
+				let pool = pools[i];
+				if(pool.soldiers.length === 0){
+					count++;
+				}
+			}
+		}
+	}
+	
+	if(count === 0){
+		playerTileEmptyCount.style.color = "#888888";
+		playerTileEmptyCount.textContent = "";
+		playerTileIconBtn.title = "Cycle lands without soldiers (0x)";
+	}else{
+		playerTileEmptyCount.style.color = "#DDDDDD";
+		playerTileEmptyCount.textContent = count;
+		playerTileIconBtn.title = `Cycle lands without soldiers (${count}x)`;
+	}
+}
+
+
 const cycleUnitType = document.getElementById("cycle-unit-type");
 const cycleUnitTypeListSelected = cycleUnitType.querySelector(".imageSelectListSelected");
 const cycleUnitTypeListOptions = cycleUnitType.querySelectorAll(".imageSelectListOption");
@@ -4352,7 +4488,6 @@ const lightnessSlider = document.getElementById('lightness');
 //const lobbyCustomColorPicker = document.getElementById("lobby-custom-color-input");
 
 const pickerPreviewTile = document.getElementById("picker-preview-tile");
-
 const hostPreviewTile = document.getElementById("host-preview-tile");
 const lobbyPreviewTile = document.getElementById("lobby-preview-tile");
 
@@ -6728,15 +6863,26 @@ lightnessSlider.addEventListener('input', e => {
 function updatePickerPreviewTile(color){
 	let textureType = landTextures[getMyPlayer().textureType ?? 0];
 	createHexagonMaskedImage(getImage(textureType), HEX_SIZE, 1, pickerPreviewTile, color);
+	
+	updatePlayerTileIcon(color);
 }
 
 function updateHostPreviewTile(color){
 	let textureType = landTextures[getMyPlayer().textureType ?? 0];
 	createHexagonMaskedImage(getImage(textureType), HEX_SIZE, 1, hostPreviewTile, color);
+	
+	updatePlayerTileIcon(color);
 }
 function updateLobbyPreviewTile(color){
 	let textureType = landTextures[getMyPlayer().textureType ?? 0];
 	createHexagonMaskedImage(getImage(textureType), HEX_SIZE, 1, lobbyPreviewTile, color);
+	
+	updatePlayerTileIcon(color);
+}
+
+function updatePlayerTileIcon(color){
+	let textureType = landTextures[getMyPlayer().textureType ?? 0];
+	createHexagonMaskedImage(getImage(textureType), HEX_SIZE, 1, playerTileIcon, color);
 }
 
 
@@ -8668,13 +8814,27 @@ function centerTo(q, r) {
 	return axialToPixel(q, r);
 }
 
-
-
 function centerToPixelPos(centerX, centerY) {
-	viewport.x = canvas.width  / 2 - centerX * viewport.zoom;
-	viewport.y = canvas.height / 2 - centerY * viewport.zoom;
+	
+	const zoom = viewport.zoom;
+	const rot  = viewport.rotation;
+
+	const cos = Math.cos(rot);
+	const sin = Math.sin(rot);
+
+	// rotate world position around (0,0)
+	const rx = centerX * cos - centerY * sin;
+	const ry = centerX * sin + centerY * cos;
+
+	// now compute the translation that places this at canvas center
+	viewport.x = canvas.width  / 2 - rx * zoom;
+	viewport.y = canvas.height / 2 - ry * zoom;
+	
 	return {x: centerX, y: centerY};
 }
+
+
+
 
 function centerToUnit(unit){
 	if(unit){
@@ -8699,6 +8859,24 @@ function centerAndSelectUnit(unit){
 		sellUnitBtn.disabled = false;
 		
 		return axialToPixel(unit.q, unit.r);
+	}
+	return null;
+}
+
+function centerAndSelectPool(pool){
+	if(pool){
+		let hex = pool.hexes[0];
+		
+		selectedUnit = null;
+		selectedHex = {q:hex.q, r:hex.r};
+		hideBuildPopup();
+		updateHighlights();
+		updateSelectedPoolInfo(selectedHex);
+		
+		let pixelCenter = getPoolCenter(pool);
+
+		centerToPixelPos(pixelCenter.x, pixelCenter.y);
+		return axialToPixel(pixelCenter.x, pixelCenter.y);
 	}
 	return null;
 }
@@ -20133,6 +20311,8 @@ function handleHostData(data) {
 			
 			addCurrentTurnChatMessage();
 			
+			updatePlayerTileEmptyCount();
+			
 		}
 		break;
 		case ACTION.replay_start: {
@@ -20596,6 +20776,9 @@ function handleHostData(data) {
 						color: "yellow"
 					});
 				}
+				
+				
+				updatePlayerTileEmptyCount();
 			}
 			needsUIUpdate = true;
 			updateHighlights();
@@ -20672,6 +20855,7 @@ function handleHostData(data) {
 			);
 
 			//updateLocalPoolsInfo();
+			updatePlayerTileEmptyCount();
 		}
 		break;
 		case ACTION.unit_removed: {
@@ -20702,6 +20886,8 @@ function handleHostData(data) {
 			
 			needsUIUpdate = true;
 			updateHighlights();
+			
+			updatePlayerTileEmptyCount();
 
 			//updateLocalPoolsInfo();
 		}
