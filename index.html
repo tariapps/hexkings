@@ -24776,13 +24776,6 @@ document.addEventListener('keydown', (event) => {
 		const key = event.key;
 		const code = event.code;
 
-/*
-const endTurnPopup = document.getElementById('end-turn-confirmation-popup');
-const endTurnPopupWrapper = document.getElementById('end-turn-confirmation-wrapper');
-const confirmYes = document.getElementById('confirm-end-turn-yes');
-const confirmNo = document.getElementById('confirm-end-turn-no');
-performEndTurn();
-*/
 		if(gameStarted()){
 			if (key === 'Enter') { // event.key matches enter and numpad enter.
 				// end turn if end-turn popup is visible:
@@ -24847,9 +24840,9 @@ performEndTurn();
 				if(editor.isDrawing){
 					sendTileUpdate(pixelToAxial(mousePosCurrent.x, mousePosCurrent.y));
 				}
-			}else if(code === 'KeyZ') {
+			}else if(code === 'KeyZ' || code === 'Digit1') {
 				previousUnit();
-			}else if(code === 'KeyC') {
+			}else if(code === 'KeyC' || code === 'Digit2') {
 				nextUnit();
 			}
 		}
