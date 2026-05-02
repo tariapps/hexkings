@@ -3214,6 +3214,7 @@ playerTileIconBtn.addEventListener("click", () => {
 				}
 				
 				if(validSelection){
+					cancelBuildPopup();
 					centerAndSelectPool(pool);
 					currentFocusedPoolIndex = i;
 					playSound('startmove');
@@ -3357,6 +3358,7 @@ cycleUnitTypeListOptions.forEach(option => {
 			previousUnitBtn.disabled = !hasUnmovedUnits;
 			
 			
+			cancelBuildPopup();
 			centerAndSelectFirstUnmovedUnitOfType(cycleUnitTypeValue);
 			playSound("startmove");
 			
