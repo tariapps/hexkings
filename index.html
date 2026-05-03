@@ -19643,10 +19643,7 @@ function executeEndTurn(playerIndex) {
 			for (const [starvedUnitPlayerIndex, starvedUnitsCount] of Object.entries(starvedUnitsList)) {
 				let starvedPlayer = getPlayerByIndex(starvedUnitPlayerIndex);
 				if(starvedPlayer){
-					let skullListStr = "";
-					for(let i = 0; i < starvedUnitsCount; i++){
-						skullListStr += "🕱 ";
-					}
+					const skullListStr = "☠️ ".repeat(starvedUnitsCount);
 					broadcast({ type: ACTION.system_message, message: `${skullListStr} Player ${starvedPlayer.name} has lost ${starvedUnitsCount} soldiers to starvation.`});
 				}
 			}
