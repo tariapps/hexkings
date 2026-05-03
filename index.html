@@ -2071,6 +2071,63 @@ input.disabled {
 	max-width: 35px;
 	max-height: 35px;
 }
+
+
+
+
+
+
+
+
+.gameLogsList {
+	
+	position: absolute;
+	bottom: 100%;
+	right: 0;
+	overflow-y:scroll;
+	
+    pointer-events: auto;
+	display: none;
+	flex-direction: column;
+	z-index: 9999;
+	width: 312px;
+	border: 1px solid rgba(255,255,255,0.3);
+	max-height: 400px;
+	height: 400px;
+	padding: 5px 3px 3px 8px;
+	border-radius: 10px;
+	background-color: rgba(0, 0, 0, 0.4);
+}
+
+.gameLogsListWrap {
+	position: relative;
+	bottom: 0;
+}
+
+.gameLogsListWrap.open .gameLogsList {
+	display: flex;
+}
+
+.gameLogsListWrap.open .gameLogsListButton {
+	background-color:#45723d;
+}
+
+.gameLogsListButtonWrap {
+	width: 100%;
+	height: 100%;
+	border-radius: 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.gameLogsListButton {
+	width: 60px;
+	margin: 0;
+	pointer-events:auto;
+}
+
+
 </style>
 
 
@@ -2982,9 +3039,59 @@ input.disabled {
 		</div>
 		
 		<div id="ui-right" style="overflow: visible;">
-			<div id="endgame-stats-wrapper" style="display: none; flex-direction: column; align-items: flex-end; gap: 0; ">
-				<button id="endgame-stats-btn" style="width: 60px; margin: 0; pointer-events:auto;">Stats</button>
+			<div id="endgame-stats-wrapper" style="display: flex; flex-direction: row-reverse; align-items: flex-end; gap: 0; ">
+				<div class="gameLogsListWrap" id="game-logs-wrapper">
+					<div class="gameLogsListButtonWrap">
+						<button id="game-logs-btn" class="gameLogsListButton">Logs</button>
+					</div>
+					<div class="gameLogsList">
+						Week 1, Day 1, Turn 1:<br>
+						- 2 dead.<br>
+						Week 1, Day 1, Turn 2:<br>
+						- 2 dead.<br>
+						Week 1, Day 1, Turn 4:<br>
+						- 4 dead.<br>
+						Week 1, Day 1, Turn 1:<br>
+						- 2 dead.<br>
+						Week 1, Day 1, Turn 2:<br>
+						- 2 dead.<br>
+						Week 1, Day 1, Turn 4:<br>
+						- 4 dead.<br>
+						Week 1, Day 1, Turn 1:<br>
+						- 2 dead.<br>
+						Week 1, Day 1, Turn 2:<br>
+						- 2 dead.<br>
+						Week 1, Day 1, Turn 4:<br>
+						- 4 dead.<br>
+						Week 1, Day 1, Turn 1:<br>
+						- 2 dead.<br>
+						Week 1, Day 1, Turn 2:<br>
+						- 2 dead.<br>
+						Week 1, Day 1, Turn 4:<br>
+						- 4 dead.<br>
+						Week 1, Day 1, Turn 1:<br>
+						- 2 dead.<br>
+						Week 1, Day 1, Turn 2:<br>
+						- 2 dead.<br>
+						Week 1, Day 1, Turn 4:<br>
+						- 4 dead.<br>
+						Week 1, Day 1, Turn 1:<br>
+						- 2 dead.<br>
+						Week 1, Day 1, Turn 2:<br>
+						- 2 dead.<br>
+						Week 1, Day 1, Turn 4:<br>
+						- 4 dead.<br>
+						Week 1, Day 1, Turn 1:<br>
+						- 2 dead.<br>
+						Week 1, Day 1, Turn 2:<br>
+						- 2 dead.<br>
+						Week 1, Day 1, Turn 4:<br>
+						- 4 dead.<br>
+					</div>
+				</div>
+				<button id="endgame-stats-btn" style="width: 60px; margin: 0; pointer-events:auto; display:none">Stats</button>
 			</div>
+			
 			<div class="ui-panel ui-panel-controls" style="overflow: visible;">
 				<div class="info-left" id="info-left" style="display:none">
 					<div class="top-row" id="ui-right-top-row-id">
@@ -8505,6 +8612,11 @@ const closeEndgamePopupBtn = document.getElementById('close-endgame-popup-btn');
 const openEndgamePopupBtn = document.getElementById('endgame-stats-btn');
 const endgameStatsWrapper = document.getElementById('endgame-stats-wrapper');
 
+const openGameLogsPopupBtn = document.getElementById('game-logs-btn');
+const gameLogsWrapper = document.getElementById('game-logs-wrapper');
+
+
+
 
 const endgamePopupUi = document.getElementById('endgame-popup-ui');
 const endgamePopupUiWrapper2 = document.getElementById('endgame-popup-ui-wrapper2');
@@ -8612,6 +8724,18 @@ closeGameSettingsBtn.addEventListener("click", () => {
 });
 
 
+function toggleGameLogsPopup(){
+	if(gameLogsWrapper.classList.contains("open")){
+		gameLogsWrapper.classList.remove("open");
+	}else{
+		gameLogsWrapper.classList.add("open");
+	}
+}
+
+openGameLogsPopupBtn.addEventListener("click", () => {
+	toggleGameLogsPopup();
+});
+
 
 
 function openEndgamePopup(fireworksEnabled, isSpectator = false){
@@ -8620,7 +8744,7 @@ function openEndgamePopup(fireworksEnabled, isSpectator = false){
 	
 	endgamePopupUi.style.display = "flex";
 	
-	endgameStatsWrapper.style.display = "none";
+	openEndgamePopupBtn.style.display = "none";
 	
 	if(!isSpectator){
 		if(fireworksEnabled || getMyPlayer().isWinner){
@@ -8642,7 +8766,7 @@ function openEndgamePopup(fireworksEnabled, isSpectator = false){
 function closeEndgamePopup(){
 	endgamePopupUi.style.display = "none";
 	
-	endgameStatsWrapper.style.display = "flex";
+	openEndgamePopupBtn.style.display = "block";
 	
 	fireworks.stop();
 	bloodEffect.clear();
