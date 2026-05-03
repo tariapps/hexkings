@@ -2079,54 +2079,6 @@ input.disabled {
 
 
 
-.gameLogsList {
-	
-	position: absolute;
-	bottom: 100%;
-	right: 0;
-	overflow-y:scroll;
-	
-    pointer-events: auto;
-	display: none;
-	flex-direction: column;
-	z-index: 9999;
-	width: 312px;
-	border: 1px solid rgba(255,255,255,0.3);
-	max-height: 400px;
-	height: 400px;
-	padding: 5px 3px 3px 8px;
-	border-radius: 10px;
-	background-color: rgba(0, 0, 0, 0.4);
-}
-
-.gameLogsListWrap {
-	position: relative;
-	bottom: 0;
-}
-
-.gameLogsListWrap.open .gameLogsList {
-	display: flex;
-}
-
-.gameLogsListWrap.open .gameLogsListButton {
-	background-color:#45723d;
-}
-
-.gameLogsListButtonWrap {
-	width: 100%;
-	height: 100%;
-	border-radius: 6px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.gameLogsListButton {
-	width: 60px;
-	margin: 0;
-	pointer-events:auto;
-}
-
 
 </style>
 
@@ -3044,49 +2996,260 @@ input.disabled {
 					<div class="gameLogsListButtonWrap">
 						<button id="game-logs-btn" class="gameLogsListButton">Logs</button>
 					</div>
-					<div class="gameLogsList">
-						Week 1, Day 1, Turn 1:<br>
-						- 2 dead.<br>
-						Week 1, Day 1, Turn 2:<br>
-						- 2 dead.<br>
-						Week 1, Day 1, Turn 4:<br>
-						- 4 dead.<br>
-						Week 1, Day 1, Turn 1:<br>
-						- 2 dead.<br>
-						Week 1, Day 1, Turn 2:<br>
-						- 2 dead.<br>
-						Week 1, Day 1, Turn 4:<br>
-						- 4 dead.<br>
-						Week 1, Day 1, Turn 1:<br>
-						- 2 dead.<br>
-						Week 1, Day 1, Turn 2:<br>
-						- 2 dead.<br>
-						Week 1, Day 1, Turn 4:<br>
-						- 4 dead.<br>
-						Week 1, Day 1, Turn 1:<br>
-						- 2 dead.<br>
-						Week 1, Day 1, Turn 2:<br>
-						- 2 dead.<br>
-						Week 1, Day 1, Turn 4:<br>
-						- 4 dead.<br>
-						Week 1, Day 1, Turn 1:<br>
-						- 2 dead.<br>
-						Week 1, Day 1, Turn 2:<br>
-						- 2 dead.<br>
-						Week 1, Day 1, Turn 4:<br>
-						- 4 dead.<br>
-						Week 1, Day 1, Turn 1:<br>
-						- 2 dead.<br>
-						Week 1, Day 1, Turn 2:<br>
-						- 2 dead.<br>
-						Week 1, Day 1, Turn 4:<br>
-						- 4 dead.<br>
-						Week 1, Day 1, Turn 1:<br>
-						- 2 dead.<br>
-						Week 1, Day 1, Turn 2:<br>
-						- 2 dead.<br>
-						Week 1, Day 1, Turn 4:<br>
-						- 4 dead.<br>
+					
+<style>
+
+
+
+.gameLogsList {
+	
+    user-select: text;
+	
+	position: absolute;
+	bottom: 100%;
+	right: 0;
+	overflow-y:scroll;
+	
+    pointer-events: auto;
+	display: none;
+	flex-direction: column;
+	z-index: 9999;
+	width: 312px;
+	border: 1px solid rgba(255,255,255,0.3);
+	max-height: 400px;
+	height: 400px;
+	padding: 0;
+	border-radius: 10px;
+}
+
+.gameLogsListWrap {
+	position: relative;
+	bottom: 0;
+}
+
+.gameLogsListWrap.open .gameLogsList {
+	display: flex;
+}
+
+.gameLogsListWrap.open .gameLogsListButton {
+	background-color:#45723d;
+}
+
+.gameLogsListButtonWrap {
+	width: 100%;
+	height: 100%;
+	border-radius: 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.gameLogsListButton {
+	width: 60px;
+	margin: 0;
+	pointer-events:auto;
+}
+
+
+.logListDayWrap {
+	
+}
+
+.logListDayTitle {
+	color:white;
+	font-weight:bold; 
+	padding:5px 3px 5px 8px;
+    background: #5e1161;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+}
+.logListDayTurnsAllWrap {
+	background-color:rgba(0,0,0,0.8);
+}
+
+.logListDayTurnsWrap {
+	padding-left:20px;
+	padding-right:10px;
+}
+
+.logListTurnWrap {
+	padding-bottom:20px;
+	padding-top:10px;
+	border-bottom:1px solid rgba(255,255,255,0.4);
+}
+
+.logListTurnWrap:last-child {
+	border-bottom:0;
+}
+
+.logListTurnTitle {
+	color:red;
+	font-weight:bold;
+}
+
+.logListTurnPlayerEvents {
+	padding-top:10px;
+}
+
+.logListEventTitle {
+	font-weight: bold;
+}
+
+.gameLogsList ul.outerList {
+	padding: 0; 
+	margin:0; 
+	list-style-position: inside;
+}
+.gameLogsList ul.innerList {
+	list-style: none;
+}
+
+
+
+</style>
+					<div id="game-logs-list" class="gameLogsList scrollable">
+						<div class="logListDayWrap">
+							
+							<div class="logListDayTitle">
+								Week 1, Day 1
+							</div>
+							<div class="logListDayTurnsAllWrap">
+								<div class="logListDayTurnsWrap">
+								
+									<div class="logListTurnWrap">
+										<div class="logListTurnTitle">Turn 1 (AI-2)</div>
+										
+										<div class="logListTurnPlayerEvents">
+											<div class="logListEventTitle">AI-2 lost 2 units:</div>
+											<ul class="outerList">
+												<li>2 soldiers:</li>
+												<ul class="innerList">
+													<li>1 by starvation</li>
+													<li>1 killed by a mine</li>
+												</ul>
+											</ul>
+										</div>
+										
+										
+										<div class="logListTurnPlayerEvents">
+											<div class="logListEventTitle">Tari lost 6 units:</div>
+											<ul class="outerList">
+												<li>3 castles</li>
+												<li>3 soldiers:</li>
+												<ul class="innerList">
+													<li>2 by starvation</li>
+													<li>1 killed by AI-5</li>
+												</ul>
+											</ul>
+										</div>
+									
+									</div>
+									
+									
+									<div class="logListTurnWrap">
+										<div class="logListTurnTitle">Turn 2 (AI-3)</div>
+										
+										<div class="logListTurnPlayerEvents">
+											<div class="logListEventTitle">AI-2 lost 2 units:</div>
+											<ul class="outerList">
+												<li>2 soldiers:</li>
+												<ul class="innerList">
+													<li>1 by starvation</li>
+													<li>1 killed by a mine</li>
+												</ul>
+											</ul>
+										</div>
+										
+										
+										<div class="logListTurnPlayerEvents">
+											<div class="logListEventTitle">Tari lost 6 units:</div>
+											<ul class="outerList">
+												<li>3 castles</li>
+												<li>3 soldiers:</li>
+												<ul class="innerList">
+													<li>2 by starvation</li>
+													<li>1 killed by AI-5</li>
+												</ul>
+											</ul>
+										</div>
+									
+									</div>
+
+								</div>
+							</div>
+						</div>
+						
+						
+						<div class="logListDayWrap">
+							
+							<div class="logListDayTitle">
+								Week 1, Day 1
+							</div>
+							<div class="logListDayTurnsAllWrap">
+								<div class="logListDayTurnsWrap">
+								
+									<div class="logListTurnWrap">
+										<div class="logListTurnTitle">Turn 1 (AI-2)</div>
+										
+										<div class="logListTurnPlayerEvents">
+											<div class="logListEventTitle">AI-2 lost 2 units:</div>
+											<ul class="outerList">
+												<li>2 soldiers:</li>
+												<ul class="innerList">
+													<li>1 by starvation</li>
+													<li>1 killed by a mine</li>
+												</ul>
+											</ul>
+										</div>
+										
+										
+										<div class="logListTurnPlayerEvents">
+											<div class="logListEventTitle">Tari lost 6 units:</div>
+											<ul class="outerList">
+												<li>3 castles</li>
+												<li>3 soldiers:</li>
+												<ul class="innerList">
+													<li>2 by starvation</li>
+													<li>1 killed by AI-5</li>
+												</ul>
+											</ul>
+										</div>
+									
+									</div>
+									
+									
+									<div class="logListTurnWrap">
+										<div class="logListTurnTitle">Turn 2 (AI-3)</div>
+										
+										<div class="logListTurnPlayerEvents">
+											<div class="logListEventTitle">AI-2 lost 2 units:</div>
+											<ul class="outerList">
+												<li>2 soldiers:</li>
+												<ul class="innerList">
+													<li>1 by starvation</li>
+													<li>1 killed by a mine</li>
+												</ul>
+											</ul>
+										</div>
+										
+										
+										<div class="logListTurnPlayerEvents">
+											<div class="logListEventTitle">Tari lost 6 units:</div>
+											<ul class="outerList">
+												<li>3 castles</li>
+												<li>3 soldiers:</li>
+												<ul class="innerList">
+													<li>2 by starvation</li>
+													<li>1 killed by AI-5</li>
+												</ul>
+											</ul>
+										</div>
+									
+									</div>
+
+								</div>
+							</div>
+						</div>
+						
 					</div>
 				</div>
 				<button id="endgame-stats-btn" style="width: 60px; margin: 0; pointer-events:auto; display:none">Stats</button>
@@ -8612,8 +8775,6 @@ const closeEndgamePopupBtn = document.getElementById('close-endgame-popup-btn');
 const openEndgamePopupBtn = document.getElementById('endgame-stats-btn');
 const endgameStatsWrapper = document.getElementById('endgame-stats-wrapper');
 
-const openGameLogsPopupBtn = document.getElementById('game-logs-btn');
-const gameLogsWrapper = document.getElementById('game-logs-wrapper');
 
 
 
@@ -8724,17 +8885,28 @@ closeGameSettingsBtn.addEventListener("click", () => {
 });
 
 
+
+
+const openGameLogsPopupBtn = document.getElementById('game-logs-btn');
+const gameLogsWrapper = document.getElementById('game-logs-wrapper');
+const gameLogsList = document.getElementById('game-logs-list');
+
+
 function toggleGameLogsPopup(){
 	if(gameLogsWrapper.classList.contains("open")){
 		gameLogsWrapper.classList.remove("open");
 	}else{
 		gameLogsWrapper.classList.add("open");
+		gameLogsList.scrollTop = gameLogsList.scrollHeight;
 	}
 }
 
 openGameLogsPopupBtn.addEventListener("click", () => {
 	toggleGameLogsPopup();
 });
+openGameLogsPopupBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+openGameLogsPopupBtn.tabIndex = -1; //remove it from the tab order
+
 
 
 
@@ -8793,6 +8965,28 @@ const endTurnPopup = document.getElementById('end-turn-confirmation-popup');
 const endTurnPopupWrapper = document.getElementById('end-turn-confirmation-wrapper');
 const confirmYes = document.getElementById('confirm-end-turn-yes');
 const confirmNo = document.getElementById('confirm-end-turn-no');
+
+function callEndTurn(){
+	if (!REPLAY_ENABLED && !endTurnBtn.disabled && isMyTurn()) {
+		// Check if there are any units belonging to the player that haven't moved
+		const myPlayerIndex = getMyPlayer().playerIndex;
+
+		if (hasUnmovedUnits(myPlayerIndex)) {
+			// Show the confirmation popup
+			endTurnPopup.classList.add('active');
+		} else {
+			// No unmoved units, end turn immediately
+			performEndTurn();
+		}
+	}
+}
+
+function closeEndTurnConfirmation(){
+	endTurnPopup.classList.remove('active');
+}
+
+
+
 
 // Helper function to perform the actual turn ending
 function performEndTurn() {
@@ -24887,6 +25081,8 @@ document.addEventListener('keydown', (event) => {
 	if(event.target.id !== 'chat-input'){
 		const key = event.key;
 		const code = event.code;
+		
+		//console.log(key,code);
 
 		if(gameStarted()){
 			if (key === 'Enter') { // event.key matches enter and numpad enter.
@@ -24956,6 +25152,13 @@ document.addEventListener('keydown', (event) => {
 				previousUnit();
 			}else if(code === 'KeyC' || code === 'Digit2') {
 				nextUnit();
+			}else if(code === 'KeyF') {
+				
+				if(endTurnPopup.classList.contains('active')){
+					closeEndTurnConfirmation();
+				}else{
+					callEndTurn();
+				}
 			}
 		}
 	}
@@ -26238,18 +26441,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 	};
 	*/
 	endTurnBtn.onclick = () => {
-		if (!REPLAY_ENABLED && !endTurnBtn.disabled && isMyTurn()) {
-			// Check if there are any units belonging to the player that haven't moved
-			const myPlayerIndex = getMyPlayer().playerIndex;
-
-			if (hasUnmovedUnits(myPlayerIndex)) {
-				// Show the confirmation popup
-				endTurnPopup.classList.add('active');
-			} else {
-				// No unmoved units, end turn immediately
-				performEndTurn();
-			}
-		}
+		callEndTurn();
 	};
 
 	// Handle popup button clicks
@@ -26258,7 +26450,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 	};
 
 	confirmNo.onclick = () => {
-		endTurnPopup.classList.remove('active');
+		closeEndTurnConfirmation();
 	};
 	
 	endTurnBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
