@@ -607,6 +607,7 @@ label {
 	left: 0;
 	width: 100%;
 	height: 100%;
+	
 }
 
 #game-ui {
@@ -2360,7 +2361,22 @@ input.disabled {
 							</select>
 						</div>
 						<div style="flex: 1;">
-							
+							<div class="settings-title">
+								Contrast:
+							</div>
+							<select id="game-settings-gfx-map-contrast">
+								<option value="0">Default (100%)</option>
+								<option value="110">110%</option>
+								<option value="120">120%</option>
+								<option value="130">130%</option>
+								<option value="140">140%</option>
+								<option value="150">150%</option>
+								<option value="160">160%</option>
+								<option value="170">170%</option>
+								<option value="180">180%</option>
+								<option value="190">190%</option>
+								<option value="200">200%</option>
+							</select>
 						</div>
 					</div>
 				</div>
@@ -19228,6 +19244,7 @@ function calculateBalanceAndKillSoldiersAllPlayers(curPlayerIndex, allowKilling)
 	let playingPlayers = getPlayingPlayers();
 	let killedPlayers = [];
 	let curPlayerPools = null;
+	let playerUnitsKilledCount = {};
 
 	for(let i = 0; i < playingPlayers.length; i++){
 		let player = playingPlayers[i];
@@ -19249,12 +19266,23 @@ function calculateBalanceAndKillSoldiersAllPlayers(curPlayerIndex, allowKilling)
 		if(player.playerIndex === curPlayerIndex){
 			curPlayerPools = killdata.curPlayerPools;
 		}
+		if(killdata.playerUnitsKilledCount){
+			for (const [key, value] of Object.entries(killdata.playerUnitsKilledCount)) {
+				if(playerUnitsKilledCount[key] === undefined){
+					playerUnitsKilledCount[key] = value;
+				}else{
+					playerUnitsKilledCount[key] += value;
+				}
+			}
+
+		}
 	}
 	return {
 		batchActions: batchActions, 
 		//curPlayerPools: curPlayerPools,
 		killedPlayers: killedPlayers,
 		curPlayerPools: curPlayerPools,
+		playerUnitsKilledCount: playerUnitsKilledCount,
 	};
 }
 
@@ -19299,7 +19327,7 @@ function calculateBalanceAndKillSoldiers(pools, addedUnit = null, addMoney = tru
 					playerIndex: playerIndex, 
 					pool: pool,
 					poolIndex: p, // probably not needed.
-				});
+				});// todo: allowKilling is not checked for this current player in turn??
 				
 				// dont reset tile data here.
 				
@@ -19343,50 +19371,8 @@ function calculateBalanceAndKillSoldiers(pools, addedUnit = null, addMoney = tru
 		curPlayerPools = pools;
 	}
 	
-	/*
-	for (let pool of pools) {
-		// kill units BEFORE adding money to their pools:
-		
-		// avoid -0.000001 negative values or 0.000001 positive values (EPSILON):
-		pool.totalSavings = clampMoney(pool.totalSavings);
-		
-		if (pool.totalSavings < 0) {
-		//if (pool.totalSavings-pool.totalWages < 0) {
-			// Bankrupt!
-			pool.totalSavings = 0;
-			// todo: update modified info to localplayer?
-			for (const soldier of pool.soldiers) {
-				allSoldiersKilled.push(soldier);
-			}
-		}else{
-			pool.totalSavings += pool.totalIncome;
-			pool.totalSavings -= pool.totalWages;
-			
-		}
-	}
-*/
-	
-	
-/*
-	// add income and deduct wages:
-	for (let pool of pools) {
-		pool.totalSavings += pool.totalIncome;
-		pool.totalSavings -= pool.totalWages;
-		
-		// avoid -0.000001 negative values or 0.000001 positive values (EPSILON):
-		pool.totalSavings = clampMoney(pool.totalSavings);
-		
-		if (pool.totalSavings < 0) {
-		//if (pool.totalSavings-pool.totalWages < 0) {
-			// Bankrupt!
-			pool.totalSavings = 0;
-			// todo: update modified info to localplayer?
-			for (const soldier of pool.soldiers) {
-				allSoldiersKilled.push(soldier);
-			}
-		}
-	}
-*/
+
+	let playerUnitsKilledCount = {};
 	
 	// kill soldiers kill units:
 	if(allSoldiersKilled.length > 0){
@@ -19414,10 +19400,18 @@ function calculateBalanceAndKillSoldiers(pools, addedUnit = null, addMoney = tru
 					unitId: soldier.id,
 					unit: soldier, // only used for undoing.
 				});
+				
+				
+				if(playerUnitsKilledCount[soldier.ownerIndex] === undefined){
+					playerUnitsKilledCount[soldier.ownerIndex] = 1;
+				}else{
+					playerUnitsKilledCount[soldier.ownerIndex]++;
+				}
 			}
 			
 			console.warn("allSoldiersKilled");
 			console.warn(allSoldiersKilled);
+			console.warn("playerUnitsKilledCount",playerUnitsKilledCount);
 
 			//gameState.units = gameState.units.filter(u => u.id !== soldier.id);
 			//broadcast({ type: ACTION.unit_removed, unitId: soldier.id });
@@ -19434,6 +19428,7 @@ function calculateBalanceAndKillSoldiers(pools, addedUnit = null, addMoney = tru
 		poolsBefore: poolsBefore,
 		killedPlayers: killedPlayers,
 		curPlayerPools: curPlayerPools,
+		playerUnitsKilledCount: playerUnitsKilledCount,
 	};
 }
 
@@ -19636,11 +19631,27 @@ function executeEndTurn(playerIndex) {
 	let batchActions = killdata.batchActions;
 	let pools = killdata.curPlayerPools;
 	let killedPlayers = killdata.killedPlayers;
+	
 	//let pools = findEconomyPools(playerIndex);
 	
 	
 	// send sound for died soldiers just once:
 	if(batchActions.length > 0){
+		let starvedUnitsList = killdata.playerUnitsKilledCount;
+		if(starvedUnitsList){
+			
+			for (const [starvedUnitPlayerIndex, starvedUnitsCount] of Object.entries(starvedUnitsList)) {
+				let starvedPlayer = getPlayerByIndex(starvedUnitPlayerIndex);
+				if(starvedPlayer){
+					let skullListStr = "";
+					for(let i = 0; i < starvedUnitsCount; i++){
+						skullListStr += "🕱 ";
+					}
+					broadcast({ type: ACTION.system_message, message: `${skullListStr} Player ${starvedPlayer.name} has lost ${starvedUnitsCount} soldiers to starvation.`});
+				}
+			}
+		}
+		
 		batchActions.push({ type: ACTION.sound, name: "diedByStarving", q:0, r:0, playerIndex: -1, action: ACTION.action_end_turn});
 	}
 	
@@ -19794,27 +19805,6 @@ function executeEndTurn(playerIndex) {
 		for(let p = 0; p < playingPlayers.length; p++){
 			updatePlayerSavings(playingPlayers[p].playerIndex);
 		}
-		/*
-				killedPlayers.push({
-					playerIndex: playerIndex, 
-					pool: pool,
-					poolIndex: p, // probably not needed.
-				});
-				*/
-		
-		/*
-		let playingPlayers = getPlayingPlayers();
-		for(let i = 0; i < playingPlayers.length; i++){
-			let player = playingPlayers[i];
-			let pools = findEconomyPools(player.playerIndex);
-			distributePoolSavings(pools);
-			updatePlayerSavings(player.playerIndex); // Update savings *after* calcs
-		}
-		*/
-		
-		
-		//console.log("gameState.turn.currentPlayerIndex");
-		//console.log(gameState.turn.currentPlayerIndex);
 		
 		
 		currentTurnActions = []; // Clear undo stack
@@ -20235,6 +20225,7 @@ function killPlayerUnits(playerIndex){
 	}
 	if(soldiersKilled > 0){
 		arr.push({ type: ACTION.sound, name: "diedByStarving", q:0, r:0, playerIndex: -1, action: ACTION.player_killed});
+		console.warn("killPlayerUnits: ACTION.player_killed: ", playerIndex);
 	}
 	if(castlesKilled > 0){
 		arr.push({ type: ACTION.sound, name: "killCastle", q:0, r:0, playerIndex: -1, action: ACTION.player_killed});
@@ -24867,6 +24858,12 @@ document.addEventListener('keyup', (event) => {
 });
 
 
+function changeMapContrast(val){
+	if(!val) val = 100;
+	canvas.style.filter = `contrast(${val}%)`;
+}
+
+
 // for simple settings checkboxes:
 // id = html element id, key = gameSettings key, elem = document.getElementById(id)
 // later maybe allow adding listenerType : "change" etc.
@@ -24875,6 +24872,8 @@ let settingsElems = {
 	
 	
 	'game-settings-gfx-performance-mode':	{key: 'performanceMode', type: 'select', datatype: 'integer', saveLocalStorage: true, localStorageDefaultValue: 0},
+	'game-settings-gfx-map-contrast':		{key: 'mapContrast', type: 'select', datatype: 'integer', saveLocalStorage: true, localStorageDefaultValue: 0, func: changeMapContrast},
+	
 	'game-settings-gfx-shading-land':		{key: 'drawLandShading', type: 'checkbox'},
 	'game-settings-gfx-shading-land3d':		{key: 'drawWaterShading', type: 'checkbox'},
 	'game-settings-gfx-shading-shore':		{key: 'drawShoresShading', type: 'checkbox'},
@@ -24933,6 +24932,11 @@ Object.keys(settingsElems).forEach(id => {
 		}else{
 			gameSettings[setting.key] = setting.elem.value;
 		}
+		
+		// call function if set:
+		if(setting?.func){
+			setting.func(gameSettings[setting.key]);
+		}
 	}
 	
 	if(setting.key !== undefined){
@@ -24953,6 +24957,11 @@ Object.keys(settingsElems).forEach(id => {
 			
 			if(setting?.saveLocalStorage){
 				setLocalStorageItem("gameSettings_"+setting.key, gameSettings[setting.key]);
+			}
+			
+			// call function if set:
+			if(setting?.func){
+				setting.func(gameSettings[setting.key]);
 			}
 		});
 	}
