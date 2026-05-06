@@ -987,7 +987,7 @@ button.redbutton:hover {
 	---transform: scale(1.03);
 }
 
-.savedgames-item img {
+.savedgames-item canvas {
 	width: 95%;
 	border-radius: 6px;
 }
@@ -995,7 +995,7 @@ button.redbutton:hover {
 .savedgames-list {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
-	gap: 3px;
+	gap: 0;
 }
 
 
@@ -1144,7 +1144,7 @@ button.redbutton:hover {
 	---transform: scale(1.03);
 }
 
-.map-item img {
+.map-item canvas {
 	width: 95%;
 	border-radius: 6px;
 }
@@ -1843,7 +1843,11 @@ input.disabled {
 }
 
 
-
+.special-highlight {
+    border: 1px solid #ffffff;
+    border-left: 0;
+    border-right: 0;
+}
 
 
 #spectate-btn[disabled] {
@@ -2328,8 +2332,17 @@ input.disabled {
 				
 				<div><span style="color:yellow">A,S,D,W</span> = Move screen (+shift = slower)</div>
 				
-				<div><span style="color:yellow">Space</span> = Show previous moves of soldiers</div>
-				<div><span style="color:yellow">Left Click</span> = Drag</div>
+				<div><span style="color:yellow">Z</span> = Previous unit</div>
+				<div><span style="color:yellow">C</span> = Next unit</div>
+				<div><span style="color:yellow">X</span> = Toggle centering unit (when using previous/next)</div>
+				<div><span style="color:yellow">F</span> = End turn</div>
+				
+				<div><span style="color:yellow">1</span> = Open soldier build menu at the mouse</div>
+				<div><span style="color:yellow">2</span> = Open castle build menu at the mouse</div>
+				<div><span style="color:yellow">3</span> = Open item build menu at the mouse</div>
+				
+				<div><span style="color:yellow">Space</span> = Show previous moves of units</div>
+				<div><span style="color:yellow">Left Click</span> = Select Unit (or move map)</div>
 				<div><span style="color:yellow">Right Click</span> = Cancel selections</div>
 				
 				<div class="space"></div>
@@ -3332,9 +3345,9 @@ input.disabled {
 							<span id="player-tile-empty-count"></span>
 						</div>
 						
-						<button id="build-other-btn" class="gamebutton" title="Build item"></button>
-						<button id="build-soldier-btn" class="gamebutton" title="Recruit soldier"></button>
-						<button id="build-castle-btn" class="gamebutton" title="Build castle"></button>
+						<button id="build-other-btn" class="gamebutton" title="Build item (Press 1 to open)"></button>
+						<button id="build-soldier-btn" class="gamebutton" title="Recruit soldier (Press 2 to open)"></button>
+						<button id="build-castle-btn" class="gamebutton" title="Build castle (Press 3 to open)"></button>
 						<button id="undo-btn" class="gamebutton redbutton" title="Undo"></button>
 					</div>
 					<div class="button-row" id="ui-right-button-row2-id">
@@ -3348,6 +3361,7 @@ input.disabled {
 							</div>
 
 							<div class="imageSelectListOptions">
+								<div class="imageSelectListOption" data-value="sailboat" data-title="Sailboat"><img src="images/orig-scaled/128x128/sailboat.png"><span class="count">123x</span></div>
 								<div class="imageSelectListOption" data-value="dragon" data-title="Dragon"><img src="images/orig-scaled/128x128/soldier4.png"><span class="count">123x</span></div>
 								<div class="imageSelectListOption" data-value="horse" data-title="Horse"><img src="images/orig-scaled/128x128/soldier3.png"><span class="count">123x</span></div>
 								<div class="imageSelectListOption" data-value="knight" data-title="Knight"><img src="images/orig-scaled/128x128/soldier2.png"><span class="count">123x</span></div>
@@ -3357,8 +3371,8 @@ input.disabled {
 						</div>
 
 
-						<button id="previous-unit-btn" class="gamebutton" title="Previous unit"></button>
-						<button id="next-unit-btn" class="gamebutton" title="Next unit"></button>
+						<button id="previous-unit-btn" class="gamebutton" title="Previous unit (press X to toggle centering)"></button>
+						<button id="next-unit-btn" class="gamebutton" title="Next unit (press X to toggle centering)"></button>
 						
 						<button id="game-settings-btn2" class="gamebutton" title="Settings"></button>
 						<button id="toggle-ui-btn" class="gamebutton" title="Open chat"></button>
@@ -5028,7 +5042,7 @@ loadedMapImg.addEventListener('click', (e) => {
 	let minimapData = loadMinimap(category, index, 1024, popupImg);
 	popupImg.dataset.category = category;
 	popupImg.dataset.index = index;
-	console.warn("SET: category, index = ", category, index, "LINE:", getLineNumber());
+	//console.warn("SET: category, index = ", category, index, "LINE:", getLineNumber());
 	
 	//minimapData.minimapCanvas.style.width = "100%";
 	//minimapData.minimapCanvas.title = `${map.name}: ${map.width} x ${map.height}`;
@@ -5036,7 +5050,7 @@ loadedMapImg.addEventListener('click', (e) => {
 	//popupImg.appendChild(minimapData.minimapCanvas);
 
 	openMapPreviewPopup();
-	console.warn("popupopen: ", popupOpen);
+	//console.warn("popupopen: ", popupOpen);
 });
 
 // Show popup on click
@@ -5050,7 +5064,7 @@ lobbyLoadedMapImg.addEventListener('click', (e) => {
 	let minimapData = loadMinimap(category, index, 1024, popupImg);
 	popupImg.dataset.category = category;
 	popupImg.dataset.index = index;
-	console.warn("SET: category, index = ", category, index, "LINE:", getLineNumber());
+	//console.warn("SET: category, index = ", category, index, "LINE:", getLineNumber());
 	
 	openMapPreviewPopup();
 });
@@ -5130,7 +5144,7 @@ async function renderMapList(category) {
 				<div>Land tiles: ${map.tileCount}</div>
 			`;
 			*/
-			let minimapData = loadMinimap(category, index);
+			let minimapData = loadMinimapCached(category, index);
 			minimapData.minimapCanvas.style.width = "100%";
 			minimapData.minimapCanvas.title = `${map.name}: ${map.width} x ${map.height}`;
 			minimapData.minimapCanvas.id = "map_"+category+"_"+index;
@@ -5203,6 +5217,7 @@ function renderSavedGamesList(savedGames) {
 	savedGamesList.innerHTML = '';
 
 	for(let i = 0; i < savedGames.length; i++){
+		let savedState = savedGames[i].gameState;
 		let map = savedGames[i].gameState.map;
 		let roomKey = getSaveRoomKey(savedGames[i].roomName);
 		let date = formatReadableDate(savedGames[i].saveDate);
@@ -5218,9 +5233,10 @@ function renderSavedGamesList(savedGames) {
 		let catinfo = getMapCatIndex(map.name);
 		
 		let canvasElem = document.createElement('canvas');
-		loadMinimap(catinfo.category, catinfo.index, 256, canvasElem);
+		
+		loadMinimap(catinfo.category, catinfo.index, 256, canvasElem, savedState);
 		canvasElem.title = `${map.name}: ${map.width} x ${map.height}`;
-		canvasElem.style = "width:100%";
+		//canvasElem.style = "width:100%";
 		
 		div.appendChild(canvasElem);
 		
@@ -6494,7 +6510,9 @@ let gameSettings = {
 	mapThemeOverride: 0, // 0 = no override, 1 = summer, 2 = winter
 };
 
+let centerUnitEnabled = true;
 
+let defaultViewportRotation = 0.21;
 
 function setSetting(key, value){
 	gameSettings[key] = value;
@@ -6596,10 +6614,10 @@ function getPlayer(playerId) {
 	return gameState.players.find(p => p.id === playerId);
 }
 
-function getPlayerByIndex(playerIndex) {
+function getPlayerByIndex(playerIndex, state = gameState) {
 	// -1 is no-owner.
-	if(playerIndex !== -1 && gameState.players[playerIndex]){
-		return gameState.players[playerIndex];
+	if(playerIndex !== -1 && state.players[playerIndex]){
+		return state.players[playerIndex];
 	}else{
 		return null;
 	}
@@ -9353,7 +9371,7 @@ function centerToUnit(unit){
 	return null;
 }
 
-function centerAndSelectUnit(unit){
+function centerAndSelectUnit(unit, center = true){
 	if(unit){
 		selectedUnit = unit;
 		selectedHex = {q:unit.q, r:unit.r};
@@ -9362,7 +9380,9 @@ function centerAndSelectUnit(unit){
 		updateHighlights();
 		updateSelectedPoolInfo(selectedHex);
 		
-		centerToUnit(unit);
+		if(center){
+			centerToUnit(unit);
+		}
 		
 		// enable sell button:
 		sellUnitBtn.disabled = false;
@@ -9372,7 +9392,7 @@ function centerAndSelectUnit(unit){
 	return null;
 }
 
-function centerAndSelectPool(pool){
+function centerAndSelectPool(pool, center = true){
 	if(pool){
 		let hex = pool.hexes[0];
 		
@@ -9382,9 +9402,12 @@ function centerAndSelectPool(pool){
 		updateHighlights();
 		updateSelectedPoolInfo(selectedHex);
 		
+		
 		let pixelCenter = getPoolCenter(pool);
-
-		centerToPixelPos(pixelCenter.x, pixelCenter.y);
+		if(center){
+			centerToPixelPos(pixelCenter.x, pixelCenter.y);
+		}
+		
 		return axialToPixel(pixelCenter.x, pixelCenter.y);
 	}
 	return null;
@@ -11172,7 +11195,7 @@ function fillPattern(ctx, imageName){
 let scaleMatrix = new DOMMatrix();
 let matrixInfiniteWater = new DOMMatrix();
 let hex_pad = 0;
-let reversed = 0;
+
 
 
 
@@ -12814,8 +12837,7 @@ function drawMoveDirectionsOverlay() {
 
 
 
-
-viewport.rotation = 0.21;//0.62;//-Math.PI/4;
+viewport.rotation = defaultViewportRotation;//0.62;//-Math.PI/4;
 
 let drawRanges = 0;
 
@@ -16170,7 +16192,7 @@ function updateHighlights() {
 
 
 
-function openBuildPopup(type) {
+function openBuildPopup(type, position = null) {
 	placingUnit = null;
 	
 	// dont deselect unit if building boats.
@@ -16181,7 +16203,7 @@ function openBuildPopup(type) {
 	//deselectHex();
 	
 	const data = UNITS[type];//(type === 'soldier') ? SOLDIER_DATA : CASTLE_DATA;
-	console.warn(data);
+	//console.warn(data);
 	const poolSavings = getSelectedPoolSavings();
 	
 	buildSoldierBtn.classList.remove("cancel");
@@ -16318,7 +16340,7 @@ function openBuildPopup(type) {
 	}
 	
 	//buildPopup.style.display = 'block';
-	showBuildPopup();
+	showBuildPopup(position);
 }
 
 
@@ -23859,8 +23881,23 @@ function loadParsedMinimap(parsedMap, state, compact = true){
 	
 }
 
+const minimapCache = new Map();
 
-function loadMinimap(category, index, size = 256, targetCanvas = null){
+function loadMinimapCached(category, index) {
+	const key = `${category}_${index}`;
+
+	if (minimapCache.has(key)) {
+		return minimapCache.get(key);
+	}
+
+	const minimapData = loadMinimap(category, index);
+	minimapCache.set(key, minimapData);
+
+	return minimapData;
+}
+
+
+function loadMinimap(category, index, size = 256, targetCanvas = null, savedState = null){
 	// default to first possible map if not found:
 	if(!customMaps[category] || !customMaps[category][index]){
 		category = "all";
@@ -23877,7 +23914,7 @@ function loadMinimap(category, index, size = 256, targetCanvas = null){
 	generateWaterEdgeTilesMinimap(minimapState);
 	
 	let minimapCanvas = targetCanvas ? targetCanvas : document.createElement('canvas');
-	drawMinimapTiles(minimapCanvas, minimapState, size);
+	drawMinimapTiles(minimapCanvas, minimapState, size, savedState);
 	
 	//document.body.appendChild(minimapCanvas);
 	
@@ -24075,12 +24112,19 @@ function updateShoreTileOutlinesMinimap(q, r, allowCreation = true, state = null
 
 
 
-function drawMinimapTiles(minimapCanvas, state, size){
+
+
+
+function drawMinimapTiles(minimapCanvas, state, size, savedState = null){
 	let scalefactor = size/256; // viewport settings are for 256x256 image.
 	
 	minimapCanvas.width = size;
 	minimapCanvas.height = size;
 	//minimapCanvas.style.border = "1px dashed blue";
+	
+	if(savedState){
+		state = savedState;
+	}
 
 	let drawCtx = minimapCanvas.getContext('2d');
 	
@@ -24107,7 +24151,7 @@ function drawMinimapTiles(minimapCanvas, state, size){
 	drawCtx.scale(tempViewport.zoom, tempViewport.zoom);
 	
 	
-	let pulse = 0.88;
+	let pulse = 0.88; // for shore waves "animation".
 	
 
 	
@@ -24208,14 +24252,28 @@ function drawMinimapTiles(minimapCanvas, state, size){
 		
 		if(usesimple){
 		
-			if(tile.spawnIndex !== -1){
-				// draw owned tiles:
-				drawCtx.fillStyle = lightenHexColor(darkenHexColor(fallbackColor, 0.56), 0);
-				drawCtx.fill();
+			if(savedState){
+				if(tile.ownerIndex !== -1){
+					fallbackColor = getPlayerByIndex(tile.ownerIndex, savedState).color;
+					// draw owned tiles:
+					drawCtx.fillStyle = lightenHexColor(darkenHexColor(fallbackColor, 0.56), 0);
+					drawCtx.fill();
+				}else{
+					// draw dirt:
+					drawCtx.fillStyle = "#705D4A";
+					drawCtx.fill();
+				}
+				
 			}else{
-				// draw dirt:
-				drawCtx.fillStyle = "#705D4A";
-				drawCtx.fill();
+				if(tile.spawnIndex !== -1){
+					// draw owned tiles:
+					drawCtx.fillStyle = lightenHexColor(darkenHexColor(fallbackColor, 0.56), 0);
+					drawCtx.fill();
+				}else{
+					// draw dirt:
+					drawCtx.fillStyle = "#705D4A";
+					drawCtx.fill();
+				}
 			}
 			continue;
 		}else{
@@ -24332,7 +24390,7 @@ function loadMap(category, index) {
 	lobbyLoadedMapImg.dataset.category = category;
 	lobbyLoadedMapImg.dataset.index = index;
 
-	console.warn("SET: category, index = ", category, index, "LINE:", getLineNumber());
+	//console.warn("SET: category, index = ", category, index, "LINE:", getLineNumber());
 	
 
 	setLoadedMapAndApplyScale();
@@ -25936,9 +25994,11 @@ document.addEventListener('keydown', (event) => {
 				if(editor.isDrawing){
 					sendTileUpdate(pixelToAxial(mousePosCurrent.x, mousePosCurrent.y));
 				}
-			}else if(code === 'KeyZ' || code === 'Digit1') {
+			}else if(code === 'KeyZ') {
 				previousUnit();
-			}else if(code === 'KeyC' || code === 'Digit2') {
+			}else if(code === 'KeyX') {
+				centerUnitToggle();
+			}else if(code === 'KeyC') {
 				nextUnit();
 			}else if(code === 'KeyF') {
 				
@@ -25947,6 +26007,15 @@ document.addEventListener('keydown', (event) => {
 				}else{
 					callEndTurn();
 				}
+			}else if(code === 'Digit1') {
+				// open soldier build menu
+				openBuildPopup('soldier', lastMousePos);
+			}else if(code === 'Digit2') {
+				// open castle build menu
+				openBuildPopup('castle', lastMousePos);
+			}else if(code === 'Digit3') {
+				// open item build menu
+				openBuildPopup('other', lastMousePos);
 			}
 		}
 	}
@@ -26378,7 +26447,7 @@ function unloadGame(){
 		// reload previous map:
 		loadedmap = deepClone(customMaps[loadedMapCategory][loadedMapIndex]);
 		loadParsedMap(loadedmap);
-		console.warn("SET: loadedmap:", loadedmap);
+		//console.warn("SET: loadedmap:", loadedmap);
 		// update minimap for host:
 		//loadedMapImg.src = loadedmap.imageData;
 		
@@ -26387,9 +26456,9 @@ function unloadGame(){
 		loadMinimap(loadedMapCategory, loadedMapIndex, 256, loadedMapImg);
 		loadedMapImg.dataset.category = loadedMapCategory;
 		loadedMapImg.dataset.index = loadedMapIndex;
-		console.warn("SET: category, index = ", loadedMapCategory, loadedMapIndex, "LINE:", getLineNumber());
+		//console.warn("SET: category, index = ", loadedMapCategory, loadedMapIndex, "LINE:", getLineNumber());
 		
-		console.warn("loadedmap.name", loadedmap.name, catinfo);
+		//console.warn("loadedmap.name", loadedmap.name, catinfo);
 		
 		broadcastMapState();
 		
@@ -26463,7 +26532,7 @@ function loadSavedGame(roomKey){
 				loadMinimap(catinfo.category, catinfo.index, 256, loadedMapImg);
 				loadedMapImg.dataset.category = catinfo.category;
 				loadedMapImg.dataset.index = catinfo.index;
-				console.warn("SET: category, index = ", catinfo.category, catinfo.index, "LINE:", getLineNumber());
+				//console.warn("SET: category, index = ", catinfo.category, catinfo.index, "LINE:", getLineNumber());
 				
 				updateHostLobbyUI();
 
@@ -26535,6 +26604,19 @@ function loadSavedGame(roomKey){
 }
 
 
+function centerUnitToggle(){
+	centerUnitEnabled = !centerUnitEnabled;
+	
+	if(!centerUnitEnabled){
+		previousUnitBtn.classList.add("special-highlight");
+		nextUnitBtn.classList.add("special-highlight");
+	}else{
+		previousUnitBtn.classList.remove("special-highlight");
+		nextUnitBtn.classList.remove("special-highlight");
+	}
+}
+
+
 function nextUnit(){
 	let player = getMyPlayer();
 	
@@ -26566,7 +26648,7 @@ function nextUnit(){
 			
 			if(unitTypeCanMove(unit.type) && validUnitType && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
 			//if(unit.internalType === 'soldier' && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
-				centerAndSelectUnit(unit);
+				centerAndSelectUnit(unit, centerUnitEnabled);
 				playSound('startmove');
 				break;
 			}
@@ -26578,6 +26660,9 @@ function nextUnit(){
 		cycleUnitTypeListSelected.classList.toggle('disabled', !countUnmovedUnitsByType(cycleUnitTypeValue));
 	}
 }
+
+
+
 
 function previousUnit(){
 	//refreshCanvas(); // test if this fixes the black bar issue.
@@ -26614,7 +26699,7 @@ function previousUnit(){
 
 			if(unitTypeCanMove(unit.type) && validUnitType && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
 			//if(unit.internalType === 'soldier' && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
-				centerAndSelectUnit(unit);
+				centerAndSelectUnit(unit, centerUnitEnabled);
 				playSound('startmove');
 				break;
 			}
@@ -26642,8 +26727,35 @@ function cancelBuildPopup(){
 function hideBuildPopup(){
 	buildPopup.style.display = 'none';
 }
-function showBuildPopup(){
+function showBuildPopup(position = null){
 	buildPopup.style.display = 'block';
+	if(position){
+		const rect = buildPopup.getBoundingClientRect();
+
+		const width = rect.width;
+		const height = rect.height;
+		
+		const windowWidth = window.innerWidth;
+		const windowHeight = window.innerHeight;
+		
+		let left = position.x-20;
+		let top = position.y-height+40;
+		
+		if(left < 0) left = 0;
+		if(top < 0) top = 0;
+		
+		if(left > windowWidth-width){
+			left = windowWidth-width;
+		}
+		if(top > windowHeight-height-1){
+			top = windowHeight-height-1;
+		}
+
+
+		buildPopup.style = `left: ${left}px; top:${top}px; bottom:unset; right:unset`;
+	}else{
+		buildPopup.style = `bottom:0; right:0`;
+	}
 }
 
 
@@ -27007,20 +27119,14 @@ window.addEventListener('DOMContentLoaded', async () => {
 	canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
 	canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
 	
-	
-	// moved to own /refresh command.
-	//refreshCanvasBtn.onclick = () => {
-	//	addSystemChatMessage(`resizeCanvas(): old = ${canvas.width}x${canvas.height}, new = ${window.innerWidth}x${window.innerHeight}`);
-	//	resizeCanvas();
-	//};
-	
+
 
 
 	rotateLeftBtn.onclick = () => {
 		rotateLeftSnapped();
 	};
 	rotateResetBtn.onclick = () => {
-		rotateAroundScreenCenter(-viewport.rotation);
+		rotateAroundScreenCenter(-viewport.rotation+defaultViewportRotation);
 	};
 	rotateRightBtn.onclick = () => {
 		rotateRightSnapped();
@@ -27173,11 +27279,6 @@ window.addEventListener('DOMContentLoaded', async () => {
 						DELAY_MULTI = 1;
 						// restart replay
 					break;
-					case "/reverse":
-						reverse = !reverse;
-					break;
-					
-					
 				}
 
 				
