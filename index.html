@@ -114,6 +114,7 @@ debugMode(DEBUGMODE);
 	--border-color: #444;
 	--input-bg: #1d1d1d;
 	--btn-bg: #1d1d1d;
+	--btn-bg-disabled: #0f0f0f;
 	--btn-hover-bg: #2a2a2a;
 	--danger-color: #ff3b30;
 	--warn-color: #ffcc00;
@@ -994,7 +995,7 @@ button.redbutton:hover {
 .savedgames-list {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
-	gap: 0px;
+	gap: 3px;
 }
 
 
@@ -1151,13 +1152,15 @@ button.redbutton:hover {
 .map-list {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
-	gap: 0px;
+	gap: 3px;
 }
 
 
-#loaded-map {
-	border: 1px solid #ccc;
+#loaded-map, #lobby-loaded-map {
+	border: 1px solid #888;
 	border-radius: 6px;
+	width:100px;
+	height:100px;
 }
 
 
@@ -1514,8 +1517,15 @@ input.disabled {
 	display: flex;
 }
 
-/* Enlarged image style */
-#image-popup img {
+.canvas-wrapper {
+	flex: 1;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+
+#popup-img {
 	width: 90vw;          /* take up 90% of viewport width */
 	height: auto;         /* maintain aspect ratio */
 	max-height: 90vh;     /* prevent overflowing vertically */
@@ -2012,13 +2022,17 @@ input.disabled {
 	height: 100%;
 
 	---border: 1px solid var(--border-color);
-	
+
 	border-radius: 6px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 
-    background: var(--btn-bg);
+	background: var(--btn-bg);
+}
+
+.imageSelectListSelected.disabled {
+	background: var(--btn-bg-disabled);
 }
 
 .imageSelectListSelected:hover {
@@ -2652,7 +2666,9 @@ input.disabled {
 
 <div id="image-popup">
 	<div style="padding:5px">Map preview</div>
-	<img id="popup-img" src="" alt="Enlarged view">
+	<div class="canvas-wrapper">
+		<canvas id="popup-img"></canvas>
+	</div>
 </div>
 
 
@@ -2793,7 +2809,7 @@ input.disabled {
 		<div class="input-group">
 			<div style="width:110px; flex:0 0 auto;">
 				<span class="label">Loaded map:</span>
-				<img id="loaded-map" src="" width="100" height="100">
+				<canvas id="loaded-map" data-category="" data-index="" src="" width="100" height="100"></canvas>
 			</div>
 			
 			<div>
@@ -2905,7 +2921,7 @@ input.disabled {
 		<div class="input-group">
 			<div style="width:110px; flex:0 0 auto;">
 				<span class="label">Loaded map:</span>
-				<img id="lobby-loaded-map" src="" width="100" height="100">
+				<canvas id="lobby-loaded-map" data-category="" data-index="" src="" width="100" height="100"></canvas>
 			</div>
 			
 			<div>
@@ -2992,7 +3008,7 @@ input.disabled {
 		
 		<div id="ui-right" style="overflow: visible;">
 			<div id="endgame-stats-wrapper" style="display: flex; flex-direction: row-reverse; align-items: flex-end; gap: 0; ">
-				<div class="gameLogsListWrap" id="game-logs-wrapper">
+				<div class="gameLogsListWrap" id="game-logs-wrapper" style="display:none">
 					<div class="gameLogsListButtonWrap">
 						<button id="game-logs-btn" class="gameLogsListButton">Logs</button>
 					</div>
@@ -3045,7 +3061,6 @@ input.disabled {
 }
 
 .gameLogsListButton {
-	width: 60px;
 	margin: 0;
 	pointer-events:auto;
 }
@@ -3104,8 +3119,8 @@ input.disabled {
 }
 
 
-
 </style>
+
 					<div id="game-logs-list" class="gameLogsList scrollable">
 						<div class="logListDayWrap">
 							
@@ -3116,10 +3131,14 @@ input.disabled {
 								<div class="logListDayTurnsWrap">
 								
 									<div class="logListTurnWrap">
-										<div class="logListTurnTitle">Turn 1 (AI-2)</div>
+										<div class="logListTurnTitle">
+											Turn 1 (AI-2)
+										</div>
 										
 										<div class="logListTurnPlayerEvents">
-											<div class="logListEventTitle">AI-2 lost 2 units:</div>
+											<div class="logListEventTitle">
+												AI-2 lost 2 units:
+											</div>
 											<ul class="outerList">
 												<li>2 soldiers:</li>
 												<ul class="innerList">
@@ -3131,7 +3150,9 @@ input.disabled {
 										
 										
 										<div class="logListTurnPlayerEvents">
-											<div class="logListEventTitle">Tari lost 6 units:</div>
+											<div class="logListEventTitle">
+												Tari lost 6 units:
+											</div>
 											<ul class="outerList">
 												<li>3 castles</li>
 												<li>3 soldiers:</li>
@@ -3488,7 +3509,7 @@ function getPoolCenter(pool){
 playerTileIconBtn.addEventListener("click", () => {
 	let player = getMyPlayer();
 
-	if(!REPLAY_ENABLED && player && isMyTurn()){
+	if(!REPLAY_ENABLED && player){
 		let startIndex = 0;
 		
 		let pools = findEconomyPools(player.playerIndex);
@@ -3612,48 +3633,52 @@ function countUnitsByType(playerIndex, ignoreHasMoved = true){
 
 // toggle open/close
 cycleUnitTypeListSelected.addEventListener("click", () => {
-	if(!cycleUnitType.classList.contains("open")){
-		//console.log("opening list");
+	if(isMyTurn()){
+			
 		
-		const player = getMyPlayer();
-		let unitCounts = countUnitsByType(player.playerIndex);
+		if(!cycleUnitType.classList.contains("open")){
+			//console.log("opening list");
+			
+			const player = getMyPlayer();
+			let unitCounts = countUnitsByType(player.playerIndex);
+			
+			cycleUnitTypeListOptions.forEach(option => {
+				const countEl = option.querySelector(".count");
+				if (countEl) {
+					let key = (option.dataset.value === "") ? "*" : option.dataset.value;
+					let count = unitCounts[key] ?? 0;
+					let unitType = option.dataset.value ?? null;
+					let unmovedUnitsCount = countUnmovedUnitsByType(unitType);
+					
+					option.dataset.count = count;
+					option.title = `${option.dataset.title} (${unmovedUnitsCount} unmoved of ${count} total units)`;
+					
+
+					
+					let color = "#FFFFFF";
+					let opacity = 1;
+					
+					if(unmovedUnitsCount === 0 || count === 0){
+						color = "#555555";
+						opacity = 0.5;
+					}
+
+					countEl.textContent = `${unmovedUnitsCount}/${count}`;
+					countEl.style.color = color;
+					
+					const imgEl = option.querySelector("img");
+					if(imgEl){
+						imgEl.style.opacity = opacity;
+					}
+					
+				}
+			});
+		}else{
+			//console.log("closing list");
+		}
 		
-		cycleUnitTypeListOptions.forEach(option => {
-			const countEl = option.querySelector(".count");
-			if (countEl) {
-				let key = (option.dataset.value === "") ? "*" : option.dataset.value;
-				let count = unitCounts[key] ?? 0;
-				let unitType = option.dataset.value ?? null;
-				let unmovedUnitsCount = countUnmovedUnitsByType(unitType);
-				
-				option.dataset.count = count;
-				option.title = `${option.dataset.title} (${unmovedUnitsCount} unmoved of ${count} total units)`;
-				
-
-				
-				let color = "#FFFFFF";
-				let opacity = 1;
-				
-				if(unmovedUnitsCount === 0 || count === 0){
-					color = "#555555";
-					opacity = 0.5;
-				}
-
-				countEl.textContent = `${unmovedUnitsCount}/${count}`;
-				countEl.style.color = color;
-				
-				const imgEl = option.querySelector("img");
-				if(imgEl){
-					imgEl.style.opacity = opacity;
-				}
-				
-			}
-		});
-	}else{
-		//console.log("closing list");
+		cycleUnitType.classList.toggle("open");
 	}
-	
-	cycleUnitType.classList.toggle("open");
 });
 
 // close on outside click
@@ -3692,6 +3717,7 @@ cycleUnitTypeListOptions.forEach(option => {
 			
 			nextUnitBtn.disabled = !hasUnmovedUnits;
 			previousUnitBtn.disabled = !hasUnmovedUnits;
+			cycleUnitTypeListSelected.classList.toggle('disabled', !hasUnmovedUnits);
 			
 			
 			cancelBuildPopup();
@@ -4979,11 +5005,36 @@ function closeMapPreviewPopup(){
 	imagePopup.classList.remove('active');
 }
 
+function getMapCatIndex(name){
+	for(let i = 0; i < customMaps.all.length; i++){
+		let map = customMaps.all[i];
+		if(map.name === name){
+			return {category: "all", index: i};
+		}
+	}
+	return {category: "all", index: 0};
+}
+
+
 // Show popup on click
 loadedMapImg.addEventListener('click', (e) => {
 	e.preventDefault();
-	console.warn("popupopen: ", popupOpen);
-	popupImg.src = loadedMapImg.src;
+	//console.warn("popupopen: ", popupOpen);
+	//popupImg.src = loadedMapImg.src;
+	
+	let category = loadedMapImg.dataset.category;
+	let index = parseInt(loadedMapImg.dataset.index);
+	
+	let minimapData = loadMinimap(category, index, 1024, popupImg);
+	popupImg.dataset.category = category;
+	popupImg.dataset.index = index;
+	console.warn("SET: category, index = ", category, index, "LINE:", getLineNumber());
+	
+	//minimapData.minimapCanvas.style.width = "100%";
+	//minimapData.minimapCanvas.title = `${map.name}: ${map.width} x ${map.height}`;
+	//minimapData.minimapCanvas.id = "previewmap_"+category+"_"+index;
+	//popupImg.appendChild(minimapData.minimapCanvas);
+
 	openMapPreviewPopup();
 	console.warn("popupopen: ", popupOpen);
 });
@@ -4991,7 +5042,16 @@ loadedMapImg.addEventListener('click', (e) => {
 // Show popup on click
 lobbyLoadedMapImg.addEventListener('click', (e) => {
 	e.preventDefault();
-	popupImg.src = lobbyLoadedMapImg.src;
+	//popupImg.src = lobbyLoadedMapImg.src;
+	
+	let category = lobbyLoadedMapImg.dataset.category;
+	let index = parseInt(lobbyLoadedMapImg.dataset.index);
+	
+	let minimapData = loadMinimap(category, index, 1024, popupImg);
+	popupImg.dataset.category = category;
+	popupImg.dataset.index = index;
+	console.warn("SET: category, index = ", category, index, "LINE:", getLineNumber());
+	
 	openMapPreviewPopup();
 });
 
@@ -5064,15 +5124,27 @@ async function renderMapList(category) {
 		maps.forEach((map, index) => {
 			const div = document.createElement('div');
 			div.className = 'map-item';
-			div.innerHTML = `
+			
+			/*div.innerHTML = `
 				<img src="${map.imageData}" alt="${map.name}" title="${map.name}: ${map.width} x ${map.height}">
 				<div>Land tiles: ${map.tileCount}</div>
 			`;
+			*/
+			let minimapData = loadMinimap(category, index);
+			minimapData.minimapCanvas.style.width = "100%";
+			minimapData.minimapCanvas.title = `${map.name}: ${map.width} x ${map.height}`;
+			minimapData.minimapCanvas.id = "map_"+category+"_"+index;
+			div.appendChild(minimapData.minimapCanvas);
+			
+			const titleDiv = document.createElement('div');
+			titleDiv.textContent = `Land tiles: ${map.tileCount}`;
+			div.appendChild(titleDiv);
+			
 			// <div>${map.width} x ${map.height}</div>
 			div.addEventListener('click', () => {
 				loadMap(category, index);
 				setLocalStorageObject("currentMap", {category:category, index:index});
-				console.log("map loaded: "+category+index);
+				console.log("map loaded: ",category,index);
 
 				closePopup();
 			});
@@ -5142,10 +5214,27 @@ function renderSavedGamesList(savedGames) {
 
 		const div = document.createElement('div');
 		div.className = 'savedgames-item';
-		div.innerHTML = `
-			<img src="${map.imageData}" alt="${map.name}" title="${map.name}: ${map.width} x ${map.height}">
+		
+		let catinfo = getMapCatIndex(map.name);
+		
+		let canvasElem = document.createElement('canvas');
+		loadMinimap(catinfo.category, catinfo.index, 256, canvasElem);
+		canvasElem.title = `${map.name}: ${map.width} x ${map.height}`;
+		canvasElem.style = "width:100%";
+		
+		div.appendChild(canvasElem);
+		
+		let infoDiv = document.createElement('div');
+		infoDiv.textContent = date;
+		infoDiv.style = style;
+		
+		div.appendChild(infoDiv);
+		
+		/*div.innerHTML = `
+			<img src="${map.imageData}" alt="${map.name}" title="${map.name}: ${map.width} x ${map.height}" style="">
 			<div style="${style}">${date}</div>
 		`;
+		*/
 		div.addEventListener('click', () => {
 			loadSavedGame(roomKey);
 			console.log("game loaded: "+roomKey);
@@ -5895,10 +5984,15 @@ function actionToText(code){
 }
 
 
+let enableReplayCompression = false;
 
 // compress some actions into smaller format:
 // replay can read array or object format, so all actions doesnt have to be compressed.
 function compressAction(data){
+	if(!enableReplayCompression){
+		return data;
+	}
+	
 	switch(data.type){
 		case ACTION.unit_moved: {
 			if(data.wasUndo !== undefined){
@@ -6320,6 +6414,8 @@ const ENDRULE_NO_SOLDIERS = 1;
 
 // debuginfo
 let debugData = {};
+
+
 
 // --- GAME STATE (synced by host) ---
 let gameState = {
@@ -9738,6 +9834,184 @@ function addCurrentTurnChatMessage(){
 }
 
 
+function getDayTurnNumber(playerIndex){
+	let playingPlayers = getPlayingPlayers();
+	// todo: start counting at startplayer index
+	for(let i = 0; i < playingPlayers.length; i++){
+		let player = playingPlayers[i];
+		if(player.playerIndex === playerIndex){
+			return i;
+		}
+	}
+	return 0;
+}
+
+
+
+/*
+let lostUnits = {
+	total: 4,
+	totalCastles: 1,
+	totalSoldiers: 3,
+	soldiers: [
+		{type: "starvation", count: 1},
+		{type: "mine", count: 1},
+		{type: "kill", count: 1},
+	],
+};
+
+gameLog.addNewDay();
+gameLog.addNewTurn(0);
+gameLog.addNewDayTurnEvent(0, 0, 0, lostUnits);
+gameLog.addNewDayTurnEvent(0, 0, 0, lostUnits);
+gameLog.addNewTurn(0);
+gameLog.addNewDayTurnEvent(0, 1, 0, lostUnits);
+gameLog.addNewDayTurnEvent(0, 1, 0, lostUnits);
+
+gameLog.addNewDay();
+gameLog.addNewTurn(1);
+gameLog.addNewDayTurnEvent(1, 0, 0, lostUnits);
+gameLog.addNewDayTurnEvent(1, 0, 0, lostUnits);
+
+
+console.warn("gameLog");
+console.warn(gameLog);
+
+*/
+
+
+class GameLogger {
+	constructor() {
+		this.logs = [];
+	}
+	clear(){
+		this.logs = [];
+	}
+	addNewDay(){
+		return;
+		
+		console.warn("GameLogger: addNewDay: dayNumber:", gameState.turn.turnNumber-1);
+		this.logs.push({
+			title: getTurnDate('week-day'),
+			dayNumber: gameState.turn.turnNumber-1, // the n'th day from beginning.
+			turns: [],
+		});
+	}
+	addNewTurn(dayNumber){
+		return;
+		
+		console.warn("GameLogger: addNewTurn: ", dayNumber);
+		let playerIndex = gameState.turn.currentPlayerIndex;
+		let dayTurnNumber = this.logs[dayNumber].turns.length+1;//getDayTurnNumber(playerIndex);
+		let player = getPlayerByIndex(playerIndex);
+		let playerName = escapeHTML(player.name);
+		
+		this.logs[dayNumber].turns.push({
+			title: `Turn ${dayTurnNumber} (${playerName})`,
+			dayTurnNumber: dayTurnNumber,
+			name: playerName,
+			playerIndex: playerIndex,
+			events: [],
+		});
+	}
+	addNewDayTurnEvent(dayNumber, dayTurnNumber, playerIndex, lostUnits){
+		return;
+		console.warn("GameLogger: addNewDayTurnEvent: dayTurnNumber/playerIndex/lostUnits:", dayTurnNumber, playerIndex, lostUnits);
+		
+		let player = getPlayerByIndex(playerIndex);
+		let playerName = escapeHTML(player.name);
+		this.logs[dayNumber].turns[dayTurnNumber].events.push({
+			title: `${playerName} lost ${lostUnits.total} units`,
+			name: playerName,
+			playerIndex: playerIndex,
+			lostTotal: lostUnits.total,
+			lostCastles: lostUnits.totalCastles,
+			lostSoldiers: lostUnits.totalSoldiers,
+			soldiersList: lostUnits.soldiers,
+			/*[
+				{type: "starvation", count: 1},
+				{type: "mine", count: 1},
+			],*/
+		});
+	}
+};
+
+let gameLog = new GameLogger();
+
+
+
+
+function testtest(){
+	let gameLog = [];
+	// push new day to the log, at the start of day:
+	gameLog.push({
+		title: "Week 1, Day 1",
+		//week: 1,
+		//day: 1,
+		turnNumber: gameState.turn.turnNumber, // the n'th day from beginning.
+		turns: [],
+	});
+
+	// push new turn:
+	gameLog[gameState.turn.turnNumber].turns.push({
+		title: "Turn 1 (AI-2)",
+		turn: 1,
+		name: "AI-2",
+		playerIndex: 2,
+		events: [],
+	});
+	
+	// push new event:
+	gameLog[gameState.turn.turnNumber].turns[666].events.push({
+		title: "AI-2 lost 2 units",
+		name: "AI-2",
+		lostTotal: 2,
+		lostCastles: 0,
+		lostSoldiers: 2,
+		soldiersList: [
+			{type: "starvation", count: 1},
+			{type: "mine", count: 1},
+		],
+	});
+	
+	// push new soldier death info:
+	gameLog[gameState.turn.turnNumber].turns[666].events.soldiersList.push({
+		type: "starvation", 
+		count: 1,
+	});
+	
+	// gameLog index = day number-1
+	gameLog = [
+		{
+			title: "Week 1, Day 1",
+			week: 1,
+			day: 1,
+			turnNumber: gameState.turn.turnNumber, // the n'th day from beginning.
+			turns: [
+				{
+					title: "Turn 1 (AI-2)",
+					turn: 1,
+					name: "AI-2",
+					playerIndex: 2,
+					events: [
+						{
+							title: "AI-2 lost 2 units",
+							name: "AI-2",
+							lostTotal: 2,
+							lostCastles: 0,
+							lostSoldiers: 2,
+							soldiersList: [
+								{type: "starvation", count: 1},
+								{type: "mine", count: 1},
+							],
+						},
+					],
+				},
+			],
+		},
+	];
+}
+
 
 // pointer* events already catch: mouse touch stylus
 // But keeping touch* is harmless and sometimes useful for older browsers.
@@ -10322,17 +10596,17 @@ function drawHexagonPathLines(px, py, drawLines = null, scale = 1) {
 // 3 = top right
 // 4 = bottom right
 // 5 = bottom
-function drawHexagonPath(px, py, padding = 0) {
+function drawHexagonPath(px, py, padding = 0, ctxIn = ctx) {
 	const r = HEX_SIZE + padding;
-	ctx.beginPath();
+	ctxIn.beginPath();
 	// Unrolled loop for speed and no Math.cos/sin calls
-	ctx.moveTo(px + r * HEX_CORNERS[0].x, py + r * HEX_CORNERS[0].y);
-	ctx.lineTo(px + r * HEX_CORNERS[1].x, py + r * HEX_CORNERS[1].y);
-	ctx.lineTo(px + r * HEX_CORNERS[2].x, py + r * HEX_CORNERS[2].y);
-	ctx.lineTo(px + r * HEX_CORNERS[3].x, py + r * HEX_CORNERS[3].y);
-	ctx.lineTo(px + r * HEX_CORNERS[4].x, py + r * HEX_CORNERS[4].y);
-	ctx.lineTo(px + r * HEX_CORNERS[5].x, py + r * HEX_CORNERS[5].y);
-	ctx.closePath();
+	ctxIn.moveTo(px + r * HEX_CORNERS[0].x, py + r * HEX_CORNERS[0].y);
+	ctxIn.lineTo(px + r * HEX_CORNERS[1].x, py + r * HEX_CORNERS[1].y);
+	ctxIn.lineTo(px + r * HEX_CORNERS[2].x, py + r * HEX_CORNERS[2].y);
+	ctxIn.lineTo(px + r * HEX_CORNERS[3].x, py + r * HEX_CORNERS[3].y);
+	ctxIn.lineTo(px + r * HEX_CORNERS[4].x, py + r * HEX_CORNERS[4].y);
+	ctxIn.lineTo(px + r * HEX_CORNERS[5].x, py + r * HEX_CORNERS[5].y);
+	ctxIn.closePath();
 }
 
 function drawHexagonPathRotated(px, py, padding = 0, rotationRad = 0) {
@@ -10907,6 +11181,7 @@ let reversed = 0;
 function drawMapShading(type){
 	let pulse = pulseScale(0.8, 1, 0.002);
 	
+	
 	for(let t = 0; t < gameState.map.tilesData.length; t++){
 		const tile = gameState.map.tilesData[t];
 		const q = tile.q;
@@ -10960,6 +11235,7 @@ function drawMapShading(type){
 				const offY = waterShadingHeight * Math.cos(r);
 				
 				//ctx.save(); // probably not necessary here since the other drawings doesnt use them either.
+				// shore semi-transparent hex:
 				drawHexagonPath(x+offX, y+offY);
 				ctx.fillStyle = "rgba(200,200,255, 0.035)";
 				ctx.fill();
@@ -11091,6 +11367,7 @@ function getAppearingPercent(tile, percentMultiplier = 1){
 
 
 let tileZoomMipLevel = 1; // updated at drawMapTiles()
+
 
 
 
@@ -14157,9 +14434,9 @@ function isMyTurn() {
 
 function countUnmovedUnitsByType(unitTypeValue, playerIndex = -1){
 	let count = 0;
-	//if(!isMyTurn()){
-	//	return false;
-	//}
+	if(!isMyTurn()){
+		return 0;
+	}
 	const player = (playerIndex === -1) ? getMyPlayer() : getPlayerByIndex(playerIndex);
 	for(let i = 0; i < gameState.units.length; i++){
 		let unit = gameState.units[i];
@@ -14297,6 +14574,7 @@ function updateGameUI() {
 		
 		nextUnitBtn.disabled = !countUnmovedUnitsByType(cycleUnitTypeValue);
 		previousUnitBtn.disabled = !countUnmovedUnitsByType(cycleUnitTypeValue);
+		cycleUnitTypeListSelected.classList.toggle('disabled', !countUnmovedUnitsByType(cycleUnitTypeValue));
 		
 		
 		///////////////////////////////
@@ -17251,14 +17529,15 @@ function executeAction(playerId, action) {
 						//}
 						if(moneyAdded){
 							// todo: find player pools first.
-							let actionPool = findSelectedPool(poolHex, findEconomyPools(playerIndex), playerIndex);
-							addCost(actionPool, moneyAdded, poolHex, action.type);
+							//let actionPool = findSelectedPool(poolHex, findEconomyPools(playerIndex), playerIndex);
+							//console.warn("actionPool:", actionPool, "moneyAdded:", moneyAdded);
+							//addCost(actionPool, moneyAdded, poolHex, action.type);
 						}
 						
 						actionForUndo.clearedObject = tile.object;
 						tile.object = null;
 
-						tileChangedUpdates.push({ type: ACTION.tile_changed, q: toQ, r: toR, object: null, FText: moneyAdded });
+						tileChangedUpdates.push({ type: ACTION.tile_changed, q: toQ, r: toR, object: null, FText: moneyAdded, moneyAddedToTile: moneyAdded});
 					}
 					
 					if(didClaim && allowHexClaim){
@@ -18555,6 +18834,7 @@ function getNextPlayerIndexAndProcessEndOfDay(currentIndex){
 		// make sure to process end of day even if a player is dead.
 		if(!alreadyAdvanced && nextIndex === gameState.turn.startPlayerIndex){
 			
+			
 			processEndOfDay();
 			alreadyAdvanced = true; // do this only once, in case everyone is dead/spectator.
 		}
@@ -18590,6 +18870,9 @@ function advanceToNextPlayer(){
 	console.warn("advanceToNextPlayer");
 	// advance to next player and process end of day:
 	gameState.turn.currentPlayerIndex = getNextPlayerIndexAndProcessEndOfDay(gameState.turn.currentPlayerIndex);
+
+	//console.warn("advanceToNextPlayer: addNewTurn()");
+	//gameLog.addNewTurn(gameState.turn.turnNumber-1);
 
 	updateGameUI();
 }
@@ -19141,64 +19424,6 @@ async function executeAIMoveSequentially(player) {
 }
 
 
-function executeAIMoveSequentially1(player) {
-	if (!isHost() || gameState.settings.gameOver) return;
-
-	// Double-check if it's still this AIs turn
-	const currentPlayer = gameState.players[gameState.turn.currentPlayerIndex];
-	if (!currentPlayer || currentPlayer.id !== player.id || !currentPlayer.isAI) {
-		return;
-	}
-
-	// --- START BATCH MODE ---
-	isAiBatching = true;
-	aiBatchBuffer = []; // Clear buffer
-
-	console.log(`AI ${player.name} starting batch calculation...`);
-
-	let keepPlaying = true;
-	let movesCount = 0;
-	const MAX_MOVES = 200; // Safety guard against infinite loops
-
-	// 1. Calculate and Execute all moves locally
-	while (keepPlaying && movesCount < MAX_MOVES) {
-		const bestMove = ai_find_best_move(player);
-
-		if (bestMove) {
-			// executeAction -> broadcast -> handleHostData (Updates State) -> Pushes to aiBatchBuffer
-			handleClientData(player.id, bestMove);
-			movesCount++;
-		} else {
-			// No more valid moves found
-			keepPlaying = false;
-		}
-	}
-
-	// 2. End the Turn
-	// executeEndTurn -> broadcast -> handleHostData (Updates State) -> Pushes to aiBatchBuffer
-	handleClientData(player.id, { type: ACTION.action_end_turn });
-
-	// --- END BATCH MODE ---
-	isAiBatching = false;
-
-	// 3. Send Buffer to Clients
-	if (aiBatchBuffer.length > 0) {
-		const bigMessage = {
-			type: ACTION.multiple_actions,
-			actions: aiBatchBuffer // Contains all unit_moved, tile_changed, sound, etc.
-		};
-
-		// Send one big message to all clients
-		for (const [peerId, conn] of connections.entries()) {
-			conn.send(bigMessage);
-		}
-		
-		console.log(`AI Batch sent: ${aiBatchBuffer.length} sub-actions.`);
-	}
-
-	aiBatchBuffer = []; // Cleanup
-}
-
 
 
 
@@ -19238,11 +19463,16 @@ function msNowFloor(){
 // this is host function.
 function processEndOfDay(){
 	
+	console.warn("processEndOfDay");
+
+	
 	let weekChanged = false;
 
 	let weekBefore = 1+Math.floor((gameState.turn.turnNumber - 1) / 7);
 	
 	gameState.turn.turnNumber++;
+	
+
 
 	let weekAfter = 1+Math.floor((gameState.turn.turnNumber - 1) / 7);
 	
@@ -19474,6 +19704,9 @@ function processEndOfDay(){
 	});
 	//addStatsChartDataAllPlayers();
 	
+	// add new day to log:
+	console.warn("processEndOfDay addNewDay()");
+	gameLog.addNewDay();
 	
 	if(batchActions.length > 0){
 		broadcast({ 
@@ -19918,6 +20151,8 @@ function executeEndTurn(playerIndex) {
 	//let pools = findEconomyPools(playerIndex);
 	
 	console.warn("executeEndTurn", playerIndex);
+	
+	//console.warn("", gameState.turn.current);
 
 	/*
 	// add income and deduct wages:
@@ -20141,6 +20376,12 @@ function executeEndTurn(playerIndex) {
 	}
 	
 	
+	
+	// add new turn:
+	// executeEndTurn
+	console.warn("executeEndTurn: addNewTurn()");
+	gameLog.addNewTurn(gameState.turn.turnNumber-1);
+	
 	if(!gameState.settings.gameOver){
 		// --- 6. Check for AI turn ---
 		// NEW: This will now start the AI's sequential turn
@@ -20168,6 +20409,7 @@ function spectatorUiMode(){
 	endTurnBtn.style.display = "none";
 	nextUnitBtn.style.display = "none";
 	previousUnitBtn.style.display = "none";
+	cycleUnitType.style.display = "none";
 }
 
 
@@ -20673,6 +20915,10 @@ function handleHostData(data) {
 		case ACTION.game_start: {
 			REPLAY_ENABLED = 0;
 			
+
+			
+			
+
 			
 			GAME_START_TIME = msNowFloor();
 			
@@ -20711,9 +20957,24 @@ function handleHostData(data) {
 			console.warn(startZoomPos);
 			startZoom();
 			
+
 			addCurrentTurnChatMessage();
 			
 			updatePlayerTileEmptyCount();
+			
+			
+			
+			// logging:
+			gameLog.clear();
+			
+			
+			console.warn("ACTION.game_start: addNewDay()");
+			// add initial first day:
+			gameLog.addNewDay();
+			
+			// add initial first day turn:
+			console.warn("gameState.turn.turnNumber-1 = ", gameState.turn.turnNumber-1);
+			gameLog.addNewTurn(gameState.turn.turnNumber-1);
 			
 		}
 		break;
@@ -20807,7 +21068,16 @@ function handleHostData(data) {
 			gameState.players = data.players;
 
 			gameState.map = data.map;
-			lobbyLoadedMapImg.src = data.map.imageData;
+			
+			console.warn("SET: lobby_update:", data.map.name);
+			
+			
+			
+			//lobbyLoadedMapImg.src = data.map.imageData;
+			let catinfo = getMapCatIndex(data.map.name);
+			loadMinimap(catinfo.category, catinfo.index, 256, lobbyLoadedMapImg);
+			lobbyLoadedMapImg.dataset.category = catinfo.category;
+			lobbyLoadedMapImg.dataset.index = catinfo.index;
 			
 			cleanAnimations();
 			
@@ -20819,7 +21089,15 @@ function handleHostData(data) {
 		break;
 		case ACTION.map_update: {
 			gameState.map = data.map;
-			lobbyLoadedMapImg.src = data.map.imageData;
+			
+			console.warn("SET: map_update:", data.map.name);
+			
+			//lobbyLoadedMapImg.src = data.map.imageData;
+			let catinfo = getMapCatIndex(data.map.name);
+			loadMinimap(catinfo.category, catinfo.index, 256, lobbyLoadedMapImg);
+			lobbyLoadedMapImg.dataset.category = catinfo.category;
+			lobbyLoadedMapImg.dataset.index = catinfo.index;
+			
 			updateLobbyUI();
 		}
 		break;
@@ -21127,6 +21405,10 @@ function handleHostData(data) {
 					//delete tile.objectOwnerIndexes;
 
 				}
+
+				
+
+				
 				// if savings were changed due to claiming tile; claimed tile will reset savings to zero.
 				// NOT NEEDED FOR CLIENTS! clients doesnt need to know individual tiles savings.
 				//if (data.savings !== undefined){
@@ -21167,6 +21449,10 @@ function handleHostData(data) {
 				if(data.resetTileSavings !== undefined){
 					tile.savings = 0;
 					//console.warn("resetTileSavings", tile.savings);
+				}
+				
+				if (data.moneyAddedToTile !== undefined){
+					tile.savings += data.moneyAddedToTile;
 				}
 				
 				// spawn Floating Text:
@@ -21498,8 +21784,12 @@ function handleHostData(data) {
 		}
 		break;
 		case ACTION.turn_changed: {
+			
+	
+			
 			gameState.turn.currentPlayerIndex = data.currentPlayerIndex;
 			gameState.turn.turnNumber = data.turnNumber;
+			
 			
 			clearLastActionMoves(gameState.turn.currentPlayerIndex);
 
@@ -21513,6 +21803,7 @@ function handleHostData(data) {
 			if(gameState.turn.currentPlayerIndex === getMyPlayer().playerIndex){
 				updatePlayerTileEmptyCount();
 			}
+
 			
 			//updateLocalPoolsInfo();
 		}
@@ -21597,6 +21888,8 @@ function handleHostData(data) {
 			case ACTION.game_over:
 			case ACTION.day_changed:
 			case ACTION.tile_edited:
+			case ACTION.unit_loaded:
+			case ACTION.unit_unloaded:
 			//case ACTION.turn_changed: 
 			case ACTION.sound: {
 				//console.warn("XXYY: handleHostData:");
@@ -21631,6 +21924,10 @@ function handleHostData(data) {
 				}
 				
 				//console.warn("XXYY: game saved, network history saved.");
+			break;
+			default:
+				console.error("---------------------------------------");
+				console.error("didnt save to replay: ", actionToText(data.type));
 			break;
 		}
 	}
@@ -23485,6 +23782,9 @@ let currentCategory = "all";
 	
 	let currentMap = getLocalStorageObject("currentMap") || {category:"all", index:0};
 	loadMap(currentMap.category, currentMap.index);
+	console.warn("default map loaded:", currentMap.category, currentMap.index);
+	
+
 
 	
 })();
@@ -23493,6 +23793,518 @@ let currentCategory = "all";
 function getCustomMap(category, index){
 	return customMaps[category][index];
 }
+
+
+
+
+
+
+
+function loadParsedMinimap(parsedMap, state, compact = true){
+	state.map.tiles = {}; // associative array where [key] = tilesData array index.
+	state.map.tilesData = []; // actual data for tiles. {q,r, type, ownerId, object, savings} 
+	
+	let width = parsedMap.data[0].length;
+	let height = parsedMap.data.length;
+	state.map.width = width;
+	state.map.height = height;
+	state.map.imageData = parsedMap.imageData;
+	state.map.name = parsedMap.name;
+	
+	// TODO: check if width/height is used properly in the loops! not sure which is which...
+	for (let q = 0, y = 0; q < height; q++, y++) {
+		let roff = 0;
+	
+		for (let r = 0, x = 0; r < width; r++, x++) {
+			if((x % 2) == 1){
+				roff++;
+			}
+			let xx = x;
+			let yy = y;
+			//let qq = qoff+q-roff;
+			let qq = q-roff;
+			let rr = r;
+			
+			if(parsedMap.data[yy] && parsedMap.data[yy][xx]){
+				let info;
+				if(compact){
+					info = compactToExpandedInfo(compressedToCompactInfo(parsedMap.data[yy][xx]));
+				}else{
+					info = parsedMap.data[yy][xx];
+				}
+				let object = null;
+
+				// dont add water tiles into the tilesData, they are useless.
+				if(info.type !== 'water'){
+					setTileAt(qq, rr, { type: info.type, spawnIndex: info.owner ? info.owner-1 : -1, ownerIndex: -1, object: object, savings: 0 }, true, state);
+				}
+			}
+		}
+	}
+	
+
+	// set tile.neighbours for rendering pools with continuous lines:
+	for(let t = 0; t < state.map.tilesData.length; t++){
+		const tile = state.map.tilesData[t];
+		if(tile.type === "land"){
+			setTileNeighbours(tile, state);
+		}
+	}
+	
+	// generate outlines for all land pieces in the map:
+	for(let t = 0; t < state.map.tilesData.length; t++){
+		let tile = state.map.tilesData[t];
+		updateTileOutlines(tile.q, tile.r, true, state);
+	}
+	
+}
+
+
+function loadMinimap(category, index, size = 256, targetCanvas = null){
+	// default to first possible map if not found:
+	if(!customMaps[category] || !customMaps[category][index]){
+		category = "all";
+		index = 0;
+	}
+	
+	const map = getCustomMap(category, index);
+	
+	//console.log('Loading minimap:', category, index, map.name);
+	
+	let minimapState = {map: {}};
+	loadParsedMinimap(map, minimapState);
+	
+	generateWaterEdgeTilesMinimap(minimapState);
+	
+	let minimapCanvas = targetCanvas ? targetCanvas : document.createElement('canvas');
+	drawMinimapTiles(minimapCanvas, minimapState, size);
+	
+	//document.body.appendChild(minimapCanvas);
+	
+	return {minimapCanvas, minimapState};
+}
+
+
+function getMinimapTileColor(tile){
+	if(tile.spawnIndex !== -1){
+		return PLAYER_COLORS_ARR[tile.spawnIndex];
+	}else{
+		return LAND_COLOR;
+	}
+}
+
+
+// 2. Update drawWaterShading to calculate the "Screen Down" vector
+function drawWaterShadingMinimap(viewportIn, ctxIn, px, py, drawLines, color = "rgba(0,0,0, 0.6)"){
+	// Calculate the "Down" vector relative to current rotation.
+	// This ensures the shadow always falls towards the bottom of the monitor.
+	// 'waterShadingHeight' is your global depth constant.
+	const r = viewportIn.rotation;
+
+	// We want the vector (0, height) in Screen Space.
+	// To get that in our Rotated World Space, we rotate it by -r.
+	const offX = waterShadingHeight * Math.sin(r);
+	const offY = waterShadingHeight * Math.cos(r);
+
+	if(drawLines.length > 0){
+		ctxIn.fillStyle = color;
+		
+
+		for (let i = 0; i < drawLines.length; i++) {
+
+			let ival = drawLines[i];
+
+			let worldAngle = getSideAngle(ival) * Math.PI/180;
+			let cameraAngle = viewportIn.rotation;
+
+			// clockwise camera -> add
+			let screenAngle = norm180(worldAngle + cameraAngle);
+
+			let dy = Math.sin(screenAngle);
+			let show_shading = dy > 0; // hide if pointing up
+
+			if (show_shading) {
+				const x1 = px + HEX_SIZE * HEX_CORNERS[ival].x;
+				const y1 = py + HEX_SIZE * HEX_CORNERS[ival].y;
+				const x2 = px + HEX_SIZE * HEX_CORNERS[ival+1].x;
+				const y2 = py + HEX_SIZE * HEX_CORNERS[ival+1].y;
+
+				//drawFilledLine(x1, y1, x2, y2, offX, offY);
+				{
+					ctxIn.beginPath();
+					ctxIn.moveTo(x1, y1);
+					ctxIn.lineTo(x2, y2);
+					// Add the offset vector to create the "depth"
+					ctxIn.lineTo(x2 + offX, y2 + offY);
+					ctxIn.lineTo(x1 + offX, y1 + offY);
+					ctxIn.closePath();
+					ctxIn.fill();
+				}
+				
+			}
+		}
+	}
+}
+
+
+function drawFilledShadingLineMinimap(ctxIn, px, py, ival, scale1, scale2, scale3, color1, color2, offX = 0, offY = 0){
+	let edge1 = getEdgeCorners(px, py, ival, scale1, offX, offY); // 1.0  utside edge
+	let edge2 = getEdgeCorners(px, py, ival, scale2, offX, offY); // 0.9  inside edge
+	let edge3 = getEdgeCorners(px, py, ival, scale3, offX, offY); // 0.6  most inside edge
+/*
+	let textX = (edge1.x1+edge1.x2)/2;
+	let textY = (edge1.y1+edge1.y2)/2;
+	ctx.save();
+	ctx.translate(textX, textY);
+	drawStrokedText(text);
+	ctx.restore();
+	*/
+	
+	ctxIn.fillStyle = color1; // 0.3
+	ctxIn.beginPath();
+	ctxIn.moveTo(edge1.x1, edge1.y1);
+	ctxIn.lineTo(edge1.x2, edge1.y2);
+	ctxIn.lineTo(edge2.x2, edge2.y2);
+	ctxIn.lineTo(edge2.x1, edge2.y1);
+	ctxIn.closePath();
+	ctxIn.fill();
+	
+	ctxIn.fillStyle = color2; // 0.1
+	ctxIn.beginPath();
+	ctxIn.moveTo(edge2.x1, edge2.y1);
+	ctxIn.lineTo(edge2.x2, edge2.y2);
+	ctxIn.lineTo(edge3.x2, edge3.y2);
+	ctxIn.lineTo(edge3.x1, edge3.y1);
+	ctxIn.closePath();
+	ctxIn.fill();
+}
+
+function drawLandShadingMinimap(ctxIn, px, py, drawLines, scale1, scale2, scale3, color1, color2, offX = 0, offY = 0){
+	if(drawLines.length > 0){
+		for (let i = 0; i < drawLines.length; i++) {
+			let ival = drawLines[i];
+			// 1, 0.9, 0.6
+			drawFilledShadingLineMinimap(ctxIn, px, py, ival, scale1, scale2, scale3, color1, color2, offX, offY);
+		}
+	}
+}
+
+
+
+function drawShoreShadingMinimap(viewportIn, ctxIn, px, py, drawLines, scale1, scale2, scale3, color1, color2){
+	// Calculate the "Down" vector relative to current rotation.
+	// This ensures the shadow always falls towards the bottom of the monitor.
+	// 'waterShadingHeight' is your global depth constant.
+	const r = viewportIn.rotation;
+
+	// We want the vector (0, height) in Screen Space.
+	// To get that in our Rotated World Space, we rotate it by -r.
+	const offX = waterShadingHeight * Math.sin(r);
+	const offY = waterShadingHeight * Math.cos(r);
+
+	if(drawLines.length > 0){
+		for (let i = 0; i < drawLines.length; i++) {
+			let ival = drawLines[i];
+			let worldAngle = getSideAngle(ival) * Math.PI/180;
+			let cameraAngle = viewportIn.rotation;
+
+			// clockwise camera -> add
+			let screenAngle = norm180(worldAngle + cameraAngle);
+
+			let dy = Math.sin(screenAngle);
+			let hide_shading = dy > 0.8;
+
+			if (!hide_shading) {
+				drawFilledShadingLineMinimap(ctxIn, px, py, ival, scale1, scale2, scale3, color1, color2, offX, offY);
+			}
+		}
+	}
+}
+
+
+
+function generateWaterEdgeTilesMinimap(state){
+	//return;
+	let edges = {};
+	// find water edges:
+	for(let t = 0; t < state.map.tilesData.length; t++){
+		let tile = state.map.tilesData[t];
+		
+		let neigh = getHexNeighbors(tile.q, tile.r);
+		for(let i = 0; i < neigh.length; i++){
+			let n = neigh[i];
+			const nTile = getTileAt(n.q, n.r, state);
+			if(isTileWater(nTile)){
+				edges[`${n.q},${n.r}`] = 1;				
+			}
+		}
+	}
+	// create water tiles for water edge shading:
+	for(const [key, value] of Object.entries(edges)){
+		let hex = key.split(',');
+		let q = Number(hex[0]);
+		let r = Number(hex[1]);
+		//let tile = {type: "water", ownerIndex: -1, object: null, savings: 0};
+		//setTileAt(q, r, tile);
+		updateShoreTileOutlinesMinimap(q, r, true, state);
+	}
+	
+}
+
+
+function updateShoreTileOutlinesMinimap(q, r, allowCreation = true, state = null){
+	//return;
+	//console.warn("updateTileOutlines"+q+","+r);
+	let lines = [];
+	let neigh = getHexNeighbors(q, r);
+	for(let i = 0; i < neigh.length; i++){
+		let n = neigh[i];
+		const nTile = getTileAt(n.q, n.r, state);
+		let addline = 0;
+		if (getTileType(nTile) === "land") {
+			addline = 1;
+		}
+	
+		if(addline){
+			lines.push(i);
+		}
+	}
+
+	setOutlineAt(q, r, lines, allowCreation, state);
+}
+
+
+
+function drawMinimapTiles(minimapCanvas, state, size){
+	let scalefactor = size/256; // viewport settings are for 256x256 image.
+	
+	minimapCanvas.width = size;
+	minimapCanvas.height = size;
+	//minimapCanvas.style.border = "1px dashed blue";
+
+	let drawCtx = minimapCanvas.getContext('2d');
+	
+	//drawCtx.setTransform(1, 0, 0, 1, 0, 0);
+	
+	// Clear the canvas if reusing it.
+	//drawCtx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+
+	drawCtx.fillStyle = "#001C45";
+	drawCtx.fillRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+	
+	// Save the context state
+	drawCtx.save();
+	
+
+	let tempViewport = {
+		rotation: 0.21,
+		x: 120*scalefactor,
+		y: 10*scalefactor,
+		zoom: 0.078*scalefactor,
+	};
+	drawCtx.translate(tempViewport.x, tempViewport.y);
+	drawCtx.rotate(tempViewport.rotation);
+	drawCtx.scale(tempViewport.zoom, tempViewport.zoom);
+	
+	
+	let pulse = 0.88;
+	
+
+	
+	// shores shading:
+	for(let t = 0; t < state.map.tilesData.length; t++){
+		const tile = state.map.tilesData[t];
+		const q = tile.q;
+		const r = tile.r;
+
+		//const { x, y } = axialToPixel(q, r);
+		const x = axialToPixelX(q, r);
+		const y = axialToPixelY(q, r);
+
+
+		if(isTileWater(tile)){
+			
+			if(tile.type === "none"){
+				continue;
+			}
+	
+			// draw shores with lighter water by transparent hex:
+			const r = tempViewport.rotation;
+
+			// We want the vector (0, height) in Screen Space.
+			// To get that in our Rotated World Space, we rotate it by -r.
+			const offX = waterShadingHeight * Math.sin(r);
+			const offY = waterShadingHeight * Math.cos(r);
+			
+			//console.log("drawing", tile);
+			//drawCtx.save(); // probably not necessary here since the other drawings doesnt use them either.
+			drawHexagonPath(x+offX, y+offY, 0, drawCtx);
+			drawCtx.fillStyle = "rgba(200,200,255, 0.035)";
+			drawCtx.fill();
+			//drawCtx.restore();
+			
+			drawShoreShadingMinimap(tempViewport, drawCtx, x, y, tile.outline, 1, 0.9*pulse, 0.7*pulse*pulse, "rgba(200,200,255, 0.2)", "rgba(200,200,255, 0.1)");
+		}
+	}
+
+
+
+	// draw elevated land shading:
+	for(let t = 0; t < state.map.tilesData.length; t++){
+		const tile = state.map.tilesData[t];
+		const q = tile.q;
+		const r = tile.r;
+
+		//const { x, y } = axialToPixel(q, r);
+		const x = axialToPixelX(q, r);
+		const y = axialToPixelY(q, r);
+
+		if(!isTileWater(tile)){
+			if(tile.outline){
+				let color = "#16181C";
+				if(tile.spawnIndex !== -1){
+					color = darkenHexColor(getMinimapTileColor(tile), 0.7);
+				}
+
+				drawWaterShadingMinimap(tempViewport, drawCtx, x, y, tile.outline, color);
+			}
+		}
+	}
+
+	// draw land tiles:
+	for(let t = 0; t < state.map.tilesData.length; t++){
+		const tile = state.map.tilesData[t];
+		const q = tile.q;
+		const r = tile.r;
+
+		const x = axialToPixelX(q, r);
+		const y = axialToPixelY(q, r);
+	
+
+		// all included water tiles are actually shores, no water tiles are included after saving map.
+		if(isTileWater(tile)){
+			continue;
+		}
+	
+
+		// 2. Draw the fallback background color (or owner color)
+		let fallbackColor = getMinimapTileColor(tile);
+
+		
+		// --- Start Drawing Hex ---
+		
+		drawCtx.save(); // needed for hex drawing.
+		
+		
+		// Define the hex path
+		// for dirt OR grass hex.
+		drawHexagonPath(x, y, 0.5, drawCtx); // uses global ctx!!
+		
+		
+		let usesimple = true;
+		
+		//drawCtx.fillStyle = fallbackColor;
+		//drawCtx.fill();
+		
+		if(usesimple){
+		
+			if(tile.spawnIndex !== -1){
+				// draw owned tiles:
+				drawCtx.fillStyle = lightenHexColor(darkenHexColor(fallbackColor, 0.56), 0);
+				drawCtx.fill();
+			}else{
+				// draw dirt:
+				drawCtx.fillStyle = "#705D4A";
+				drawCtx.fill();
+			}
+			continue;
+		}else{
+		
+
+
+			let img = null;
+			let imageName = "";
+			
+			if(tile.spawnIndex !== -1){
+				imageName = 'land'; // tile.type
+				img = getImage(imageName);
+			}else{
+				// no owner, use dirt image:
+				if(isTileWater(tile)){
+					imageName = 'water';
+					img = getImage(imageName);
+				}else{
+					if(getTileType(tile) === 'land'){
+						imageName = 'dirt';
+					}else{
+						imageName = tile.type;
+					}
+					img = getImage(imageName);
+				}
+			}
+
+
+			// 4. If image is loaded, draw it clipped and scaled
+			if (img && img.complete && img.width > 0) {
+				drawCtx.clip(); // Apply clip to the hex path
+
+				// Calculate the "pointy-top" hex bounding box
+				const hexWidth = HEX_SIZE * SQRT3*GS;
+				const hexHeight = HEX_SIZE * 2;
+				
+				// Calculate "scale-to-fit" (contain) ratio
+				const ratio = Math.min(hexWidth / img.width, hexHeight / img.height);
+				const dWidth = img.width * ratio;
+				const dHeight = img.height * ratio;
+				
+				// Calculate centered destination (dx, dy)
+				const dx = x - dWidth / 2;
+				const dy = y - dHeight / 2;
+				
+				if(tile.spawnIndex !== -1){
+					// draw owned tiles:
+					drawCtx.fillStyle = darkenHexColor(fallbackColor, 0.56);
+					drawCtx.fillRect(dx, dy, dWidth, dHeight);
+				}else{
+					// draw dirt:
+					drawCtx.fillStyle = "#705D4A";
+					drawCtx.fillRect(dx, dy, dWidth, dHeight);
+				}
+			}
+			
+		}
+		// Restore context (removes clip)
+		drawCtx.restore();
+	}
+	
+
+	// draw elevated land shading:
+	for(let t = 0; t < state.map.tilesData.length; t++){
+		const tile = state.map.tilesData[t];
+		const q = tile.q;
+		const r = tile.r;
+
+		//const { x, y } = axialToPixel(q, r);
+		const x = axialToPixelX(q, r);
+		const y = axialToPixelY(q, r);
+
+		if(!isTileWater(tile)){
+			if(tile.outline){
+				let color = "#16181C";
+		
+
+				drawLandShadingMinimap(drawCtx, x, y, tile.outline, 1, 0.9, 0.6, "rgba(0,0,0, 0.3)", "rgba(0,0,0, 0.1)");
+			}
+		}
+	}
+	
+	drawCtx.restore();
+	
+
+
+}
+
+
 
 	
 function loadMap(category, index) {
@@ -23509,7 +24321,18 @@ function loadMap(category, index) {
 	
 	const map = getCustomMap(category, index);
 	console.log('Loading map:', category, index, map.name);
-	loadedMapImg.src = map.imageData;
+
+	//loadedMapImg.src = map.imageData;
+	loadMinimap(category, index, 256, loadedMapImg);
+	loadedMapImg.dataset.category = category;
+	loadedMapImg.dataset.index = index;
+
+	loadMinimap(category, index, 256, lobbyLoadedMapImg);
+	lobbyLoadedMapImg.src = map.imageData;
+	lobbyLoadedMapImg.dataset.category = category;
+	lobbyLoadedMapImg.dataset.index = index;
+
+	console.warn("SET: category, index = ", category, index, "LINE:", getLineNumber());
 	
 
 	setLoadedMapAndApplyScale();
@@ -23752,6 +24575,9 @@ function saveMap(){
 }
 
 
+
+
+
 // NOTE: make sure map width/height is even.
 function loadParsedMap(parsedMap, compact = true){
 	
@@ -23770,49 +24596,6 @@ function loadParsedMap(parsedMap, compact = true){
 	//console.log(parsedMap);
 	console.warn("width, height");
 	console.warn(width, height);
-	
-
-	//let qoff = Math.ceil(height/2); // prevents negative coordinates to be used.
-	//let off = 0;//height % 2; // fixes odd heights making different shape for map.
-	
-	
-	// calculate max for q and r, to make faster array search by q*w+r index:
-	/*
-	let max_q = 0;
-	let max_r = 0;
-	
-
-	
-	for (let q = 0, y = 0; q < width; q++, y++) {
-		let roff = 0;
-	
-		for (let r = 0, x = 0; r < height; r++, x++) {
-			if((x % 2) == 1){
-				roff++;
-			}
-			let xx = x;
-			let yy = y;
-			let qq = q-roff;
-			let rr = r;
-			
-			if(parsedMap.data[yy] && parsedMap.data[yy][xx]){
-				let info;
-				if(compact){
-					info = compactToExpandedInfo(parsedMap.data[yy][xx]);
-				}else{
-					info = parsedMap.data[yy][xx];
-				}
-
-				if(info.type !== 'water'){
-					if(qq > max_q) max_q = qq;
-					if(rr > max_r) max_r = rr;
-				}
-			}
-		}
-	}
-	console.warn("max_q, max_r");
-	console.warn(max_q, max_r);
-	*/
 	
 	
 	// TODO: check if width/height is used properly in the loops! not sure which is which...
@@ -25070,9 +25853,14 @@ function getUint(str) {
 }
 
 
+let disablecontext = true;
+
+
 // prevent contextmenu from appearing. oncontextmenu
 document.addEventListener('contextmenu', function(event) {
-	event.preventDefault();
+	if(disablecontext){
+		event.preventDefault();
+	}
 }, false);
 
 
@@ -25583,6 +26371,28 @@ function unloadGame(){
 		
 		loadedMapMode(false);
 		
+		
+		//loadedMapCategory
+		//loadedMapIndex
+		
+		// reload previous map:
+		loadedmap = deepClone(customMaps[loadedMapCategory][loadedMapIndex]);
+		loadParsedMap(loadedmap);
+		console.warn("SET: loadedmap:", loadedmap);
+		// update minimap for host:
+		//loadedMapImg.src = loadedmap.imageData;
+		
+		
+		let catinfo = getMapCatIndex(loadedmap.name);
+		loadMinimap(loadedMapCategory, loadedMapIndex, 256, loadedMapImg);
+		loadedMapImg.dataset.category = loadedMapCategory;
+		loadedMapImg.dataset.index = loadedMapIndex;
+		console.warn("SET: category, index = ", loadedMapCategory, loadedMapIndex, "LINE:", getLineNumber());
+		
+		console.warn("loadedmap.name", loadedmap.name, catinfo);
+		
+		broadcastMapState();
+		
 		updateHostLobbyUI();
 	}
 }
@@ -25648,7 +26458,13 @@ function loadSavedGame(roomKey){
 				gameState.map = loadedGameState.map;
 				
 				// update minimap for host:
-				loadedMapImg.src = loadedGameState.map.imageData;
+				//loadedMapImg.src = loadedGameState.map.imageData;
+				let catinfo = getMapCatIndex(loadedGameState.map.name);
+				loadMinimap(catinfo.category, catinfo.index, 256, loadedMapImg);
+				loadedMapImg.dataset.category = catinfo.category;
+				loadedMapImg.dataset.index = catinfo.index;
+				console.warn("SET: category, index = ", catinfo.category, catinfo.index, "LINE:", getLineNumber());
+				
 				updateHostLobbyUI();
 
 				//console.log(lobbyLoadedMapImg);
@@ -25759,6 +26575,7 @@ function nextUnit(){
 		// disable next button if no next unit can be found:
 		previousUnitBtn.disabled = !countUnmovedUnitsByType(cycleUnitTypeValue);
 		nextUnitBtn.disabled = !countUnmovedUnitsByType(cycleUnitTypeValue);
+		cycleUnitTypeListSelected.classList.toggle('disabled', !countUnmovedUnitsByType(cycleUnitTypeValue));
 	}
 }
 
@@ -25806,6 +26623,7 @@ function previousUnit(){
 		// disable next button if no next unit can be found:
 		previousUnitBtn.disabled = !countUnmovedUnitsByType(cycleUnitTypeValue);
 		nextUnitBtn.disabled = !countUnmovedUnitsByType(cycleUnitTypeValue);
+		cycleUnitTypeListSelected.classList.toggle('disabled', !countUnmovedUnitsByType(cycleUnitTypeValue));
 	}
 }
 
@@ -26077,6 +26895,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 	initDB();
 
 	await loadImages();
+	
 
 	
 	//hostCustomColorPicker.value = "#FF00FF";
