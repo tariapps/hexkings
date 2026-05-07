@@ -5030,6 +5030,24 @@ function getMapCatIndex(name){
 }
 
 
+/*
+	rotation: 0.21,
+	x: 120*scalefactor,
+	y: 10*scalefactor,
+	zoom: 0.078*scalefactor,
+*/
+function updateimg(viewportIn){
+	let category = loadedMapImg.dataset.category;
+	let index = parseInt(loadedMapImg.dataset.index);
+	
+	let minimapData = loadMinimap(category, index, 1024, popupImg, null, viewportIn);
+	
+	popupImg.dataset.category = category;
+	popupImg.dataset.index = index;
+	
+	openMapPreviewPopup();
+}
+
 // Show popup on click
 loadedMapImg.addEventListener('click', (e) => {
 	e.preventDefault();
@@ -5233,6 +5251,8 @@ function renderSavedGamesList(savedGames) {
 		let catinfo = getMapCatIndex(map.name);
 		
 		let canvasElem = document.createElement('canvas');
+		
+		//generateWaterEdgeTilesMinimap(savedState);
 		
 		loadMinimap(catinfo.category, catinfo.index, 256, canvasElem, savedState);
 		canvasElem.title = `${map.name}: ${map.width} x ${map.height}`;
@@ -6178,6 +6198,10 @@ function deCompressAction(arr){
 function addNetworkHistory(data){
 	if(REPLAY_ENABLED) return;
 	if(getMyPlayer().isSpectator) return;
+	if(!gameStarted()){
+		console.log("addNetworkHistory disabled: game has not started yet.");
+		return;
+	}
 	
 	// add timestamp for when the action was received, will make replays more realistic feeling.
 	NETWORK_HISTORY.push(compressAction({
@@ -8192,9 +8216,9 @@ let playerSettingsInputs = {
 		],
 		list: [], // generated later. contains final options list.
 		settings: {
-			min: 0.5,
-			max: 5,
-			step: 0.5,
+			min: 0,
+			max: 14,
+			step: 1,
 		},
 	},
 	
@@ -21948,8 +21972,10 @@ function handleHostData(data) {
 				//console.warn("XXYY: game saved, network history saved.");
 			break;
 			default:
-				console.error("---------------------------------------");
-				console.error("didnt save to replay: ", actionToText(data.type));
+				if(gameStarted()){
+					console.error("---------------------------------------");
+					console.error("didnt save to replay: ", actionToText(data.type));
+				}
 			break;
 		}
 	}
@@ -23897,7 +23923,7 @@ function loadMinimapCached(category, index) {
 }
 
 
-function loadMinimap(category, index, size = 256, targetCanvas = null, savedState = null){
+function loadMinimap(category, index, size = 256, targetCanvas = null, savedState = null, viewportIn = null){
 	// default to first possible map if not found:
 	if(!customMaps[category] || !customMaps[category][index]){
 		category = "all";
@@ -23914,7 +23940,7 @@ function loadMinimap(category, index, size = 256, targetCanvas = null, savedStat
 	generateWaterEdgeTilesMinimap(minimapState);
 	
 	let minimapCanvas = targetCanvas ? targetCanvas : document.createElement('canvas');
-	drawMinimapTiles(minimapCanvas, minimapState, size, savedState);
+	drawMinimapTiles(minimapCanvas, minimapState, size, savedState, viewportIn);
 	
 	//document.body.appendChild(minimapCanvas);
 	
@@ -24112,19 +24138,36 @@ function updateShoreTileOutlinesMinimap(q, r, allowCreation = true, state = null
 
 
 
+function worldToCanvas(x, y, viewportIn) {
+	const scaledX = x * viewportIn.zoom;
+	const scaledY = y * viewportIn.zoom;
+
+	const cos = Math.cos(viewportIn.rotation);
+	const sin = Math.sin(viewportIn.rotation);
+
+	const rotatedX = scaledX * cos - scaledY * sin;
+	const rotatedY = scaledX * sin + scaledY * cos;
+
+	return {
+		x: rotatedX + viewportIn.x,
+		y: rotatedY + viewportIn.y
+	};
+}
 
 
-
-function drawMinimapTiles(minimapCanvas, state, size, savedState = null){
+function drawMinimapTiles(minimapCanvas, state, size, savedState = null, viewportIn = null){
 	let scalefactor = size/256; // viewport settings are for 256x256 image.
 	
 	minimapCanvas.width = size;
 	minimapCanvas.height = size;
 	//minimapCanvas.style.border = "1px dashed blue";
 	
+	//generateWaterEdgeTilesMinimap(state);
+	
 	if(savedState){
 		state = savedState;
 	}
+
 
 	let drawCtx = minimapCanvas.getContext('2d');
 	
@@ -24146,9 +24189,115 @@ function drawMinimapTiles(minimapCanvas, state, size, savedState = null){
 		y: 10*scalefactor,
 		zoom: 0.078*scalefactor,
 	};
+	if(viewportIn){
+		tempViewport = {...tempViewport, ...viewportIn};
+	}
+	
+
+	let boundsWorld = {
+		min: {x:Infinity,y:Infinity},
+		max: {x:-Infinity,y:-Infinity},
+	};
+	
+	// find map bounds:
+	for(let t = 0; t < state.map.tilesData.length; t++){
+		const tile = state.map.tilesData[t];
+		const q = tile.q;
+		const r = tile.r;
+
+		const x = axialToPixelX(q, r);
+		const y = axialToPixelY(q, r);
+	
+
+		// all included water tiles are actually shores, no water tiles are included after saving map.
+		if(isTileWater(tile)){
+			continue;
+		}
+		
+		if(x < boundsWorld.min.x) boundsWorld.min.x = x;
+		if(y < boundsWorld.min.y) boundsWorld.min.y = y;
+	
+		if(x > boundsWorld.max.x) boundsWorld.max.x = x;
+		if(y > boundsWorld.max.y) boundsWorld.max.y = y;
+	}
+
+	let middleWorld = {
+		x: (boundsWorld.min.x+boundsWorld.max.x)/2,
+		y: (boundsWorld.min.y+boundsWorld.max.y)/2,
+	};
+	
+	const cos = Math.cos(tempViewport.rotation);
+	const sin = Math.sin(tempViewport.rotation);
+
+	const rotatedBounds = {
+		min: { x: Infinity, y: Infinity },
+		max: { x: -Infinity, y: -Infinity },
+	};
+
+	for (const tile of state.map.tilesData) {
+
+		if (isTileWater(tile)) {
+			continue;
+		}
+
+		const x = axialToPixelX(tile.q, tile.r) - middleWorld.x;
+		const y = axialToPixelY(tile.q, tile.r) - middleWorld.y;
+
+		const rx = x * cos - y * sin;
+		const ry = x * sin + y * cos;
+
+		rotatedBounds.min.x = Math.min(rotatedBounds.min.x, rx);
+		rotatedBounds.min.y = Math.min(rotatedBounds.min.y, ry);
+
+		rotatedBounds.max.x = Math.max(rotatedBounds.max.x, rx);
+		rotatedBounds.max.y = Math.max(rotatedBounds.max.y, ry);
+	}
+	
+	let style = tempViewport.style ?? 1;
+	
+	let rotatedWidth;
+	let rotatedHeight;
+
+	if(style === 0){
+		const mapWidth = boundsWorld.max.x - boundsWorld.min.x;
+		const mapHeight = boundsWorld.max.y - boundsWorld.min.y;
+		
+		const cos = Math.abs(Math.cos(tempViewport.rotation));
+		const sin = Math.abs(Math.sin(tempViewport.rotation));
+
+		rotatedWidth = mapWidth * cos + mapHeight * sin;
+		rotatedHeight = mapWidth * sin + mapHeight * cos;
+	}else{
+		rotatedWidth = rotatedBounds.max.x - rotatedBounds.min.x;
+		rotatedHeight = rotatedBounds.max.y - rotatedBounds.min.y;
+	}
+	
+	const padding = 30*scalefactor; // pixels
+
+	const zoomX = (minimapCanvas.width - padding * 2) / rotatedWidth;
+	const zoomY = (minimapCanvas.height - padding * 2) / rotatedHeight;
+
+	tempViewport.zoom = Math.min(zoomX, zoomY);
+	
+	
+	//console.warn("zoom:", tempViewport.zoom);
+	//console.warn("boundsWorld:", JSON.stringify(boundsWorld));
+	
+
+	//tempViewport.x = middleWorld.x;
+	//tempViewport.y = middleWorld.y;
+	
+	tempViewport.x = minimapCanvas.width / 2;
+	tempViewport.y = minimapCanvas.height / 2;
+	
 	drawCtx.translate(tempViewport.x, tempViewport.y);
-	drawCtx.rotate(tempViewport.rotation);
+	
 	drawCtx.scale(tempViewport.zoom, tempViewport.zoom);
+	drawCtx.rotate(tempViewport.rotation);
+	
+	// move map so its center becomes origin
+	drawCtx.translate(-middleWorld.x, -middleWorld.y);
+	
 	
 	
 	let pulse = 0.88; // for shore waves "animation".
@@ -24215,6 +24364,8 @@ function drawMinimapTiles(minimapCanvas, state, size, savedState = null){
 		}
 	}
 
+
+
 	// draw land tiles:
 	for(let t = 0; t < state.map.tilesData.length; t++){
 		const tile = state.map.tilesData[t];
@@ -24229,15 +24380,14 @@ function drawMinimapTiles(minimapCanvas, state, size, savedState = null){
 		if(isTileWater(tile)){
 			continue;
 		}
-	
-
+		
 		// 2. Draw the fallback background color (or owner color)
 		let fallbackColor = getMinimapTileColor(tile);
 
 		
 		// --- Start Drawing Hex ---
 		
-		drawCtx.save(); // needed for hex drawing.
+		//drawCtx.save(); // needed for hex drawing.
 		
 		
 		// Define the hex path
@@ -24247,94 +24397,37 @@ function drawMinimapTiles(minimapCanvas, state, size, savedState = null){
 		
 		let usesimple = true;
 		
-		//drawCtx.fillStyle = fallbackColor;
-		//drawCtx.fill();
-		
-		if(usesimple){
-		
-			if(savedState){
-				if(tile.ownerIndex !== -1){
-					fallbackColor = getPlayerByIndex(tile.ownerIndex, savedState).color;
-					// draw owned tiles:
-					drawCtx.fillStyle = lightenHexColor(darkenHexColor(fallbackColor, 0.56), 0);
-					drawCtx.fill();
-				}else{
-					// draw dirt:
-					drawCtx.fillStyle = "#705D4A";
-					drawCtx.fill();
-				}
-				
+
+		if(savedState){
+			if(tile.ownerIndex !== -1){
+				fallbackColor = getPlayerByIndex(tile.ownerIndex, savedState).color;
+				// draw owned tiles:
+				drawCtx.fillStyle = lightenHexColor(darkenHexColor(fallbackColor, 0.56), 0);
+				drawCtx.fill();
 			}else{
-				if(tile.spawnIndex !== -1){
-					// draw owned tiles:
-					drawCtx.fillStyle = lightenHexColor(darkenHexColor(fallbackColor, 0.56), 0);
-					drawCtx.fill();
-				}else{
-					// draw dirt:
-					drawCtx.fillStyle = "#705D4A";
-					drawCtx.fill();
-				}
+				// draw dirt:
+				drawCtx.fillStyle = "#705D4A";
+				drawCtx.fill();
 			}
-			continue;
+			
 		}else{
-		
-
-
-			let img = null;
-			let imageName = "";
-			
 			if(tile.spawnIndex !== -1){
-				imageName = 'land'; // tile.type
-				img = getImage(imageName);
+				// draw owned tiles:
+				drawCtx.fillStyle = lightenHexColor(darkenHexColor(fallbackColor, 0.56), 0);
+				drawCtx.fill();
 			}else{
-				// no owner, use dirt image:
-				if(isTileWater(tile)){
-					imageName = 'water';
-					img = getImage(imageName);
-				}else{
-					if(getTileType(tile) === 'land'){
-						imageName = 'dirt';
-					}else{
-						imageName = tile.type;
-					}
-					img = getImage(imageName);
-				}
+				// draw dirt:
+				drawCtx.fillStyle = "#705D4A";
+				drawCtx.fill();
 			}
-
-
-			// 4. If image is loaded, draw it clipped and scaled
-			if (img && img.complete && img.width > 0) {
-				drawCtx.clip(); // Apply clip to the hex path
-
-				// Calculate the "pointy-top" hex bounding box
-				const hexWidth = HEX_SIZE * SQRT3*GS;
-				const hexHeight = HEX_SIZE * 2;
-				
-				// Calculate "scale-to-fit" (contain) ratio
-				const ratio = Math.min(hexWidth / img.width, hexHeight / img.height);
-				const dWidth = img.width * ratio;
-				const dHeight = img.height * ratio;
-				
-				// Calculate centered destination (dx, dy)
-				const dx = x - dWidth / 2;
-				const dy = y - dHeight / 2;
-				
-				if(tile.spawnIndex !== -1){
-					// draw owned tiles:
-					drawCtx.fillStyle = darkenHexColor(fallbackColor, 0.56);
-					drawCtx.fillRect(dx, dy, dWidth, dHeight);
-				}else{
-					// draw dirt:
-					drawCtx.fillStyle = "#705D4A";
-					drawCtx.fillRect(dx, dy, dWidth, dHeight);
-				}
-			}
-			
 		}
+
+		
 		// Restore context (removes clip)
-		drawCtx.restore();
+		//drawCtx.restore();
 	}
 	
+
 
 	// draw elevated land shading:
 	for(let t = 0; t < state.map.tilesData.length; t++){
