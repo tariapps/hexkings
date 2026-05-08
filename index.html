@@ -472,20 +472,54 @@ label {
 
 .player-list-item-top {
 	display: inline-block;
-	padding: 5px;
-	border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+	---padding: 5px;
+	---border-bottom: 1px solid rgba(255, 255, 255, 0.3);
 	word-break: break-all;
 	background-color:rgba(0,0,0,0.5);
 
 	margin-right: 4px;
-	border-left: 2px solid rgba(255, 255, 255, 0.3);
+	border-left: 4px solid rgba(255, 255, 255, 0.3);
 	
-
 	pointer-events: auto;
-
 }
 
+.progress-line-wrap {
+	width:100%;
+	height:3px;
+	background-color:black;
+}
+.progress-line {
+	width:0%;
+	height:3px;
+	background-color:yellow;
+}
+
+
+.progress-line-animated {
+
+    width: 100%;
+    height: 3px;
+
+    background-color: #333;
+
+    background-image: url("images/ui/progress-line2.png");
+    background-repeat: repeat-x;
+
+    animation: progressBarScrollAnim 1s linear infinite;
+}
+
+@keyframes progressBarScrollAnim {
+    from {
+        background-position-x: 0;
+    }
+    to {
+        background-position-x: 41px;
+    }
+}
+
+
 .player-list-item-top .namevals {
+	padding:5px;
     text-shadow: 2px 2px 1px rgba(0, 0, 0, 1), 0px 0px 2px rgba(0, 0, 0, 1), 0px 0px 4px rgba(0, 0, 0, 1);
 }
 	
@@ -497,6 +531,8 @@ label {
 .player-list-item-top.current-turn {
     background-color: rgb(139, 139, 0, 0.67);
 }
+
+
 
 .ai-player-item-top {
 
@@ -2006,6 +2042,7 @@ input.disabled {
 
 </head>
 <body>
+
 
 
 
@@ -5991,6 +6028,7 @@ const ACTION = {
 	'player_kicked': 127,		// ACTION.player_kicked
 	'stats': 128,				// ACTION.stats
 	'day_changed': 129,			// ACTION.day_changed
+	'progress_bar_update': 130,	// ACTION.progress_bar_update
 
 	// handleClientData: (host receives these)
 	'pong': 200, 				// ACTION.pong
@@ -6447,6 +6485,8 @@ let localPlayerPools = []; // economy pools for local player.
 let db = null;
 let loadedGameState = null;
 let loadedGameStateInitial = null;
+
+let playerProgressBars = {};
 
 // rule constants:
 const ENDRULE_NO_SOLDIERS_NO_MONEY = 0;
@@ -9602,6 +9642,15 @@ function sendToHost(data) {
 let isAiBatching = false;
 let aiBatchBuffer = [];
 
+function broadcastNow(data){
+	if (!isHost()) return;
+
+	for (const [peerId, conn] of connections.entries()) {
+		conn.send(data);
+	}
+}
+
+
 function broadcast(data, everyone = true) {
 	if (!isHost()) return;
 
@@ -9618,9 +9667,10 @@ function broadcast(data, everyone = true) {
 		aiBatchBuffer.push(data);
 	} else {
 		// Standard mode: Send to all connected clients immediately
-		for (const [peerId, conn] of connections.entries()) {
-			conn.send(data);
-		}
+		broadcastNow(data);
+		//for (const [peerId, conn] of connections.entries()) {
+		//	conn.send(data);
+		//}
 	}
 }
 
@@ -10815,6 +10865,7 @@ const particlesDrawnInfo = document.getElementById("particles-drawn-info");
 
 let lastTime = 0;
 let frameCount = 0;
+let currentRenderFrame = 0;
 
 let TILES_DRAWN = 0;
 let OBJECTS_DRAWN = 0;
@@ -10822,6 +10873,8 @@ let OBJECTS_DRAWN = 0;
 let prev_particles = -1;
 
 function trackFPS(){
+	currentRenderFrame++;
+	
 	//let timestamp = Date.now();
 	let timestamp = performance.now();
 	if (!lastTime) lastTime = timestamp;
@@ -14516,11 +14569,7 @@ function hasUnmovedUnits(playerIndex = -1){
 	return false;
 }
 
-
-// updateui update ui
-function updateGameUI() {
-	if (!gameStarted()) return;
-	
+function updateProgressBarsUI(){
 	const myPlayer = getMyPlayer();
 	const currentTurnPlayer = getCurrentTurnPlayer();
 	
@@ -14537,9 +14586,6 @@ function updateGameUI() {
 		item.dataset.peer = p.id;
 		item.dataset.playerIndex = p.playerIndex;
 
-		if(p.id	!== localPlayer.id && !p.isAI){
-			item.classList.add("ai-player-item-top");	
-		}
 		
 		let color = p.textColor;
 		let specTag = "";
@@ -14552,18 +14598,73 @@ function updateGameUI() {
 			specTag = "(AI)";
 		}
 		
+
 		if(!p.quitted && !p.isDead && !p.isSpectator){
 			// <span class="player-turn-indicator-top"></span>
-			item.innerHTML = `
+			const nameitem = document.createElement('div');
+			nameitem.classList.add('namevals');
+			nameitem.style = `color: ${color}; font-weight: bold;`;
+			nameitem.textContent = `${p.name} ${specTag}`;
+			//item.innerHTML = `<span style="color: ${color}; font-weight: bold;" class="namevals"></span>`;
+			//const safeName = document.createTextNode(`${p.name} ${specTag}`);
+			//item.querySelector("span.namevals").appendChild(safeName);
+			item.appendChild(nameitem);
+			
+			const progressLineWrap = document.createElement('div');
+			progressLineWrap.classList.add('progress-line-wrap');
+			progressLineWrap.id = `progress-line-top-${p.playerIndex}`;
+			
+			const progressLine = document.createElement('div');
+			progressLine.classList.add('progress-line-elem');
+			
+			//progressLine.id = `progress-line-top-${p.playerIndex}`;
+			//progressLine.classList.add('progress-line');
+			//progressLine.classList.add('progress-line-animated');
+			let percent = 0;
+			let style = 0;
+			
+			if(playerProgressBars[p.playerIndex]){
+				percent = playerProgressBars[p.playerIndex].percent;
+				style = playerProgressBars[p.playerIndex].style;
+			}
+			if(style === 1 && p.playerIndex === gameState.turn.currentPlayerIndex){
+				percent = 100;
 				
-				<span style="color: ${color}; font-weight: bold;" class="namevals"></span>
-			`;
-			const safeName = document.createTextNode(`${p.name} ${specTag}`);
-			item.querySelector("span.namevals").appendChild(safeName);
+				progressLine.classList.add('progress-line-animated');
+				if(p.isAI){
+					progressLine.style.animation = "none";
+					let framePx = Math.round((((currentRenderFrame) % 4)/4)*41);
+					progressLine.style.backgroundPositionX = framePx+"px"; // 41px is max. 41px takes 1 sec.
+				}
+			}else{
+				progressLine.classList.add('progress-line');
+			}
+			if(p.playerIndex !== gameState.turn.currentPlayerIndex){
+				percent = 0;
+			}
+			progressLine.style.width = percent+"%";
+			
+			
+
+			
+			
+			progressLineWrap.appendChild(progressLine);
+			item.appendChild(progressLineWrap);
 
 			topFloatUiPlayers.appendChild(item);
+			
 		}
 	});
+}
+
+// updateui update ui
+function updateGameUI() {
+	if (!gameStarted()) return;
+	
+	const myPlayer = getMyPlayer();
+	const currentTurnPlayer = getCurrentTurnPlayer();
+	
+	updateProgressBarsUI();
 	
 	// Update player list (in chatbox)
 	playerUIList.innerHTML = '';
@@ -14784,8 +14885,8 @@ function updateSelectedPoolUi(){
 	buildOtherBtn.classList.add("disabled");
 	
 	if(selectedPool){
-		console.warn("selectedPool:");
-		console.warn(selectedPool);
+		//console.warn("selectedPool:");
+		//console.warn(selectedPool);
 		
 		let totalBalance = (selectedPool.totalSavings + selectedPool.totalIncome) - selectedPool.totalWages;
 		playerSavings.textContent = formatPoolDecimal(selectedPool.totalSavings);
@@ -14815,8 +14916,8 @@ function updateSelectedPoolUi(){
 		showPoolInfo();
 	}else{
 		if(enemySelectedPool){
-			console.warn("selectedPool ----------------------------------------");
-			console.warn(selectedPool);
+			//console.warn("selectedPool ----------------------------------------");
+			//console.warn(selectedPool);
 
 			playerSavings.textContent = "?";
 			playerBalance.textContent = "?";
@@ -14828,7 +14929,7 @@ function updateSelectedPoolUi(){
 		}else{
 		
 			hidePoolInfo();
-			console.log("hidePoolInfo at updateSelectedPoolUi");
+			//console.log("hidePoolInfo at updateSelectedPoolUi");
 		}
 	}
 }
@@ -19401,6 +19502,11 @@ async function executeAIMoveSequentially(player) {
 				await yieldToMainThread();
 				startTime = performance.now(); // Reset timer
 				
+				broadcastNow({
+					type: ACTION.progress_bar_update,
+					percent: getPlayerMovePercent(player.playerIndex),
+				});
+				
 				// CRITICAL: Re-check game state after resuming!
 				// Since we paused, the game state *might* have changed (e.g. game over).
 				if (gameState.settings.gameOver) {
@@ -19433,6 +19539,11 @@ async function executeAIMoveSequentially(player) {
 				await yieldToMainThread(); 
 				startTime = performance.now(); // Reset timer
 				
+				broadcastNow({
+					type: ACTION.progress_bar_update,
+					percent: getPlayerMovePercent(player.playerIndex),
+				});
+				
 				// CRITICAL: Re-check game state after resuming!
 				// Since we paused, the game state *might* have changed (e.g. game over).
 				if (gameState.settings.gameOver) {
@@ -19452,6 +19563,10 @@ async function executeAIMoveSequentially(player) {
 	// --- END BATCH MODE ---
 	isAiBatching = false;
 	
+	broadcastNow({
+		type: ACTION.progress_bar_update,
+		percent: getPlayerMovePercent(player.playerIndex),
+	});
 
 	if (aiBatchBuffer.length > 0) {
 		const bigMessage = {
@@ -20851,6 +20966,49 @@ function killPlayerTiles(playerIndex){
 	}
 }
 
+function getPlayerMovePercent(playerIndex){
+	let totalUnitsCount = 0;
+	let hasMovedCount = 0;
+	
+	let percent = 100;
+	
+	for(let i = 0; i < gameState.units.length; i++){
+		let unit = gameState.units[i];
+		if(unit.ownerIndex === playerIndex && unitTypeCanMove(unit.type)){
+			totalUnitsCount++;
+			if(unit.hasMoved){
+				hasMovedCount++;
+			}
+		}
+	}
+
+	if(totalUnitsCount > 0){
+		percent = Math.round((hasMovedCount/totalUnitsCount)*100);
+	}
+	
+	return percent;
+}
+
+function updateProgressbar(playerIndex, from, data = null){
+	let elemWrap = document.getElementById(`progress-line-top-${playerIndex}`);
+	let elem = elemWrap.querySelector('.progress-line-elem');
+	
+	let percent = 100;
+	
+	if(!data){
+		percent = getPlayerMovePercent(playerIndex);
+	}else{
+		percent = data.percent;
+	}
+	elem.style.width = `${percent}%`;
+	
+	let style = (percent >= 100) ? 1 : 0;
+	
+	playerProgressBars[playerIndex] = {percent: percent, style: style};
+	
+	//addSystemChatMessage(`percent: ${percent}% (${from})`);
+}
+
 
 // =================================================================
 // --- GAME STATE SYNC (NETWORKING)
@@ -20946,15 +21104,22 @@ function handleHostData(data) {
 			}
 		}
 		break;
+		case ACTION.progress_bar_update: {
+			updateProgressbar(gameState.turn.currentPlayerIndex, "progress_bar_update", data);
+			updateProgressBarsUI();
+		}
+		break;
 		case ACTION.multiple_actions: {
-			console.warn("multiple_actions received: ");
-			console.warn(data.actions);
+			console.warn("multiple_actions received");
+			//console.warn(data.actions);
 			// handle batch of actions in one run, so there is less individual messages sent to clients.
 			if(data.actions !== undefined && data.actions.length > 0){
 				for(let i = 0; i < data.actions.length; i++){
 					handleHostData(data.actions[i]);
 				}
 			}
+			
+			
 			return; // dont process anything after.
 		}
 		break;
@@ -21229,6 +21394,8 @@ function handleHostData(data) {
 				// set unloading unit as moved:
 				unit.hasMoved = true;
 				
+				updateProgressbar(unit.ownerIndex, "unit_unloaded");
+				
 				needsUIUpdate = true;
 				updateHighlights();
 			}
@@ -21240,6 +21407,8 @@ function handleHostData(data) {
 				let targetUnit = getUnitById(data.targetUnitId);
 				// load the unit:
 				targetUnit.loadedUnit = unit;
+				
+				updateProgressbar(unit.ownerIndex, "unit_loaded");
 				
 				needsUIUpdate = true;
 				updateHighlights();
@@ -21579,6 +21748,8 @@ function handleHostData(data) {
 			needsUIUpdate = true;
 			updateHighlights();
 			
+			updateProgressbar(unit.ownerIndex, "unit_added");
+			
 			pushLastActionHexCheckParams(
 				unit.ownerIndex, 
 				data.wasUndo ?? 0, 
@@ -21594,7 +21765,9 @@ function handleHostData(data) {
 		break;
 		case ACTION.unit_removed: {
 			
+			
 			let unit = getUnitById(data.unitId);
+			let ownerIndex = unit.ownerIndex;
 			
 			// spawn Floating Text:
 			if(data.FText !== undefined && data.FText > 0){ // only show non-zero values.
@@ -21617,6 +21790,8 @@ function handleHostData(data) {
 			//gameState.units = gameState.units.filter(u => u.id !== data.unitId);
 			removeUnit(data.unitId);
 			
+			
+			updateProgressbar(ownerIndex, "unit_removed");
 			
 			needsUIUpdate = true;
 			updateHighlights();
@@ -21775,6 +21950,8 @@ function handleHostData(data) {
 			const unit = gameState.units.find(u => u.id === data.unitId);
 			if (unit) {
 				unit.hasMoved = data.hasMoved;
+				
+				updateProgressbar(unit.ownerIndex, "unit_move_reset");
 			}
 			needsUIUpdate = true;
 			updateHighlights();
@@ -21783,8 +21960,13 @@ function handleHostData(data) {
 		}
 		break;
 		case ACTION.unit_moved: {
+
+			
+			
 			const unit = gameState.units.find(u => u.id === data.unitId);
 			if (unit) {
+				
+				
 				if(isTypeBoat(unit.type)){
 					let startHex = {q:unit.q, r:unit.r};
 					let endHex = {q:data.q, r:data.r};
@@ -21814,6 +21996,9 @@ function handleHostData(data) {
 				unit.r = data.r;
 				unit.hasMoved = data.hasMoved;
 				
+				
+				updateProgressbar(unit.ownerIndex, "unit_moved");
+				
 				pushLastActionHexCheckParams(
 					unit.ownerIndex, 
 					data.wasUndo ?? 0, 
@@ -21831,6 +22016,7 @@ function handleHostData(data) {
 		break;
 		case ACTION.turn_changed: {
 			
+			updateProgressbar(gameState.turn.currentPlayerIndex, "turn_changed");
 	
 			
 			gameState.turn.currentPlayerIndex = data.currentPlayerIndex;
@@ -21973,8 +22159,8 @@ function handleHostData(data) {
 			break;
 			default:
 				if(gameStarted()){
-					console.error("---------------------------------------");
-					console.error("didnt save to replay: ", actionToText(data.type));
+					//console.error("---------------------------------------");
+					//console.error("didnt save to replay: ", actionToText(data.type));
 				}
 			break;
 		}
@@ -22390,7 +22576,7 @@ function restartGame(){
 
 let PING_INTERVAL = 5000; // 5 seconds
 let TIMEOUT_TIME = 30000; // 30 seconds
-let TIMEOUT_MSG_TIME = PING_INTERVAL+1000;
+let TIMEOUT_MSG_TIME = PING_INTERVAL+5000;
 
 function checkPlayersTimeouts(){
 	let batchActions = [];
