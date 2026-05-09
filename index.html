@@ -14434,6 +14434,17 @@ function getMapBounds(){
 	return gameState.map.bounds;
 }
 
+function getTileAtIndex(tileIndex, state = null){
+	if(tileIndex === -1){
+		return null;
+	}
+	if(!state){
+		return gameState.map.tilesData[tileIndex];
+	}else{
+		return state.map.tilesData[tileIndex];
+	}
+}
+
 function getTileAt(q, r, state = null) {
 	let tileKey = `${q},${r}`;
 	if(!state){
@@ -19061,23 +19072,24 @@ function ai_find_best_move(player) {
 		}
 
 		const possibleMovesTemp = findUnitPossibleMoves(unit, player);
+		//console.warn("possibleMovesTemp", possibleMovesTemp);
 		const possibleMoves = [];
 
-		for (const move of possibleMovesTemp) {
-			const tile = getTileAt(move.q, move.r);
-			if (!tile || isTileWater(tile)){// || tile.ownerIndex === player.playerIndex
+		for (const moveTile of possibleMovesTemp) {
+			//const tile = getTileAt(move.q, move.r);
+			if (isTileWater(moveTile)){
 				continue;
 			}
 			
-			const check = isMoveValid(unit, move, player);
+			const check = isMoveValid(unit, moveTile, player);
 			if (check.valid){
-				possibleMoves.push({move:move, poolHex:{q:unit.q, r:unit.r}});
+				possibleMoves.push({move:moveTile, poolHex:{q:unit.q, r:unit.r}});
 			}
 		}
 		
 
 		for (const moveInfo of possibleMoves) {
-			const tile = getTileAt(moveInfo.move.q, moveInfo.move.r);
+			const tile = moveInfo.move;//getTileAt(moveInfo.move.q, moveInfo.move.r);
 			if(isTileWater(tile)){
 				continue;
 			}
@@ -19123,7 +19135,7 @@ function ai_find_best_move(player) {
 			}
 
 			// === Attack scoring ===
-			const enemyUnit = gameState.units.find(u => u.q === moveInfo.move.q && u.r === moveInfo.move.r);
+			const enemyUnit = gameState.units.find(u => u.q === tile.q && u.r === tile.r);
 			if (enemyUnit) {
 				if (unit.level > enemyUnit.level) {
 					score += 25; // easy kill
@@ -19134,10 +19146,10 @@ function ai_find_best_move(player) {
 
 			// === Territorial influence ===
 			// More valuable if this move borders more enemy land (potential cutoff)
-			const neighbors = getHexNeighbors(moveInfo.move.q, moveInfo.move.r);
+			const neighbors = tile.neighbours;//getHexNeighbors(tile.q, tile.r);
 			let enemyAdj = 0;
-			for (const n of neighbors) {
-				const nt = getTileAt(n.q, n.r);
+			for (const ntIndex of neighbors) {
+				const nt = getTileAtIndex(ntIndex);
 				if (nt && isTileLand(nt) && nt.ownerIndex !== -1 && nt.ownerIndex !== player.playerIndex){
 					enemyAdj++;
 				}
@@ -19146,8 +19158,8 @@ function ai_find_best_move(player) {
 
 			// === Economy safety ===
 			// Slightly prefer staying near friendly land (less isolation)
-			const friendlyAdj = neighbors.filter(n => {
-				const nt = getTileAt(n.q, n.r);
+			const friendlyAdj = neighbors.filter(ntIndex => {
+				const nt = getTileAtIndex(ntIndex);
 				return nt && isTileLand(nt) && nt.ownerIndex === player.playerIndex;
 			}).length;
 			
@@ -19158,8 +19170,8 @@ function ai_find_best_move(player) {
 				bestMove = {
 					type: ACTION.action_move,
 					unitId: unit.id,
-					toQ: moveInfo.move.q,
-					toR: moveInfo.move.r,
+					toQ: tile.q,
+					toR: tile.r,
 					poolHex: moveInfo.poolHex,
 				};
 			}
@@ -19189,6 +19201,7 @@ function ai_find_best_build_move(player) {
 
 	for (let pool of pools) {
 		let { totalSavings, totalIncome, totalWages, hexes, soldiers } = pool;
+		
 		let currentProjectedBalance = (totalSavings + totalIncome) - totalWages;
 		const poolHexRef = { q: hexes[0].q, r: hexes[0].r };
 
@@ -19204,33 +19217,39 @@ function ai_find_best_build_move(player) {
 		// 2. CANDIDATES
 		let candidates = new Map();
 		for (let hex of hexes) {
-			candidates.set(`${hex.q},${hex.r}`, { q: hex.q, r: hex.r, isBorder: false });
-			for (let n of getHexNeighbors(hex.q, hex.r)) {
-				let key = `${n.q},${n.r}`;
-				if (!candidates.has(key) && isHexLand(n.q, n.r)) {
-					candidates.set(key, { q: n.q, r: n.r, isBorder: true });
+			//let tileIndex = hex.tile.tileIndex;
+			candidates.set(hex.tile.tileIndex, { tile: hex.tile, isBorder: false });
+			//candidates.set(`${hex.q},${hex.r}`, { q: hex.q, r: hex.r, isBorder: false });
+			//for (let n of getHexNeighbors(hex.q, hex.r)) {
+			for (let ntIndex of hex.tile.neighbours) {
+				//let key = `${n.q},${n.r}`;
+				if (ntIndex !== -1 && !candidates.has(ntIndex)) { // ntIndex = -1 = not land (water).
+					candidates.set(ntIndex, { tile: getTileAtIndex(ntIndex), isBorder: true });
 				}
 			}
 		}
 
-		for (let [key, pos] of candidates) {
-			let targetTile = getTileAt(pos.q, pos.r);
-			let targetUnit = getUnitAt(pos.q, pos.r);
+		for (let [ntIndex, tData] of candidates) {
+			let targetTile = tData.tile;//getTileAt(pos.q, pos.r);
+			if (!targetTile){
+				continue;
+			}
+			let targetUnit = getUnitAt(targetTile.q, targetTile.r);
 			
 			// --- VALIDATION CHECKS ---
-			if (!targetTile || (targetUnit && targetUnit.ownerIndex === player.playerIndex)) continue;
+			if (targetUnit && targetUnit.ownerIndex === player.playerIndex) continue;
 			
 			// CRITICAL: Avoid building on mines
 			if (targetTile.object === "mine1") continue;
 
-			let enemyDefense = getEnemyDefenseLevel(pos.q, pos.r, targetTile, player.playerIndex);
+			let enemyDefense = getEnemyDefenseLevel(targetTile.q, targetTile.r, targetTile, player.playerIndex);
 
 			// --- EVALUATE CASTLES ---
 			for (let name in CASTLE_DATA) {
 				if (name === "shipyard") continue;
 				let data = CASTLE_DATA[name];
 				
-				if (!isPlacementValid(name, {q: pos.q, r: pos.r}, player, poolHexRef).valid) continue;
+				if (!isPlacementValid(name, {q: targetTile.q, r: targetTile.r}, player, poolHexRef).valid) continue;
 				
 				let balanceAfter = (totalSavings - data.cost) + totalIncome - totalWages;
 				if (totalSavings >= data.cost && balanceAfter >= MIN_BALANCE_BUFFER) {
@@ -19240,17 +19259,17 @@ function ai_find_best_build_move(player) {
 					if (enemyDefense >= data.level) {
 						score = 0; 
 					} else {
-						if (name === "hut") score = pos.isBorder ? 100 : 30;
+						if (name === "hut") score = tData.isBorder ? 100 : 30;
 						if (name === "castle") score = (enemyDefense === 1) ? 160 : 70;
 						if (name === "fortress") score = (enemyDefense === 2) ? 210 : 80;
 					}
 
 					// Avoid clumping
-					if (hasNearbyCastle(pos, player.playerIndex)) score -= 120;
+					if (hasNearbyCastle(targetTile, player.playerIndex)) score -= 120;
 
 					if (score > bestScore && score > 0) {
 						bestScore = score;
-						bestMove = { type: ACTION.action_build, unitType: name, q: pos.q, r: pos.r, poolHex: poolHexRef };
+						bestMove = { type: ACTION.action_build, unitType: name, q: targetTile.q, r: targetTile.r, poolHex: poolHexRef };
 					}
 				}
 			}
@@ -19259,7 +19278,7 @@ function ai_find_best_build_move(player) {
 			for (let name in SOLDIER_DATA) {
 				let data = SOLDIER_DATA[name];
 				
-				if (!isPlacementValid(name, {q: pos.q, r: pos.r}, player, poolHexRef).valid) continue;
+				if (!isPlacementValid(name, {q: targetTile.q, r: targetTile.r}, player, poolHexRef).valid) continue;
 				
 				let balanceAfter = (totalSavings - data.cost) + totalIncome - (totalWages + data.wage);
 				if (totalSavings >= data.cost && balanceAfter >= MIN_BALANCE_BUFFER) {
@@ -19274,7 +19293,7 @@ function ai_find_best_build_move(player) {
 						score += 250 + (getUnitLevel(targetUnit.type) * 120);
 						// Bonus for efficiency (using a unit just 1 level higher)
 						if (data.level === enemyDefense + 1) score += 60; 
-					} else if (pos.isBorder) {
+					} else if (tData.isBorder) {
 						// Expansion into enemy land
 						score += 130;
 					}
@@ -19284,7 +19303,7 @@ function ai_find_best_build_move(player) {
 
 					if (score > bestScore) {
 						bestScore = score;
-						bestMove = { type: ACTION.action_build, unitType: name, q: pos.q, r: pos.r, poolHex: poolHexRef };
+						bestMove = { type: ACTION.action_build, unitType: name, q: targetTile.q, r: targetTile.r, poolHex: poolHexRef };
 					}
 				}
 			}
@@ -19326,8 +19345,10 @@ function getEnemyDefenseLevel(q, r, tile, myIndex) {
 /**
  * Helper to ensure we don't clump castles together.
  */
-function hasNearbyCastle(pos, myIndex) {
-	return getHexNeighbors(pos.q, pos.r).some(n => {
+function hasNearbyCastle(targetTile, myIndex) {
+	return targetTile.neighbours.some(ntIndex => {
+		if(ntIndex === -1) return false;
+		let n = getTileAtIndex(ntIndex);
 		let u = getUnitAt(n.q, n.r);
 		return u && u.ownerIndex === myIndex && isTypeCastle(u.internalType);
 	});
