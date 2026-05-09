@@ -9642,9 +9642,13 @@ function sendToHost(data) {
 let isAiBatching = false;
 let aiBatchBuffer = [];
 
-function broadcastNow(data){
+function broadcastNow(data, handleHost = false){
 	if (!isHost()) return;
 
+	if(handleHost){ // "broadcast" to host too.
+		handleHostData(data);
+	}
+	
 	for (const [peerId, conn] of connections.entries()) {
 		conn.send(data);
 	}
@@ -19035,127 +19039,6 @@ function randomItem(arr){
 }
 
 
-function ai_find_best_move2(player) {
-	//console.log("ai_find_best_move (improved)");
-
-	let bestMove = null;
-	let bestScore = -Infinity;
-
-	for (let i = 0; i < gameState.units.length; i++) {
-		const unit = gameState.units[i];
-		if (unit.hasMoved || unit.ownerIndex !== player.playerIndex){
-			continue;
-		}
-
-		const possibleMovesTemp = findUnitPossibleMoves(unit, player);
-		const possibleMoves = [];
-
-		for (const tile of possibleMovesTemp) {
-			//const tile = getTileAt(tile.q, tile.r);
-			const check = isMoveValid(unit, tile, player);
-			if (check.valid){
-				possibleMoves.push({tile:tile, poolHex:{q:unit.q, r:unit.r}});
-			}
-		}
-
-		for (const moveInfo of possibleMoves) {
-			//const tile = getTileAt(moveInfo.move.q, moveInfo.move.r);
-			const tile = moveInfo.tile;
-			let score = 0;
-
-			
-			// === Base scoring ===
-			// Prefer new land
-			if (tile.ownerIndex === undefined || tile.ownerIndex === -1){
-				score += 5;
-			}
-
-			if (tile.ownerIndex !== undefined){
-				// Prefer enemy tiles
-				if (tile.ownerIndex !== player.playerIndex) score += 10;
-
-				// ----------------------------------------------------------------------------------
-				//  === Terrain & Economy Restoration Scoring (NEW FOCUS) === 
-				// ----------------------------------------------------------------------------------
-				
-				if (tile.object === "grass") {
-					if (tile.ownerIndex === player.playerIndex) {
-						// Clear grass from our tile to restore income.
-						score += 5; 
-					} else {
-						// Claim and clear grass on neutral/enemy tile for better future income/expansion.
-						score += 3; 
-					}
-				}
-				
-				if (tile.object === "tree") {
-					if (tile.ownerIndex === player.playerIndex) {
-						// Clear tree from our tile to restore income (highest priority).
-						score += 5;
-					} else {
-						// Clearing a tree on neutral/enemy land is slightly useful for future income.
-						
-						// dont try to seek for trees...
-						//score += 1; 
-					}
-				}
-			}
-			// ----------------------------------------------------------------------------------
-
-			// === Attack scoring ===
-			const enemyUnit = gameState.units.find(u => u.q === tile.q && u.r === tile.r);
-			if (enemyUnit) {
-				if (unit.level > enemyUnit.level) {
-					score += 25; // easy kill
-				} else {
-					score -= 20; // risky
-				}
-			}
-
-			// === Territorial influence ===
-			//const neighbors = getHexNeighbors(tile.q, tile.r);
-			const neighbours = tile.neighbours;
-			let enemyAdj = 0;
-			let friendlyAdj = 0;
-			for (const neigh of neighbours) {
-				if(neigh !== -1){
-					//const nt = getTileAt(n.q, n.r);
-					const nTile = gameState.map.tilesData[neigh];
-					if (nTile.ownerIndex !== undefined){
-						if (nTile.ownerIndex !== player.playerIndex){
-							enemyAdj++;
-						}else{
-							friendlyAdj++;
-						}
-					}
-					
-				}
-			}
-			score += enemyAdj * 2;
-			score += friendlyAdj;
-
-			if (score > bestScore) {
-				bestScore = score;
-				bestMove = {
-					type: ACTION.action_move,
-					unitId: unit.id,
-					toQ: tile.q,
-					toR: tile.r,
-					poolHex: moveInfo.poolHex,
-				};
-			}
-		}
-	}
-
-	if (bestMove) {
-		console.log("AI selected best move:", bestMove, "score:", bestScore);
-		return bestMove;
-	}
-
-	// fallback
-	return null;
-}
-
 
 
 
@@ -22664,14 +22547,15 @@ let pingIntervalId = null;
 
 // host function to start pinging all connected clients.
 function startPinging(){
+	if(!isHost()) return;
 	if (pingIntervalId !== null) return; // already running
 
 	pingIntervalId = setInterval(() => {
 		checkPlayersTimeouts();
-		broadcast({
+		broadcastNow({
 			type: ACTION.ping, // clients sends ACTION.pong in response.
 			time: Date.now()
-		}, false); // everyone = false = dont send to host too.
+		}); // handleHost = false = dont send to host too.
 	}, PING_INTERVAL);
 }
 
