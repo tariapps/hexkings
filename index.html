@@ -2092,6 +2092,7 @@ input.disabled {
 	display: none;
 	flex-direction: column;
 	z-index:9999;
+	---width:110px;
 }
 
 .imageSelectList.open .imageSelectListOptions {
@@ -2099,11 +2100,12 @@ input.disabled {
 }
 
 .imageSelectListOption {
-	width: 80px;
+	---width: 80px;
 	height: 44px;
 	display: flex;
 	align-items: center;
-	justify-content: center;
+	---justify-content: center;
+	justify-content: flex-start;
 	background: black;
 	border: 1px solid var(--border-color);
 	border-radius: 6px;
@@ -2119,7 +2121,8 @@ input.disabled {
 }
 
 .imageSelectListOption .count {
-	width: 38px;
+	---width: 38px;
+	padding-right: 10px;
 }
 
 .imageSelectListOption img {
