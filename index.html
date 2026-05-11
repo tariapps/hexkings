@@ -233,6 +233,11 @@ button[disabled] {
 	background-size: contain;
 }
 
+.gamebutton.compact {
+	margin:0;
+}
+
+
 .largefont {
 	font-size:27px;
 }
@@ -3401,6 +3406,7 @@ input.disabled {
 							</div>
 
 							<div class="imageSelectListOptions">
+								<div><button id="switch-cycle-unit-mode" class="gamebutton compact active" title="Toggle center at unit">Center</button></div>
 								<div class="imageSelectListOption" data-value="sailboat" data-title="Sailboat"><img src="images/orig-scaled/128x128/sailboat.png"><span class="count">123x</span></div>
 								<div class="imageSelectListOption" data-value="dragon" data-title="Dragon"><img src="images/orig-scaled/128x128/soldier4.png"><span class="count">123x</span></div>
 								<div class="imageSelectListOption" data-value="horse" data-title="Horse"><img src="images/orig-scaled/128x128/soldier3.png"><span class="count">123x</span></div>
@@ -3540,6 +3546,12 @@ const playerTileEmptyCount = document.getElementById("player-tile-empty-count");
 
 
 const cycleUnitTypeCount = document.getElementById("cycle-unit-type-count");
+const switchCycleUnitModeBtn = document.getElementById("switch-cycle-unit-mode");
+
+switchCycleUnitModeBtn.addEventListener("click", () => {
+	centerUnitToggle();
+});
+
 
 let currentFocusedPoolIndex = -1;
 
@@ -14889,10 +14901,13 @@ function showPoolInfo(){
 
 function formatPoolDecimal(num) {
 	num += EPSILON; // add 0.000001 in case the value is 9.99999999 etc...
-	const fixed = parseFloat(num.toFixed(2)); // "12.30"
-	//if (fixed.endsWith("00")) return String(num|0); // integer case
-	//if (fixed.endsWith("0")) return fixed.slice(0, -1); // one trailing zero
-	return fixed; // both decimals meaningful
+	let pp = num.toFixed(7).split("."); // need 7 decimal places to accurately show 9.99 if cannot afford soldier.
+	let dec = pp[1].slice(0,2); // show only 2 decimals from the value.
+	let out = pp[0];
+	if(parseInt(dec) > 0){ // if has decimal value greater than zero.
+		out += "."+dec; // only show decimals if its greater than zero.
+	}
+	return out;
 }
 
 
@@ -14912,13 +14927,14 @@ function updateSelectedPoolUi(){
 		playerWages.textContent = formatPoolDecimal(selectedPool.totalWages);
 		playerBalance.textContent = formatPoolDecimal(totalBalance);
 		
-		if(selectedPool.totalSavings >= minSoldierCost){
+		
+		if(canAffordCheck(selectedPool.totalSavings, minSoldierCost)){
 			buildSoldierBtn.classList.remove("disabled");
 		}
-		if(selectedPool.totalSavings >= minCastleCost){
+		if(canAffordCheck(selectedPool.totalSavings, minCastleCost)){
 			buildCastleBtn.classList.remove("disabled");
 		}
-		if(selectedPool.totalSavings >= minOtherCost){
+		if(canAffordCheck(selectedPool.totalSavings, minOtherCost)){
 			// must have selected unit set to build other units.
 			// todo: make later check if any of the items can be built when adding new units that doesnt require selected unit.
 			// if not a castle:
@@ -14951,6 +14967,8 @@ function updateSelectedPoolUi(){
 		}
 	}
 }
+
+
 
 function updateSelectedPoolInfo(hex){
 	// localPlayerPools
@@ -26109,6 +26127,36 @@ document.addEventListener('contextmenu', function(event) {
 }, false);
 
 
+
+
+let quickBuildType = 0; // 0 = soldier, 1 = castle, 2 = item
+
+function nextQuickBuildType(){
+	quickBuildType++;
+	if(quickBuildType > 2){
+		quickBuildType = 0;
+	}
+}
+
+
+function enableBuildUnit(unitType){
+	if(selectedPool){
+		let item = getUnitInfo(unitType); // "peasant" etc.
+		let poolHex = getSelectedPoolHex();
+		if(poolHex){
+			placingUnit = {
+				type: item.name, // "peasant" etc.
+				cost: item.cost,
+				poolHex: poolHex, // not needed here? called in  handleHexClick() also.
+			};
+			playSound('startmove');
+			updateHighlights();
+		}
+	}
+}
+
+
+
 document.addEventListener('keydown', (event) => {
 	// dont handle key presses if it came from chat input.
 	if(event.target.id !== 'chat-input'){
@@ -26196,14 +26244,62 @@ document.addEventListener('keydown', (event) => {
 				}
 			}else if(code === 'Digit1') {
 				// open soldier build menu
-				openBuildPopup('soldier', lastMousePos);
+				//openBuildPopup('soldier', lastMousePos);
+				switch(quickBuildType){
+					case 0:
+						enableBuildUnit("peasant");
+					break;
+					case 1:
+						enableBuildUnit("hut");
+					break;
+					case 2:
+						enableBuildUnit("landmine");
+					break;
+				}
 			}else if(code === 'Digit2') {
 				// open castle build menu
-				openBuildPopup('castle', lastMousePos);
+				//openBuildPopup('castle', lastMousePos);
+				switch(quickBuildType){
+					case 0:
+						enableBuildUnit("knight");
+					break;
+					case 1:
+						enableBuildUnit("castle");
+					break;
+					case 2:
+						enableBuildUnit("sailboat");
+					break;
+				}
 			}else if(code === 'Digit3') {
 				// open item build menu
-				openBuildPopup('other', lastMousePos);
+				//openBuildPopup('other', lastMousePos);
+				switch(quickBuildType){
+					case 0:
+						enableBuildUnit("horse");
+					break;
+					case 1:
+						enableBuildUnit("fortress");
+					break;
+					case 2:
+						//enableBuildUnit("sailboat");
+					break;
+				}
+			}else if(code === 'Digit4') {
+				switch(quickBuildType){
+					case 0:
+						enableBuildUnit("dragon");
+					break;
+					case 1:
+						enableBuildUnit("shipyard");
+					break;
+					case 2:
+						//enableBuildUnit("sailboat");
+					break;
+				}
+			}else if(code === 'Backquote') {
+				nextQuickBuildType();
 			}
+			
 		}
 	}
 });
@@ -26797,9 +26893,11 @@ function centerUnitToggle(){
 	if(!centerUnitEnabled){
 		previousUnitBtn.classList.add("special-highlight");
 		nextUnitBtn.classList.add("special-highlight");
+		switchCycleUnitModeBtn.classList.remove("active");
 	}else{
 		previousUnitBtn.classList.remove("special-highlight");
 		nextUnitBtn.classList.remove("special-highlight");
+		switchCycleUnitModeBtn.classList.add("active");
 	}
 }
 
