@@ -3073,7 +3073,15 @@ input.disabled {
 		</div>
 		
 		<div id="ui-right" style="overflow: visible;">
-			<div id="endgame-stats-wrapper" style="display: flex; flex-direction: row-reverse; align-items: flex-end; gap: 0; ">
+			<div id="user-events-wrapper">
+				<div class="userEventsListWrap" id="user-events-wrapper2" style="display:flex">
+					<div class="user-event">you pressed button 1</div>
+					<div class="user-event">you pressed button 2</div>
+					<div class="user-event">you pressed button 3</div>
+				</div>
+			</div>
+		
+			<div id="endgame-stats-wrapper">
 				<div class="gameLogsListWrap" id="game-logs-wrapper" style="display:none">
 					<div class="gameLogsListButtonWrap">
 						<button id="game-logs-btn" class="gameLogsListButton">Logs</button>
@@ -3082,7 +3090,44 @@ input.disabled {
 <style>
 
 
+.user-event {
+    text-shadow: 2px 2px 1px rgba(0, 0, 0, 1), 0px 0px 2px rgba(0, 0, 0, 1), 0px 0px 4px rgba(0, 0, 0, 1);
+}
 
+#user-events-wrapper {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 0;
+
+	position: absolute;
+	bottom: 100%;
+	width:100%;
+	
+	margin-bottom: 4px;
+}
+
+.userEventsListWrap {
+	flex-direction: column;
+	position: relative;
+	width:310px;
+	bottom: 100%;
+}
+
+
+
+#endgame-stats-wrapper {
+	display: flex; 
+	flex-direction: row-reverse; 
+	align-items: flex-end; 
+	gap: 0; 
+	
+    position: absolute;
+    bottom: 100%;
+    width: 100%;
+}
+	
+	
 .gameLogsList {
 	
     user-select: text;
@@ -3398,9 +3443,9 @@ input.disabled {
 							<span id="player-tile-empty-count"></span>
 						</div>
 						
-						<button id="build-other-btn" class="gamebutton" title="Build item (Press 1 to open)"></button>
-						<button id="build-soldier-btn" class="gamebutton" title="Recruit soldier (Press 2 to open)"></button>
-						<button id="build-castle-btn" class="gamebutton" title="Build castle (Press 3 to open)"></button>
+						<button id="build-other-btn" class="gamebutton" title="Build item (Press § to switch quick build type)"></button>
+						<button id="build-soldier-btn" class="gamebutton special-highlight" title="Recruit soldier (Press § to switch quick build type)"></button>
+						<button id="build-castle-btn" class="gamebutton" title="Build castle (Press § to switch quick build type)"></button>
 						<button id="undo-btn" class="gamebutton redbutton" title="Undo"></button>
 					</div>
 					<div class="button-row" id="ui-right-button-row2-id">
@@ -3425,8 +3470,8 @@ input.disabled {
 						</div>
 
 
-						<button id="previous-unit-btn" class="gamebutton" title="Previous unit (press X to toggle centering)"></button>
-						<button id="next-unit-btn" class="gamebutton" title="Next unit (press X to toggle centering)"></button>
+						<button id="previous-unit-btn" class="gamebutton special-highlight" title="Previous unit (press X to toggle centering)"></button>
+						<button id="next-unit-btn" class="gamebutton special-highlight" title="Next unit (press X to toggle centering)"></button>
 						
 						<button id="game-settings-btn2" class="gamebutton" title="Settings"></button>
 						<button id="toggle-ui-btn" class="gamebutton" title="Open chat"></button>
@@ -16359,7 +16404,7 @@ function updateHighlights() {
 	}
 	if(placingUnit){
 		unit.level = getUnitInfo(placingUnit.type).level;
-		console.log(unit.level);
+		//console.log(unit.level);
 	}
 	
 	// --- 2. Highlight movement options (only if a unit is selected) ---
@@ -26219,6 +26264,32 @@ function nextQuickBuildType(){
 	if(quickBuildType > 2){
 		quickBuildType = 0;
 	}
+	
+	//
+	// add special highlight for different build buttons:
+	//
+	buildSoldierBtn.classList.remove("special-highlight");
+	buildCastleBtn.classList.remove("special-highlight");
+	buildOtherBtn.classList.remove("special-highlight");
+	
+	let type = "";
+	
+	switch(quickBuildType){
+		case 0:
+			buildSoldierBtn.classList.add("special-highlight");
+			type = "Soldier";
+		break;
+		case 1:
+			buildCastleBtn.classList.add("special-highlight");
+			type = "Castle";
+		break;
+		case 2:
+			buildOtherBtn.classList.add("special-highlight");
+			type = "Item";
+		break;
+	}
+	
+	pushUserEvent("Quick build type:", type);
 }
 
 
@@ -26237,6 +26308,8 @@ function enableBuildUnit(buttonIndex, buildType){
 				};
 				playSound('startmove');
 				updateHighlights();
+				
+				pushUserEvent("Quick build:", ucfirst(item.name));
 			}
 		}
 	}
@@ -26263,7 +26336,11 @@ document.addEventListener('keydown', (event) => {
 				}
 			}
 			
-			if(code === 'KeyQ') { // q "q" 'q'
+			if(code === 'Escape'){
+				if(endTurnPopup.classList.contains('active')){
+					closeEndTurnConfirmation();
+				}
+			}else if(code === 'KeyQ') { // q "q" 'q'
 				if(!event.shiftKey){
 					rotateLeftSnapped();
 				}else{
@@ -26939,18 +27016,47 @@ function loadSavedGame(roomKey){
 }
 
 
+const userEventsWrapper2 = document.getElementById("user-events-wrapper2");
+
+function pushUserEvent(str1, str2){
+	let div = document.createElement("div");
+	div.classList.add("user-event");
+	
+	let s1 = document.createElement("span");
+	s1.style.color = "white";
+	s1.textContent = str1;
+	let s2 = document.createElement("span");
+	s2.style.color = "yellow";
+	s2.style.paddingLeft = "4px";
+	s2.textContent = str2;
+	
+	div.appendChild(s1);
+	div.appendChild(s2);
+	
+	userEventsWrapper2.appendChild(div);
+	
+	const wrapper = userEventsWrapper2;
+
+	while (wrapper.childElementCount > 3) {
+		wrapper.removeChild(wrapper.firstElementChild);
+	}
+}
+
 function centerUnitToggle(){
 	centerUnitEnabled = !centerUnitEnabled;
 	
 	if(!centerUnitEnabled){
-		previousUnitBtn.classList.add("special-highlight");
-		nextUnitBtn.classList.add("special-highlight");
-		switchCycleUnitModeBtn.classList.remove("active");
-	}else{
 		previousUnitBtn.classList.remove("special-highlight");
 		nextUnitBtn.classList.remove("special-highlight");
+		switchCycleUnitModeBtn.classList.remove("active");
+	}else{
+		previousUnitBtn.classList.add("special-highlight");
+		nextUnitBtn.classList.add("special-highlight");
 		switchCycleUnitModeBtn.classList.add("active");
 	}
+	playSound('startmove');
+	
+	pushUserEvent("Center unit:", (centerUnitEnabled ? "Enabled" : "Disabled"));
 }
 
 
