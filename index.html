@@ -3652,6 +3652,9 @@ function getPoolCenter(pool){
 
 playerTileIconBtn.addEventListener("click", () => {
 	let player = getMyPlayer();
+	let foundEmptyPool = false;
+	let totalEmptyPools = 0;
+	let currentEmptyPool = 0;
 
 	if(!REPLAY_ENABLED && player){
 		let startIndex = 0;
@@ -3673,6 +3676,7 @@ playerTileIconBtn.addEventListener("click", () => {
 			}
 			
 			// search forward starting at selected index, wrapping around
+
 			for (let offset = 0; offset < pools.length; offset++) {
 				const i = (startIndex + offset) % pools.length;
 				let pool = pools[i];
@@ -3683,15 +3687,39 @@ playerTileIconBtn.addEventListener("click", () => {
 				}
 				
 				if(validSelection){
-					cancelBuildPopup();
-					centerAndSelectPool(pool);
-					currentFocusedPoolIndex = i;
-					playSound('startmove');
-					break;
+					if(!foundEmptyPool){
+						cancelBuildPopup();
+						centerAndSelectPool(pool);
+						currentFocusedPoolIndex = i;
+						playSound('startmove');
+						foundEmptyPool = true;
+					}
+					//break;
+				}
+			}
+			
+			if(foundEmptyPool){
+				for (let i = 0; i < pools.length; i++) {
+					let pool = pools[i];
+
+					if(pool.soldiers.length === 0){
+						totalEmptyPools++;
+						if(currentFocusedPoolIndex === i){
+							currentEmptyPool = totalEmptyPools;
+						}
+					}
 				}
 			}
 		
 		}
+		
+		if(foundEmptyPool){
+			pushUserEvent("Empty land selected:", `${currentEmptyPool}/${totalEmptyPools}`);
+		}else{
+			pushUserEvent("","No empty lands available");
+			playSound('startmove');
+		}
+		
 	}
 });
 
@@ -6086,6 +6114,8 @@ let MAX_LOBBY_MESSAGE_LEN = 100;
 
 let MAX_PLAYER_NAME_LEN = 16;
 
+let MINE_MAX_KILL_LEVEL = 1; // mines kill at max level 1 units.
+
 
 // list of messages sent to clients:
 // let action = let actions = const actions =
@@ -6610,13 +6640,13 @@ let gameState = {
 		editorEnabled: 0,
 		useBoats: true,
 		useLandmines: true,
-		initialMines: 4, // how many mines can be built at the start of game
-		initialBoats: 3, // how many boats can be built at the start of game
-		minesPerWeek: 4,
+		initialMines: 7, // how many mines can be built at the start of game
+		initialBoats: 7, // how many boats can be built at the start of game
+		minesPerWeek: 7,
 		boatsPerWeek: 7,
-		maxMines: 10,
+		maxMines: 14,
 		maxBoats: 30,
-		mineCost: 7,
+		mineCost: 4,
 		boatCost: 5,
 		undoAC: true, // "allow undo after claiming"
 	},
@@ -17610,7 +17640,7 @@ function executeAction(playerId, action) {
 							sounds.push({name:'claimRock', q: toQ, r: toR, action: action.type});
 						}else if(toTile.object === 'mine1'){
 							
-							if(getUnitLevel(unit.type) <= 2){
+							if(getUnitLevel(unit.type) <= MINE_MAX_KILL_LEVEL){
 								killMovedUnit = true;
 								allowHexClaim = false;
 								sounds.push({name:'claimMine', q: toQ, r: toR, action: action.type});
@@ -17621,7 +17651,7 @@ function executeAction(playerId, action) {
 							// only explode if its not your mine:
 							if(!isTileMinePlayerMine(toTile, playerIndex)){
 								
-								if(getUnitLevel(unit.type) <= 2){
+								if(getUnitLevel(unit.type) <= MINE_MAX_KILL_LEVEL){
 									killMovedUnit = true;
 									allowHexClaim = false;
 									sounds.push({name:'claimMine', q: toQ, r: toR, action: action.type});
@@ -17840,7 +17870,7 @@ function executeAction(playerId, action) {
 							sounds.push({name:'claimRock', q: toQ, r: toR, action: action.type});
 						}else if(tile.object === 'mine1'){
 							
-							if(getUnitLevel(newUnit.type) <= 2){
+							if(getUnitLevel(newUnit.type) <= MINE_MAX_KILL_LEVEL){
 								killAddedUnit = true;
 								allowHexClaim = false;
 								sounds.push({name:'claimMine', q: toQ, r: toR, action: action.type});
@@ -17851,7 +17881,7 @@ function executeAction(playerId, action) {
 							// only explode if its not your mine:
 							if(!isTileMinePlayerMine(tile, playerIndex)){
 								
-								if(getUnitLevel(newUnit.type) <= 2){
+								if(getUnitLevel(newUnit.type) <= MINE_MAX_KILL_LEVEL){
 									killAddedUnit = true;
 									allowHexClaim = false;
 									sounds.push({name:'claimMine', q: toQ, r: toR, action: action.type});
@@ -18329,7 +18359,7 @@ function executeAction(playerId, action) {
 									sounds.push({name:'claimRock', q: q, r: r, action: action.type});
 								}else if(tile.object === 'mine1'){
 									
-									if(getUnitLevel(newUnit.type) <= 2){
+									if(getUnitLevel(newUnit.type) <= MINE_MAX_KILL_LEVEL){
 										killAddedUnit = true;
 										allowHexClaim = false;
 										sounds.push({name:'claimMine', q: q, r: r, action: action.type});
@@ -18340,7 +18370,7 @@ function executeAction(playerId, action) {
 									// only explode if its not your mine:
 									if(!isTileMinePlayerMine(tile, playerIndex)){
 										
-										if(getUnitLevel(newUnit.type) <= 2){
+										if(getUnitLevel(newUnit.type) <= MINE_MAX_KILL_LEVEL){
 											killAddedUnit = true;
 											allowHexClaim = false;
 											sounds.push({name:'claimMine', q: q, r: r, action: action.type});
