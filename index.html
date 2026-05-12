@@ -3075,9 +3075,7 @@ input.disabled {
 		<div id="ui-right" style="overflow: visible;">
 			<div id="user-events-wrapper">
 				<div class="userEventsListWrap" id="user-events-wrapper2" style="display:flex">
-					<div class="user-event">you pressed button 1</div>
-					<div class="user-event">you pressed button 2</div>
-					<div class="user-event">you pressed button 3</div>
+
 				</div>
 			</div>
 		
@@ -3090,9 +3088,36 @@ input.disabled {
 <style>
 
 
+
+
 .user-event {
-    text-shadow: 2px 2px 1px rgba(0, 0, 0, 1), 0px 0px 2px rgba(0, 0, 0, 1), 0px 0px 4px rgba(0, 0, 0, 1);
+	text-shadow: 2px 2px 1px rgba(0, 0, 0, 1), 0px 0px 2px rgba(0, 0, 0, 1), 0px 0px 4px rgba(0, 0, 0, 1);
+	opacity: 1;
+
+	animation: fadeAndRemove 0.5s ease forwards;
+
+	animation-delay: 3s;
 }
+
+@keyframes fadeAndRemove {
+	from {
+		opacity: 1;
+		transform: translateY(0);
+	}
+
+	to {
+		opacity: 0;
+		transform: translateY(-10px);
+		height: 0;
+		margin: 0;
+		padding-top: 0;
+		padding-bottom: 0;
+		overflow: hidden;
+	}
+}
+
+
+
 
 #user-events-wrapper {
 	display: flex;
@@ -26293,7 +26318,7 @@ function nextQuickBuildType(){
 }
 
 
-function enableBuildUnit(buttonIndex, buildType){
+function enableBuildUnit(buttonIndex, buildType, sound = true){
 	if(selectedPool && buttonIndex !== -1){
 		let unitType = BUILD_TYPES[buildType][buttonIndex];
 		if(unitType){
@@ -26306,7 +26331,9 @@ function enableBuildUnit(buttonIndex, buildType){
 					cost: item.cost,
 					poolHex: poolHex, // not needed here? called in  handleHexClick() also.
 				};
-				playSound('startmove');
+				if(sound){
+					playSound('startmove');
+				}
 				updateHighlights();
 				
 				pushUserEvent("Quick build:", ucfirst(item.name));
@@ -26426,7 +26453,9 @@ document.addEventListener('keydown', (event) => {
 				currentBuildIndex = 0;
 				nextQuickBuildType();
 				
-				enableBuildUnit(currentBuildIndex, quickBuildType);
+				enableBuildUnit(currentBuildIndex, quickBuildType, false);
+				
+				playSound('startmove');
 			}
 			
 		}
@@ -27018,22 +27047,28 @@ function loadSavedGame(roomKey){
 
 const userEventsWrapper2 = document.getElementById("user-events-wrapper2");
 
-function pushUserEvent(str1, str2){
+function pushUserEvent(str1, str2) {
 	let div = document.createElement("div");
 	div.classList.add("user-event");
-	
+
 	let s1 = document.createElement("span");
 	s1.style.color = "white";
 	s1.textContent = str1;
+
 	let s2 = document.createElement("span");
 	s2.style.color = "yellow";
 	s2.style.paddingLeft = "4px";
 	s2.textContent = str2;
-	
+
 	div.appendChild(s1);
 	div.appendChild(s2);
-	
+
 	userEventsWrapper2.appendChild(div);
+
+	// Optional actual DOM cleanup
+	div.addEventListener("animationend", () => {
+		div.remove();
+	});
 	
 	const wrapper = userEventsWrapper2;
 
@@ -27041,6 +27076,7 @@ function pushUserEvent(str1, str2){
 		wrapper.removeChild(wrapper.firstElementChild);
 	}
 }
+
 
 function centerUnitToggle(){
 	centerUnitEnabled = !centerUnitEnabled;
