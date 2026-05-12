@@ -13181,14 +13181,22 @@ function drawFocusedHex(){
 		
 		
 		let overrideColor = null;
+		let routeColor = "rgba(255, 255, 0, 0.6)";
 		
 		let ghostedType = null;
+		let drawMoveLine = false;
+		
 		if(selectedUnit){
 			ghostedType = selectedUnit.type;
 		}
 		// override if building unit:
 		if(placingUnit){
 			ghostedType = placingUnit.type;
+		}else{
+			// if not placing unit but unit is selected, draw move line:
+			if(selectedUnit){
+				drawMoveLine = true;
+			}
 		}
 
 
@@ -13199,6 +13207,7 @@ function drawFocusedHex(){
 		}else{
 			if(placingUnit || selectedUnit){
 				overrideColor = "rgba(255, 0, 0, 1)";
+				routeColor = "rgba(255,0,0, 0.6)";
 			}
 		}
 		
@@ -13223,6 +13232,7 @@ function drawFocusedHex(){
 				if(!selectedUnit.loadedUnit || dist > 1){
 					overrideColor = "rgba(255,0,0, 0.8)";
 					fillColor = "rgba(255,0,0, 0.6)";
+					routeColor = "rgba(255,0,0, 0.6)";
 				}
 			}else{
 				// handle other than boats:
@@ -13233,6 +13243,7 @@ function drawFocusedHex(){
 						if(!moveCheck.valid){
 							overrideColor = "rgba(255,0,0, 0.8)";
 							fillColor = "rgba(255,0,0, 0.6)";
+							routeColor = "rgba(255,0,0, 0.6)";
 						}
 					}
 					if(placingUnit){
@@ -13244,6 +13255,7 @@ function drawFocusedHex(){
 							if(!moveCheck.valid){
 								overrideColor = "rgba(255,0,0, 0.8)";
 								fillColor = "rgba(255,0,0, 0.6)";
+								routeColor = "rgba(255,0,0, 0.6)";
 							}
 						}
 					}
@@ -13277,10 +13289,26 @@ function drawFocusedHex(){
 			// now apply screen-space offsets
 			ctx.translate(-xoff, -yoff);
 			
-			ctx.globalAlpha = 0.6;
+			if(drawMoveLine){
+				ctx.globalAlpha = 0.4;
+			}else{
+				ctx.globalAlpha = 0.6;
+			}
 			
 			// draw unit:
 			drawImageMippedCropped(ctx, imageKey, 0, 0, dw, dh, -1);
+			
+			ctx.restore();
+		}
+		if(selectedUnit && drawMoveLine){
+			ctx.save();
+			
+			let route = [
+				{q: selectedUnit.q, r: selectedUnit.r}, 
+				{q: focusedHex.q, r: focusedHex.r},
+			];
+			//let routeColor = closestHex.found ? "rgba(255, 255, 0, 0.6)" : "rgba(255, 0, 0, 0.6)";
+			drawRouteLines(route, routeColor, true, 3);
 			
 			ctx.restore();
 		}
