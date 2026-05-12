@@ -12045,6 +12045,66 @@ let animationLenSoldier = 250;
 let animationLenTree = 600;
 let animationLenGrass = 400;
 
+
+function getUnitImageByType(type, animate = true){
+	const data = getUnitInfo(type);
+	
+	let animSuffix = "";
+	if(animate){
+		let animationFrames = unitTypeAnimationFramesCount(type);
+		if(animationFrames > 1){
+			// causes image to be "soldier1-1.png" etc, the second frame for animation.
+			animSuffix = pulseScale(0, 1, 0.002) < 0.5 ? "-1" : "";
+		}
+	}
+	
+	let seasonKey = "";
+	if(!isSummer()){
+		if(data.type === 'castle'){
+			seasonKey = "-winter";
+		}
+	}
+	
+	let imageKey = `${data.defaultImage}${seasonKey}${animSuffix}`;
+	let img = getImage(imageKey);
+	if(!img){
+		if(!isSummer()){
+			seasonKey = "";
+			imageKey = `${data.defaultImage}${seasonKey}${animSuffix}`;
+			img = getImage(imageKey);
+		}
+	}
+	return {img, imageKey};
+}
+
+
+function getImageOffsets(img, imageKey){
+	if (img && img.complete && img.width > 0) {
+		// Draw the image centered and scaled
+		let imginfo = getImageSettings(imageKey);
+		let scale = imginfo.scale*0.9; // 0.9 global scale
+		let ratio = img.height/img.width;
+		let drawSize = 50;
+		let hsize = drawSize/2;
+		let offsetX = imginfo.offsetX;
+		let offsetY = imginfo.offsetY ? imginfo.offsetY : 0;
+		
+		// used for ctx.translate:
+		let xoff = ((offsetX)*scale);
+		let yoff = ((offsetY+10)*ratio*scale);
+		
+		//let dx = x-((hsize-offsetX)*scale);
+		//let dy = y-((hsize-offsetY+10)*ratio*scale);
+		let dw = drawSize*scale;
+		let dh = drawSize*ratio*scale;
+		
+		return {xoff, yoff, dw, dh};
+	}
+	return null;
+}
+
+
+
 // draw only specific type of units; "soldier" or "castle"
 function drawUnitsByInternalType(unitType){
 	for (const unit of gameState.units) {
@@ -12068,37 +12128,9 @@ function drawUnitsByInternalType(unitType){
 			//console.log("owner not found: "+unit.ownerIndex);
 			continue;
 		}
-
-		const data = getUnitInfo(unit.type);//SOLDIER_DATA[unit.type] || CASTLE_DATA[unit.type];
 		
-		let animSuffix = "";
-		let animationFrames = unitTypeAnimationFramesCount(unit.type);
-		if(animationFrames > 1){
-		//if(unit.internalType === 'soldier'){
-			// disabled for now, seems confusing when there is constant movement on screen.
-			let useRandomPhase = 0; // 0 or 1 value to enable randomized animation phase.
-			
-			// causes image to be "soldier1-1.png" etc, the second frame for animation.
-			animSuffix = pulseScale(0,1, 0.002, unit.q*unit.r*useRandomPhase) < 0.5 ? "-1" : "";
-		}
-		let seasonKey = "";
-		if(!isSummer()){ 
-			if(data.type === 'castle'){
-				seasonKey = "-winter";
-			}
-		}
+		let {img, imageKey} = getUnitImageByType(unit.type);
 		
-		let imageKey = `${data.defaultImage}${seasonKey}${animSuffix}`;//`${data.type}${data.level}${animSuffix}`;
-		let img = getImage(imageKey);
-		if(!img){
-			if(!isSummer()){
-				seasonKey = "";
-				imageKey = `${data.defaultImage}${seasonKey}${animSuffix}`;
-				img = getImage(imageKey);
-			}
-		}
-		
-
 		
 		if (img && img.complete && img.width > 0) {
 			// Draw the image centered and scaled
@@ -13071,6 +13103,15 @@ function drawFocusedHex(){
 		
 		
 		let overrideColor = null;
+		
+		let ghostedType = null;
+		if(selectedUnit){
+			ghostedType = selectedUnit.type;
+		}
+		// override if building unit:
+		if(placingUnit){
+			ghostedType = placingUnit.type;
+		}
 
 
 		let closestHex = getNearestValidHex(focusedPoint);
@@ -13140,6 +13181,28 @@ function drawFocusedHex(){
 				//ctx.globalAlpha = 1;
 				ctx.fillStyle = fillColor;
 				ctx.fill();
+				
+				
+				// draw ghosted unit on top:
+				let {img, imageKey} = getUnitImageByType(ghostedType, false);
+				
+				let {xoff, yoff, dw, dh} = getImageOffsets(img, imageKey);
+				
+				ctx.save();
+				
+				// move to object position
+				ctx.translate(x, y);
+				// undo viewport rotation
+				ctx.rotate(-viewport.rotation);
+				// now apply screen-space offsets
+				ctx.translate(-xoff, -yoff);
+				
+				ctx.globalAlpha = 0.6;
+				
+				// draw unit:
+				drawImageMippedCropped(ctx, imageKey, 0, 0, dw, dh, -1);
+				
+				ctx.restore();
 			}
 		}
 		
@@ -13645,6 +13708,7 @@ function render() {
 	if(focusedHexEnabled){
 		drawFocusedHex();
 	}
+	
 	
 
 	
@@ -26298,6 +26362,7 @@ document.addEventListener('keydown', (event) => {
 				}
 			}else if(code === 'Backquote') {
 				nextQuickBuildType();
+				playSound('startmove');
 			}
 			
 		}
