@@ -2377,14 +2377,22 @@ input.disabled {
 				
 				<div><span style="color:yellow">A,S,D,W</span> = Move screen (+shift = slower)</div>
 				
+				<div class="space"></div>
+				
 				<div><span style="color:yellow">Z</span> = Previous unit</div>
 				<div><span style="color:yellow">C</span> = Next unit</div>
 				<div><span style="color:yellow">X</span> = Toggle centering unit (when using previous/next)</div>
 				<div><span style="color:yellow">F</span> = End turn</div>
 				
-				<div><span style="color:yellow">1</span> = Open soldier build menu at the mouse</div>
-				<div><span style="color:yellow">2</span> = Open castle build menu at the mouse</div>
-				<div><span style="color:yellow">3</span> = Open item build menu at the mouse</div>
+				<div class="space"></div>
+				
+				<div><span style="color:yellow">"§½"</span> = Cycle quick build type (soldier, castle, item). Default is soldier type. If type is castle, button 1 builds hut etc.</div>
+				<div><span style="color:yellow">1</span> = Quick build (peasant | hut | landmine)</div>
+				<div><span style="color:yellow">2</span> = Quick build (knight | castle | sailboat)</div>
+				<div><span style="color:yellow">3</span> = Quick build (horse | fortress | none)</div>
+				<div><span style="color:yellow">4</span> = Quick build (dragon | shipyard | none)</div>
+				
+				<div class="space"></div>
 				
 				<div><span style="color:yellow">Space</span> = Show previous moves of units</div>
 				<div><span style="color:yellow">Left Click</span> = Select Unit (or move map)</div>
@@ -26342,7 +26350,6 @@ document.addEventListener('keydown', (event) => {
 				nextQuickBuildType();
 				
 				enableBuildUnit(currentBuildIndex, quickBuildType);
-				//playSound('startmove');
 			}
 			
 		}
