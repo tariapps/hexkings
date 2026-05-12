@@ -13181,31 +13181,33 @@ function drawFocusedHex(){
 				//ctx.globalAlpha = 1;
 				ctx.fillStyle = fillColor;
 				ctx.fill();
-				
-				
-				// draw ghosted unit on top:
-				let {img, imageKey} = getUnitImageByType(ghostedType, false);
-				
-				let {xoff, yoff, dw, dh} = getImageOffsets(img, imageKey);
-				
-				ctx.save();
-				
-				// move to object position
-				ctx.translate(x, y);
-				// undo viewport rotation
-				ctx.rotate(-viewport.rotation);
-				// now apply screen-space offsets
-				ctx.translate(-xoff, -yoff);
-				
-				ctx.globalAlpha = 0.6;
-				
-				// draw unit:
-				drawImageMippedCropped(ctx, imageKey, 0, 0, dw, dh, -1);
-				
-				ctx.restore();
 			}
 		}
 		
+		// draw ghosted unit if set:
+		if(ghostedType){
+			let {img, imageKey} = getUnitImageByType(ghostedType, false);
+			
+			let {xoff, yoff, dw, dh} = getImageOffsets(img, imageKey);
+			
+			ctx.save();
+			
+			// move to object position
+			ctx.translate(x, y);
+			// undo viewport rotation
+			ctx.rotate(-viewport.rotation);
+			// now apply screen-space offsets
+			ctx.translate(-xoff, -yoff);
+			
+			ctx.globalAlpha = 0.6;
+			
+			// draw unit:
+			drawImageMippedCropped(ctx, imageKey, 0, 0, dw, dh, -1);
+			
+			ctx.restore();
+		}
+		
+
 		ctx.lineDashOffset = 8*scale;
 		let dashes = [16*scale, 24*scale];
 
@@ -26192,8 +26194,17 @@ document.addEventListener('contextmenu', function(event) {
 
 
 
+let BUILD_TYPES = [
+	// 0:
+	["peasant", "knight", "horse", "dragon"],
+	// 1:
+	["hut", "castle", "fortress", "shipyard"],
+	// 2:
+	["landmine", "sailboat", null, null],
+];
 
 let quickBuildType = 0; // 0 = soldier, 1 = castle, 2 = item
+let currentBuildIndex = -1; // -1 = no button (1,2,3,4) pressed yet. 0 = button 1, etc.
 
 function nextQuickBuildType(){
 	quickBuildType++;
@@ -26203,18 +26214,22 @@ function nextQuickBuildType(){
 }
 
 
-function enableBuildUnit(unitType){
-	if(selectedPool){
-		let item = getUnitInfo(unitType); // "peasant" etc.
-		let poolHex = getSelectedPoolHex();
-		if(poolHex){
-			placingUnit = {
-				type: item.name, // "peasant" etc.
-				cost: item.cost,
-				poolHex: poolHex, // not needed here? called in  handleHexClick() also.
-			};
-			playSound('startmove');
-			updateHighlights();
+function enableBuildUnit(buttonIndex, buildType){
+	if(selectedPool && buttonIndex !== -1){
+		let unitType = BUILD_TYPES[buildType][buttonIndex];
+		if(unitType){
+			
+			let item = getUnitInfo(unitType); // "peasant" etc.
+			let poolHex = getSelectedPoolHex();
+			if(poolHex){
+				placingUnit = {
+					type: item.name, // "peasant" etc.
+					cost: item.cost,
+					poolHex: poolHex, // not needed here? called in  handleHexClick() also.
+				};
+				playSound('startmove');
+				updateHighlights();
+			}
 		}
 	}
 }
@@ -26307,62 +26322,27 @@ document.addEventListener('keydown', (event) => {
 					callEndTurn();
 				}
 			}else if(code === 'Digit1') {
-				// open soldier build menu
-				//openBuildPopup('soldier', lastMousePos);
-				switch(quickBuildType){
-					case 0:
-						enableBuildUnit("peasant");
-					break;
-					case 1:
-						enableBuildUnit("hut");
-					break;
-					case 2:
-						enableBuildUnit("landmine");
-					break;
-				}
+				currentBuildIndex = 0;
+				enableBuildUnit(currentBuildIndex, quickBuildType);
+
 			}else if(code === 'Digit2') {
-				// open castle build menu
-				//openBuildPopup('castle', lastMousePos);
-				switch(quickBuildType){
-					case 0:
-						enableBuildUnit("knight");
-					break;
-					case 1:
-						enableBuildUnit("castle");
-					break;
-					case 2:
-						enableBuildUnit("sailboat");
-					break;
-				}
+				currentBuildIndex = 1;
+				enableBuildUnit(currentBuildIndex, quickBuildType);
+				
 			}else if(code === 'Digit3') {
-				// open item build menu
-				//openBuildPopup('other', lastMousePos);
-				switch(quickBuildType){
-					case 0:
-						enableBuildUnit("horse");
-					break;
-					case 1:
-						enableBuildUnit("fortress");
-					break;
-					case 2:
-						//enableBuildUnit("sailboat");
-					break;
-				}
+				currentBuildIndex = 2;
+				enableBuildUnit(currentBuildIndex, quickBuildType);
+				
 			}else if(code === 'Digit4') {
-				switch(quickBuildType){
-					case 0:
-						enableBuildUnit("dragon");
-					break;
-					case 1:
-						enableBuildUnit("shipyard");
-					break;
-					case 2:
-						//enableBuildUnit("sailboat");
-					break;
-				}
+				currentBuildIndex = 3;
+				enableBuildUnit(currentBuildIndex, quickBuildType);
+				
 			}else if(code === 'Backquote') {
+				currentBuildIndex = 0;
 				nextQuickBuildType();
-				playSound('startmove');
+				
+				enableBuildUnit(currentBuildIndex, quickBuildType);
+				//playSound('startmove');
 			}
 			
 		}
