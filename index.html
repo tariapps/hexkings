@@ -413,6 +413,10 @@ label {
 .settings-title-nopad {
 	margin-bottom:0;
 }
+.settings-title-oneline {
+	font-size:20px;
+	margin-bottom:5px;
+}
 
 
 .space {
@@ -2357,7 +2361,7 @@ input.disabled {
 					<button data-tabclass="tab-other" class="tab-game-settings tab-button">Other</button>
 				</div>
 				<div style="flex: 1;">
-					<button data-tabclass="tab-keys" class="tab-game-settings tab-button">Keys</button>
+					<button data-tabclass="tab-keys" class="tab-game-settings tab-button">Help</button>
 				</div>
 			</div>
 			
@@ -2369,7 +2373,28 @@ input.disabled {
 			
 			
 			<div class="tab tab-keys">
-				<div class="settings-title">
+				<div class="settings-title-oneline">
+					Gameplay:
+				</div>
+				<ul style="padding-left: 20px;">
+					<li><span style="color:yellow">Goal:</span> kill all enemies (game end rule decides if you also need to steal their lands).</li>
+					<li>You need to <span style="color:yellow">conquer land</span> (hexes) to get more income to afford more soldiers/castles etc. One hex gives +1 income for that hex. Your joined hexes (pool) savings decides what you can afford to build on or around that pool.</li>
+					<li>You must <span style="color:yellow">select your pool</span> (by clicking them) to build stuff in or around them. Soldiers can be built around them, but castles only inside them.</li>
+					<li>Each soldier or castle defends <span style="color:yellow">1 hex range</span> around them for same or lower level units. Example: hut defends against peasants, but not against knights, and peasant defends against other peasants but not knights (or higher level units).</li>
+					<li>You must <span style="color:yellow">avoid</span> your pool (joined hexes) savings+income-wages (balance) to become negative, or you will lose all your soldiers to starvation in that pool after turn ends.</li>
+					<li>You should try to <span style="color:yellow">split</span> enemy pools in hope to cause them to starve to death.</li>
+					<li>You should try to avoid the enemy <span style="color:yellow">splitting</span> your pools.</li>
+					<li>You can <span style="color:yellow">sell soldiers</span> and get 50% of the cost back.</li>
+					<li>You can <span style="color:yellow">sell castles</span> and get ~30% of the cost back.</li>
+					<li>On PC: Use <span style="color:yellow">buttons 1,2,3,4</span> for quick build, and change type to build with <span style="color:yellow">§ button</span>.</li>
+					<li>Moving your soldier <span style="color:yellow">on a tree</span> will give +1 money.</li>
+					<li>Moving your soldier (knight or higher level) <span style="color:yellow">on a rock</span> will give +5 money.</li>
+					<li>Dead soldiers (with cross image) will become grass after 4 turns. Grass prevents you from getting income from that tile. Same goes for trees.</li>
+				</ul>
+				
+				<div class="space"></div>
+				
+				<div class="settings-title-oneline">
 					Keys:
 				</div>
 				<div><span style="color:yellow">Q</span> = Rotate counterclockwise (+shift = slower)</div>
@@ -2400,7 +2425,7 @@ input.disabled {
 				
 				<div class="space"></div>
 				
-				<div class="settings-title">
+				<div class="settings-title-oneline">
 					Editor:
 				</div>
 				<div><span style="color:yellow">CTRL + Left Click</span> = Draw (if "Move" enabled)</div>
@@ -2413,7 +2438,7 @@ input.disabled {
 			
 			
 			<div class="tab tab-other">
-				<div class="settings-title">
+				<div class="settings-title-oneline">
 					Autosave (at end of day):
 				</div>
 				<div>
@@ -2423,7 +2448,7 @@ input.disabled {
 					</label>
 				</div>
 				
-				<div class="settings-title">
+				<div class="settings-title-oneline">
 					Editor:
 				</div>
 				<div>
@@ -2470,7 +2495,7 @@ input.disabled {
 					</div>
 				</div>
 				
-				<div class="settings-title">
+				<div class="settings-title-oneline">
 					Render:
 				</div>
 				
@@ -2542,7 +2567,7 @@ input.disabled {
 			
 			<div class="tab tab-audio">
 
-				<div class="settings-title">
+				<div class="settings-title-oneline">
 					Music player:
 				</div>
 				<div class="music-volume-wrapper">
@@ -2606,7 +2631,7 @@ input.disabled {
 				
 				<br>
 				<div>
-					<div class="settings-title">
+					<div class="settings-title-oneline">
 						Game end rule:
 					</div>
 					<div class="input-group">
@@ -2618,7 +2643,7 @@ input.disabled {
 				</div>
 
 				
-				<div class="settings-title">
+				<div class="settings-title-oneline">
 					Units:
 				</div>
 				<div>
@@ -5511,8 +5536,8 @@ let gameSounds = {
 	sea:          {filename: "sounds/sea.mp3",     gain: 1,   filter: false},
 	
 	// system sounds:
-	victory:      {filename: "sounds/victory.mp3", gain: 0.15,  filter: false},
-	defeat:       {filename: "sounds/defeat.mp3",  gain: 0.4,   filter: false},
+	victory:      {filename: "sounds/victory.mp3", gain: 0.1,  filter: false},
+	defeat:       {filename: "sounds/defeat.mp3",  gain: 0.2,   filter: false},
 	join:         {filename: "sounds/join.mp3",    gain: 0.6,   filter: false},
 	//quit:         {filename: "sounds/quit.mp3",    gain: 0.6,   filter: false},
 	quit:         {filename: "sounds/end-call.mp3",gain: 0.6,   filter: false},
@@ -7183,9 +7208,10 @@ function preventUndo(){
 	currentTurnActions = [];
 }
 
-function deselectHex(){
+function deselectHex(lineNumber){
 	//console.log("deselectHex");
 	selectedHex = null;
+	console.warn("selectedHex reset at:", lineNumber);
 }
 function deselectUnit(){
 	//console.log("deselectUnit");
@@ -15451,6 +15477,7 @@ function handleHexClick(point) {
 			if(isLandTile){
 				// Spectator or not my turn, just select hex for highlighting pools:
 				selectedHex = hex;
+				console.warn("selectedHex set at:", getLineNumber());
 				deselectUnit(); // Deselect
 
 				//buildPopup.style.display = 'none'; // not sure why this is here, maybe possible if somehow managed to end turn while popup is active?
@@ -15458,7 +15485,7 @@ function handleHexClick(point) {
 
 			}else{
 				deselectUnit(); // Deselect
-				deselectHex();
+				deselectHex(getLineNumber());
 			}
 
 			hideBuildPopup(); //buildPopup.style.display = 'none'; // not sure why this is here, maybe possible if somehow managed to end turn while popup is active?
@@ -15466,6 +15493,7 @@ function handleHexClick(point) {
 			
 			
 			updateHighlights();
+			console.log("updateHighlights now");
 				
 			// update here before return or it wont be updated.
 			if(updatePools){
@@ -15594,6 +15622,7 @@ function handleHexClick(point) {
 			
 			placingUnit = null; // "deselect", must do that because there is no cancel button (yet?)
 			updateHighlights();
+			console.log("updateHighlights now");
 			
 
 			buildOtherBtn.classList.remove("cancel");
@@ -15680,6 +15709,7 @@ function handleHexClick(point) {
 								//if(unitOnHex)
 								//selectedHex = {q:selectedUnit.q, r:selectedUnit.r};
 								selectedHex = {q:unitOnHex.q, r:unitOnHex.r};
+								console.warn("selectedHex set at:", getLineNumber());
 								//console.warn("WARNING:::::: selectedHex = ", selectedHex);
 								selectedUnit = unitOnHex;
 								updatePools = true; // ensure it wont update pools with the hex we try to move onto.
@@ -15693,6 +15723,7 @@ function handleHexClick(point) {
 							// caused some crash on addCost() if moved to rock first and then to tree,
 							// probably remembered the selectedHex as the rock hex, so it failed...
 							selectedHex = {q:selectedUnit.q, r:selectedUnit.r};
+							console.warn("selectedHex set at:", getLineNumber());
 							updatePools = false; // ensure it wont update pools with the hex we try to move onto.
 							sellUnitBtn.disabled = false;
 						}
@@ -15807,6 +15838,7 @@ function handleHexClick(point) {
 								// probably remembered the selectedHex as the rock hex, so it failed...
 								//selectedHex = {q:selectedUnit.q, r:selectedUnit.r};
 								selectedHex = {q:selectedUnit.q, r:selectedUnit.r};
+								console.warn("selectedHex set at:", getLineNumber());
 								updatePools = false; // ensure it wont update pools with the hex we try to move onto.
 								sellUnitBtn.disabled = false;
 							}
@@ -15838,16 +15870,19 @@ function handleHexClick(point) {
 											selectedUnit = unitOnHex; // Select new unit
 											sellUnitBtn.disabled = false;
 											selectedHex = hex;
+											console.warn("selectedHex set at:", getLineNumber());
 											playSound('startmove');
 										}else{
 											deselectUnit(); // Deselect
 											selectedHex = hex;
+											console.warn("selectedHex set at:", getLineNumber());
 										}
 									}else{
 										// deselect when clicking enemy unit that was not protected:
 										if(!isInvalidMove){
 											deselectUnit(); // Deselect
 											selectedHex = hex;
+											console.warn("selectedHex set at:", getLineNumber());
 											//console.log("deselected");
 										}
 									}
@@ -15856,12 +15891,13 @@ function handleHexClick(point) {
 									if(!isInvalidMove){
 										deselectUnit(); // Deselect
 										selectedHex = hex;
+										console.warn("selectedHex set at:", getLineNumber());
 										//console.log("deselected");
 									}
 								}
 							}else{
 								deselectUnit(); // Deselect
-								deselectHex();
+								deselectHex(getLineNumber());
 							}
 						}
 					
@@ -15885,6 +15921,7 @@ function handleHexClick(point) {
 							selectedUnit = unitOnHex;
 							sellUnitBtn.disabled = isTypeBoat(selectedUnit.type);
 							selectedHex = hex;
+							console.warn("selectedHex set at:", getLineNumber());
 							
 							console.warn("selectedUnit");
 							console.warn(selectedUnit);
@@ -15895,20 +15932,26 @@ function handleHexClick(point) {
 							// select the hex if cannot select unit.
 							deselectUnit();
 							selectedHex = hex;
+							console.warn("selectedHex set at:", getLineNumber());
 						}
 					}else{
 						// dont allow selecting castles.
 						deselectUnit();
 						selectedHex = hex;
+						console.warn("selectedHex set at:", getLineNumber());
 					}
 				} else {
 					// no unit or not my unit
 					if(isLandTile){
-						deselectUnit();
-						selectedHex = hex;
+						if(getTileAt(hex.q, hex.r)?.ownerIndex !== -1){
+							deselectUnit();
+							
+							selectedHex = hex;
+							console.warn("selectedHex set at:", getLineNumber());
+						}
 					}else{
 						deselectUnit();
-						deselectHex();
+						deselectHex(getLineNumber());
 					}
 				}
 			//}else{
@@ -15924,6 +15967,7 @@ function handleHexClick(point) {
 		}
 		
 		updateHighlights();
+		console.log("updateHighlights now");
 	}
 }
 
