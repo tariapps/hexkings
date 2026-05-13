@@ -2806,6 +2806,8 @@ input.disabled {
 		<button id="host-btn" class="primary">Host Game</button>
 		<button id="join-btn" disabled>Join Game</button>
 		<button id="spectate-btn" disabled>Join as Spectator</button>
+		<button id="check-server-status-btn">Wake up server</button>
+		<div id="server-wakeup-status"></div>
 		<div id="connection-status" style="text-align: center; margin-top: 10px; font-size: 14px;">Initializing...</div>
 	</div>
 </div>
@@ -8104,6 +8106,41 @@ const hostBtn = document.getElementById('host-btn');
 const joinBtn = document.getElementById('join-btn');
 const spectateBtn = document.getElementById('spectate-btn');
 const connectionStatus = document.getElementById('connection-status');
+
+const checkServerStatusBtn = document.getElementById('check-server-status-btn');
+const serverWakeupStatus = document.getElementById('server-wakeup-status');
+
+
+
+checkServerStatusBtn.addEventListener('click', async () => {
+    serverWakeupStatus.textContent = 'Waking server...';
+
+    try {
+        const res = await fetch('https://peerjs-server-j9al.onrender.com/peerjs', {
+            method: 'GET'
+        });
+
+        const text = await res.text();
+
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch {
+            serverWakeupStatus.textContent = 'Server is awake but returned non-JSON response.';
+            return;
+        }
+
+        if (data?.name === 'PeerJS Server') {
+            serverWakeupStatus.textContent = 'Server is awake and responding correctly.';
+        } else {
+            serverWakeupStatus.textContent = 'Server responded, but not as expected.';
+        }
+
+    } catch (err) {
+        serverWakeupStatus.textContent = 'Server did not respond: ' + err.message;
+    }
+});
+
 
 // Host Page
 const hostRoomNameTitle = document.getElementById('host-room-name-title');
@@ -27605,6 +27642,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 	spectateBtn.onclick = () => joinGame(true);
 	randomNameBtn.onclick = () => giveRandomName();
 	playerFlagBtn.onclick = () => openFlagBrowser();
+	
 	
 	//playerNameInput.onchange = (e) => localPlayer.name = e.target.value;
 	
