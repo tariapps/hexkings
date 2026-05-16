@@ -5094,6 +5094,7 @@ pickerPopupSelect.addEventListener("click", () => {
 	let color = currentColor;
 	let textColor = getPlayerTextColor(color);
 	updatePlayerColor(color, textColor);
+	setLocalStorageItem("player_color", color);
 	if(isHost()){
 		updateHostPreviewTile(color);
 	}else{
@@ -25892,6 +25893,10 @@ function spawnCastle(q, r, playerIndex, type){
 
 let DELAY_MULTI = 1;
 let DELAY_MULTI_STEP = 1.5;
+
+function setdelay(delay){
+	DELAY_MULTI = delay;
+}
 
 
 function replaySpeedUp(){
