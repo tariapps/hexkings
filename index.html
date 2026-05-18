@@ -1066,7 +1066,22 @@ button.redbutton:hover {
 	text-align: center;
 }
 
+.turn-popup-pulse {
+    animation: popupPulse 0.7s ease;
+}
 
+@keyframes popupPulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(0.45);
+		color:yellow;
+    }
+    100% {
+        transform: scale(1);
+    }
+}
 
 
 
@@ -2213,7 +2228,7 @@ input.disabled {
 
 <div id="end-turn-confirmation-popup" class="popup-overlay-noncenter no-select">
 	<div id="end-turn-confirmation-wrapper" class="popup-container">
-		<div class="settings-panel-endturn trans-panel">
+		<div id="end-turn-confirmation-wrapper2" class="settings-panel-endturn trans-panel">
 			<div class="popup-title-endturn">You have unmoved units, end turn?</div>
 			<div class="button-row-end-turn">
 				<button id="confirm-end-turn-yes" style="width:58px" class="primary nomargin">Yes</button>
@@ -2399,14 +2414,24 @@ input.disabled {
 				</div>
 				<div><span style="color:yellow">Q</span> = Rotate counterclockwise (+shift = slower)</div>
 				<div><span style="color:yellow">E</span> = Rotate clockwise (+shift = slower)</div>
+				<div><span style="color:yellow">J,K,L,I</span> = Move screen (+shift = slower)</div>
 				
-				<div><span style="color:yellow">A,S,D,W</span> = Move screen (+shift = slower)</div>
-				
+
 				<div class="space"></div>
 				
 				<div><span style="color:yellow">Z</span> = Previous unit</div>
 				<div><span style="color:yellow">C</span> = Next unit</div>
 				<div><span style="color:yellow">X</span> = Toggle centering unit (when using previous/next)</div>
+				<div><span style="color:yellow">V</span> = Center to selected unit</div>
+				
+				<div class="space"></div>
+				
+				<div><span style="color:yellow">A</span> = Previous pool</div>
+				<div><span style="color:yellow">S</span> = Change pool cycle type: all, empty, vacant</div>
+				<div><span style="color:yellow">D</span> = Next pool</div>
+				
+				<div class="space"></div>
+				
 				<div><span style="color:yellow">F</span> = End turn</div>
 				
 				<div class="space"></div>
@@ -3676,13 +3701,14 @@ function getPoolCenter(pool){
 	return avgHexPos;
 }
 
-
-playerTileIconBtn.addEventListener("click", () => {
+// cycleType: 0 = all pools, 1 = empty only, 2 = non-empty only.
+// direction: 0 = backwards, 1 = forwards.
+function handlePoolCycle(cycleType = 0, direction = 1){
 	let player = getMyPlayer();
-	let foundEmptyPool = false;
-	let totalEmptyPools = 0;
-	let currentEmptyPool = 0;
-
+	let foundPool = false;
+	let totalFoundPools = 0;
+	let currentFoundPool = 0;
+	
 	if(!REPLAY_ENABLED && player){
 		let startIndex = 0;
 		
@@ -3691,63 +3717,147 @@ playerTileIconBtn.addEventListener("click", () => {
 		if(pools){
 
 			if(currentFocusedPoolIndex !== -1){
-				for(let i = 0; i < pools.length; i++){
-					if(i === currentFocusedPoolIndex){
-						startIndex = i+1;
-						if(startIndex > pools.length-1){
-							startIndex = 0; // start from beginning again.
+				if(direction){
+					// search forwards the startIndex:
+					for(let i = 0; i < pools.length; i++){
+						if(i === currentFocusedPoolIndex){
+							startIndex = i+1;
+							if(startIndex > pools.length-1){
+								startIndex = 0; // start from beginning again.
+							}
+							break;
 						}
-						break;
 					}
-				}
-			}
-			
-			// search forward starting at selected index, wrapping around
-
-			for (let offset = 0; offset < pools.length; offset++) {
-				const i = (startIndex + offset) % pools.length;
-				let pool = pools[i];
-
-				let validSelection = false;
-				if(pool.soldiers.length === 0){
-					validSelection = true;
+				}else{
+					// search backwards the startIndex:
+					for(let i = pools.length-1; i >= 0; i--){
+						if(i === currentFocusedPoolIndex){
+							startIndex = i-1;
+							if(startIndex < 0){
+								startIndex = pools.length-1; // start from end again.
+							}
+							break;
+						}
+					}
 				}
 				
-				if(validSelection){
-					if(!foundEmptyPool){
-						cancelBuildPopup();
-						centerAndSelectPool(pool);
-						currentFocusedPoolIndex = i;
-						playSound('startmove');
-						foundEmptyPool = true;
-					}
-					//break;
+			}
+			
+			// search forward or backwards starting at selected index, wrapping around
+			for (let offset = 0; offset < pools.length; offset++) {
+				let i;
+				if(direction){
+					i = (startIndex + offset) % pools.length; // forwards
+				}else{
+					i = (startIndex - offset + pools.length) % pools.length; // backwards
+				}
+				let pool = pools[i];
+
+				switch(cycleType){
+					case 0:
+						if(!foundPool){
+							cancelBuildPopup();
+							centerAndSelectPool(pool);
+							currentFocusedPoolIndex = i;
+							playSound('startmove');
+							foundPool = true;
+						}
+					break;
+					case 1:
+						if(pool.soldiers.length === 0){
+							if(!foundPool){
+								cancelBuildPopup();
+								centerAndSelectPool(pool);
+								currentFocusedPoolIndex = i;
+								playSound('startmove');
+								foundPool = true;
+							}
+						}
+					break;
+					case 2:
+						if(pool.soldiers.length > 0){
+							if(!foundPool){
+								cancelBuildPopup();
+								centerAndSelectPool(pool);
+								currentFocusedPoolIndex = i;
+								playSound('startmove');
+								foundPool = true;
+							}
+						}
+					break;
+					
 				}
 			}
 			
-			if(foundEmptyPool){
+			if(foundPool){
 				for (let i = 0; i < pools.length; i++) {
 					let pool = pools[i];
 
-					if(pool.soldiers.length === 0){
-						totalEmptyPools++;
-						if(currentFocusedPoolIndex === i){
-							currentEmptyPool = totalEmptyPools;
-						}
+					switch(cycleType){
+						case 0:
+							totalFoundPools++;
+							if(currentFocusedPoolIndex === i){
+								currentFoundPool = totalFoundPools;
+							}
+						break;
+						case 1:
+							if(pool.soldiers.length === 0){
+								totalFoundPools++;
+								if(currentFocusedPoolIndex === i){
+									currentFoundPool = totalFoundPools;
+								}
+							}
+						break;
+						case 2:
+							if(pool.soldiers.length > 0){
+								totalFoundPools++;
+								if(currentFocusedPoolIndex === i){
+									currentFoundPool = totalFoundPools;
+								}
+							}
+						break;
+						
 					}
 				}
 			}
-		
 		}
 		
-		if(foundEmptyPool){
-			pushUserEvent("Empty land selected:", `${currentEmptyPool}/${totalEmptyPools}`);
-		}else{
-			pushUserEvent("","No empty lands available");
-			playSound('startmove');
+		switch(cycleType){
+			case 0:
+				if(foundPool){
+					pushUserEvent("Pool selected:", `${currentFoundPool}/${totalFoundPools}`);
+				}else{
+					pushUserEvent("","No pools available");
+					playSound('startmove');
+				}
+			break;
+			case 1:
+				if(foundPool){
+					pushUserEvent("Empty pool selected:", `${currentFoundPool}/${totalFoundPools}`);
+				}else{
+					pushUserEvent("","No empty pools available");
+					playSound('startmove');
+				}
+			break;
+			case 2:
+				if(foundPool){
+					pushUserEvent("Vacant pool selected:", `${currentFoundPool}/${totalFoundPools}`);
+				}else{
+					pushUserEvent("","No vacant pools available");
+					playSound('startmove');
+				}
+			break;
+			
 		}
+			
+
 		
 	}
+}
+
+
+playerTileIconBtn.addEventListener("click", () => {
+	handlePoolCycle(0);
 });
 
 
@@ -5296,10 +5406,23 @@ loadRandomBtn.addEventListener('click', () => {
 });
 
 
+let turnSoundInterval = null;
+
 
 
 function showTurnPopup(){
 	turnPopupOverlay.style.display = 'block';
+	
+	// stop previous sound loop (might get unreset if spamming next turn btn):
+	if(turnSoundInterval){
+		clearInterval(turnSoundInterval);
+	}
+	// start sound loop:
+	turnSoundInterval = setInterval(() => {
+		animateTurnPopup();
+		playSound("turnbegins");
+	}, 6000);
+	
 }
 function hideTurnPopup(){
 	// stop zooming:
@@ -5307,9 +5430,25 @@ function hideTurnPopup(){
 	if(turnPopupOverlay.style.display !== 'none'){
 		turnPopupOverlay.style.display = 'none';
 	}
+	
+	// stop sound loop:
+	if(turnSoundInterval){
+		clearInterval(turnSoundInterval);
+	}
 }
 
+function animateTurnPopup() {
+	const el = document.querySelector(".turn-popup-text");
 
+	// restart animation every time
+	el.classList.remove("turn-popup-pulse");
+
+	// force reflow so animation can restart:
+	// The void is just a clean way to avoid storing the width in a variable you never use.
+	void el.offsetWidth; // const unused = el.offsetWidth; works also.
+
+	el.classList.add("turn-popup-pulse");
+}
 
 
 // Open popup
@@ -5546,6 +5685,7 @@ let gameSounds = {
 	quit:         {filename: "sounds/end-call.mp3",gain: 0.6,   filter: false},
 	
 	message:      {filename: "sounds/message.mp3", gain: 0.6,   filter: false},
+	turnbegins:   {filename: "sounds/turn-begins.mp3", gain: 0.5,   filter: false},
 	
 	// need one sound per castle level so the explosion animation gets chosen correctly.
 	build0:        {filename: "sounds/build.mp3",    gain: 0.4,   filter: false},
@@ -5569,73 +5709,6 @@ let gameSounds = {
 	diedByStarving: {filename: "sounds/died-by-starving.mp3",  gain: 0.6,   filter: false},
 };
 
-/*
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-const soundBuffers = {}; // store multiple decoded sounds
-
-// Master buses
-const musicGain = audioCtx.createGain();
-musicGain.gain.value = 1.0;
-musicGain.connect(audioCtx.destination);
-
-const sfxGain = audioCtx.createGain();
-sfxGain.gain.value = 1.0;
-sfxGain.connect(audioCtx.destination);
-
-
-async function preloadAllSounds() {
-	const promises = Object.values(gameSounds).map(sound =>
-		fetch(sound.filename)
-			.then(res => res.arrayBuffer())
-			.then(data => audioCtx.decodeAudioData(data))
-			.then(decoded => {
-				soundBuffers[sound.filename] = decoded;
-			})
-	);
-
-	await Promise.all(promises);
-	console.log("All sounds loaded");
-}
-preloadAllSounds().then(() => {
-	console.log("All sounds loaded. Ready to play sounds");
-});
-
-
-function playSound(key) {
-	const sound = gameSounds[key];
-	if (!sound) {
-		console.error("Sound not found:", key);
-		return;
-	}
-
-	const buffer = soundBuffers[sound.filename];
-	if (!buffer) return;
-
-	const source = audioCtx.createBufferSource();
-	source.buffer = buffer;
-
-	// Per-instance gain (cheap)
-	const gainNode = audioCtx.createGain();
-	gainNode.gain.value = sound.gain ?? 1.0;
-
-	let lastNode = source;
-
-	// Optional per-instance filter
-	if (sound.filter) {
-		const filter = audioCtx.createBiquadFilter();
-		filter.type = "lowpass";
-		filter.frequency.value = sound.filterFrequency ?? 3000;
-		lastNode.connect(filter);
-		lastNode = filter;
-	}
-
-	lastNode.connect(gainNode);
-	gainNode.connect(sfxGain);
-
-	source.start();
-}
-
-*/
 
 
 
@@ -6611,6 +6684,7 @@ let localPlayer = {
 	name: 'Player',
 	color: "#888888", // debug color
 	textColor: "#888888", // debug color
+	colorName: "gray",
 	isSpectator: false,
 	isHost: false,
 	isDead: false,
@@ -7400,6 +7474,36 @@ if(use_fill){
 
 
 
+
+
+function hslToColorName(h, s, l) {
+  // grayscale handling first
+  if (s < 0.15) {
+    if (l < 0.2) return "black";
+    if (l < 0.4) return "dark gray";
+    if (l < 0.7) return "gray";
+    return "white";
+  }
+
+  // hue-based buckets
+  if (h < 15 || h >= 345) return l < 0.5 ? "dark red" : "red";
+  if (h < 45) return "orange";
+  if (h < 70) return "yellow";
+  if (h < 160) return "green";
+  if (h < 200) return "teal";
+  if (h < 255) return "blue";
+  if (h < 290) return "purple";
+  if (h < 345) return "pink";
+
+  return "unknown";
+}
+
+function hexToColorName(hex) {
+  const colors = hexToRgb(hex);
+  const { h, s, l } = rgbToHsl(colors[0], colors[1], colors[2]);
+
+  return hslToColorName(h, s, l);
+}
 
 
 
@@ -9328,6 +9432,8 @@ openEndgamePopupBtn.addEventListener("click", () => {
 
 const endTurnPopup = document.getElementById('end-turn-confirmation-popup');
 const endTurnPopupWrapper = document.getElementById('end-turn-confirmation-wrapper');
+const endTurnPopupWrapper2 = document.getElementById('end-turn-confirmation-wrapper2');
+
 const confirmYes = document.getElementById('confirm-end-turn-yes');
 const confirmNo = document.getElementById('confirm-end-turn-no');
 
@@ -9547,11 +9653,14 @@ addAiBtn.addEventListener('click', () => {
 	if (!isHost()) return;
 
 	let randomStr = getUID(5); // add short random id so the total length is 10 at minimum.
-	const aiPlayer = {
+	let color = getNextFreeColor();
+	
+	let aiPlayer = {
 		id: `AI-${ai_counter}-${randomStr}`,
 		name: `AI-${ai_counter}`,
-		color: getNextFreeColor(),
-		textColor: getNextFreeTextColor(),
+		color: color,
+		textColor: getPlayerTextColor(color),
+		colorName: hexToColorName(color),
 		isSpectator: false,
 		isAI: true,
 		isDead: false,
@@ -10328,10 +10437,28 @@ userActivityEvents.forEach(event => {
 });
 
 let lastActiveTime = 0;
-function throttledMarkUserActive() {
+
+function throttledMarkUserActive(e) {
+	// Ignore Ctrl, Alt, or Tab keyboard activity
+	if (
+		(e.type === "keydown" || e.type === "keyup") &&
+		(
+			e.ctrlKey ||
+			e.altKey ||
+			e.key === "Tab" ||
+			e.key === "Control" ||
+			e.key === "Alt"
+		)
+	) {
+		return;
+	}
+	
 	const now = Date.now();
 	if (now - lastActiveTime > 500) {  // adjust interval as needed
-		hideTurnPopup();
+		// dont call hideTurnPopup if its already hidden:
+		if(turnPopupOverlay.style.display !== 'none'){
+			hideTurnPopup();
+		}
 		lastActiveTime = now;
 	}
 }
@@ -14875,6 +15002,7 @@ function updateProgressBarsUI(){
 	gameState.players.forEach(p => {
 		const item = document.createElement('div');
 		item.className = 'player-list-item-top';
+		item.title = "Player color: "+ucfirst(p.colorName);
 		if (p.id === currentTurnPlayer?.id) {
 			item.classList.add('current-turn');
 		}
@@ -21427,6 +21555,8 @@ function handleHostData(data) {
 				localPlayer.isSpectator = true;
 				localPlayer.color = SPECTATOR_COLOR;
 				localPlayer.textColor = SPECTATOR_COLOR;
+				localPlayer.colorName = hexToColorName(SPECTATOR_COLOR);
+				
 				spectatorUiMode();
 				console.log("localPlayer");
 				console.log(localPlayer);
@@ -22449,10 +22579,12 @@ function handleClientData(peerId, data) {
 				let colors = getNextFreeColors();
 				player.color = colors.color;
 				player.textColor = colors.textColor;
+				player.colorName = hexToColorName(player.color);
 				player.isSpectator = data.isSpectator;
 			} else {
 				player.color = "#FFFFFF";
 				player.textColor = "#FFFFFF";
+				player.colorName = hexToColorName(player.color);
 				player.isSpectator = true; // Always spectator if game in progress
 			}
 			player.country = data.country;
@@ -22499,9 +22631,11 @@ function handleClientData(peerId, data) {
 			}
 			if(data.color !== undefined){
 				player.color = data.color;
+				player.colorName = hexToColorName(player.color);
 			}
 			if(data.textColor !== undefined){
 				player.textColor = data.textColor;
+				player.colorName = hexToColorName(player.color);
 			}
 			if(data.textureType !== undefined){
 				player.textureType = data.textureType;
@@ -22648,8 +22782,9 @@ function setupConnection(conn) {
 			const newPlayer = {
 				id: conn.peer,
 				name: 'Joining...', // Will be updated by join message
-				color: "gray",
-				textColor: "gray",
+				color: "#888888",
+				textColor: "#888888",
+				colorName: hexToColorName("#888888"),
 				isSpectator: false,
 				isAI: false,
 				isDead: false,
@@ -22910,6 +23045,7 @@ function executeJoin(hostPeerId) {
 			name: localPlayer.name,
 			color: colors.color,
 			textColor: colors.textColor,
+			colorName: hexToColorName(colors.color),
 			isSpectator: localPlayer.isSpectator,
 			country: getSetting('country'),
 			userAgent: navigator.userAgent,
@@ -22935,6 +23071,7 @@ function joinGame(isSpectator) {
 	if (isSpectator) {
 		localPlayer.color = SPECTATOR_COLOR;
 		localPlayer.textColor = SPECTATOR_COLOR;
+		localPlayer.colorName = hexToColorName(SPECTATOR_COLOR);
 		spectatorUiMode();
 		addSystemChatMessage("Joined as spectator");
 	}
@@ -22995,6 +23132,7 @@ function hostGame() {
 			let colors = getNextFreeColors();
 			localPlayer.color = colors.color;
 			localPlayer.textColor = colors.textColor;
+			localPlayer.colorName = hexToColorName(localPlayer.color);
 			localPlayer.country = getSetting('country');
 			
 			hostPeerId = myPeerId;
@@ -23387,6 +23525,7 @@ function updateHostLobbyUI() {
 function updatePlayerColor(color, textColor){
 	localPlayer.color = color;
 	localPlayer.textColor = textColor;
+	localPlayer.colorName = hexToColorName(localPlayer.color);
 
 	sendToHost({
 		type: ACTION.player_update,
@@ -26276,6 +26415,7 @@ function startGame() {
 				}
 				p.color = PLAYER_COLORS[colorIdx].color;
 				p.textColor = PLAYER_COLORS[colorIdx].textColor;
+				p.colorName = hexToColorName(p.color);
 				usedColors.push(p.color);
 			}
 		}
@@ -26523,12 +26663,11 @@ document.addEventListener('keydown', (event) => {
 				}else{
 					rotateAroundScreenCenter(0.03);
 				}
-			//}
-			//else if(code === 'KeyW') {
-			//	rotateAroundScreenCenter(-viewport.rotation);
+			}else if(code === 'KeyW') {
+				rotateAroundScreenCenter(-viewport.rotation+defaultViewportRotation);
 			}else if(code === 'Space'){
 				lastMovesTriggerTime = performance.now();
-			}else if(code === 'KeyW') {
+			}else if(code === 'KeyI') {
 				if(!event.shiftKey){
 					viewport.y += 40;
 				}else{
@@ -26537,7 +26676,7 @@ document.addEventListener('keydown', (event) => {
 				if(editor.isDrawing){
 					sendTileUpdate(pixelToAxial(mousePosCurrent.x, mousePosCurrent.y));
 				}
-			}else if(code === 'KeyS') {
+			}else if(code === 'KeyK') {
 				if(!event.shiftKey){
 					viewport.y -= 40;
 				}else{
@@ -26546,7 +26685,7 @@ document.addEventListener('keydown', (event) => {
 				if(editor.isDrawing){
 					sendTileUpdate(pixelToAxial(mousePosCurrent.x, mousePosCurrent.y));
 				}
-			}else if(code === 'KeyA') {
+			}else if(code === 'KeyJ') {
 				if(!event.shiftKey){
 					viewport.x += 40;
 				}else{
@@ -26555,7 +26694,7 @@ document.addEventListener('keydown', (event) => {
 				if(editor.isDrawing){
 					sendTileUpdate(pixelToAxial(mousePosCurrent.x, mousePosCurrent.y));
 				}
-			}else if(code === 'KeyD') {
+			}else if(code === 'KeyL') {
 				if(!event.shiftKey){
 					viewport.x -= 40;
 				}else{
@@ -26564,12 +26703,24 @@ document.addEventListener('keydown', (event) => {
 				if(editor.isDrawing){
 					sendTileUpdate(pixelToAxial(mousePosCurrent.x, mousePosCurrent.y));
 				}
+			}else if(code === 'KeyA') {
+				previousPool();
+			}else if(code === 'KeyS') {
+				// todo: add something about pools.
+				// perhaps toggle between all pools and empty pools?
+				// or toggle between empty pools and non-empty pools.
+				// or 3: empty pools, non-empty pools, all pools.
+				advancePoolCycleType();
+			}else if(code === 'KeyD') {
+				nextPool();
 			}else if(code === 'KeyZ') {
 				previousUnit();
 			}else if(code === 'KeyX') {
 				centerUnitToggle();
 			}else if(code === 'KeyC') {
 				nextUnit();
+			}else if(code === 'KeyV') {
+				centerToSelectedUnit();
 			}else if(code === 'KeyF') {
 				
 				if(endTurnPopup.classList.contains('active')){
@@ -26835,6 +26986,9 @@ function handleOutside(e) {
 	if (!gameSettingsUiWrapper2.contains(e.target)) {
 		gameSettingsUi.style.display = "none";
 	}
+	
+
+	
 	//if (!endTurnPopupWrapper.contains(e.target)) {
 	//	endTurnPopup.classList.remove('active');
 	//}
@@ -26883,11 +27037,11 @@ function handleOutside(e) {
 }
 
 
-
 document.addEventListener('mousedown', (e) => {
 	mouseDownInsidePopup =
 		pickerWrapper.contains(e.target) ||
 		gameSettingsUiWrapper2.contains(e.target) ||
+		endTurnPopupWrapper2.contains(e.target) ||
 		playerSettingsUiWrapper2.contains(e.target) ||
 		//endTurnPopupWrapper.contains(e.target) || // todo: fix it to cancel by clicking outside.
 		gameStatsPopupUiWrapper2.contains(e.target) ||
@@ -26897,6 +27051,13 @@ document.addEventListener('mousedown', (e) => {
 		buildOtherBtn.contains(e.target) ||
 		buildSoldierBtn.contains(e.target) ||
 		buildCastleBtn.contains(e.target);
+
+	// close end turn confirmation popup:
+	if (!endTurnPopupWrapper2.contains(e.target)) {
+		closeEndTurnConfirmation();
+	}
+
+	console.warn("mouseDownInsidePopup:", mouseDownInsidePopup);
 });
 
 document.addEventListener('click', handleOutside);
@@ -27221,6 +27382,38 @@ function pushUserEvent(str1, str2) {
 	}
 }
 
+
+function centerToSelectedUnit(){
+	if(selectedUnit){
+		centerToUnit(selectedUnit);
+		playSound("startmove");
+	}
+}
+
+let currentPoolCycleType = 0;
+
+function previousPool(){
+	handlePoolCycle(currentPoolCycleType, 0);
+}
+function advancePoolCycleType(){
+	currentPoolCycleType++;
+	if(currentPoolCycleType > 2){
+		currentPoolCycleType = 0;
+	}
+	playSound("startmove");
+	let str = "";
+	if(currentPoolCycleType === 0){
+		str = "All pools";
+	}else if(currentPoolCycleType === 1){
+		str = "Empty pools only";
+	}else if(currentPoolCycleType === 2){
+		str = "Vacant pools only";
+	}
+	pushUserEvent("Pool cycle type:", str);
+}
+function nextPool(){
+	handlePoolCycle(currentPoolCycleType, 1);
+}
 
 function centerUnitToggle(){
 	centerUnitEnabled = !centerUnitEnabled;
@@ -27701,6 +27894,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 			let colors = getNextFreeColors();
 			localPlayer.color = localPlayer.isSpectator ? SPECTATOR_COLOR : colors.color;
 			localPlayer.textColor = localPlayer.isSpectator ? SPECTATOR_COLOR : colors.textColor;
+			localPlayer.colorName = hexToColorName(localPlayer.color);
+			
 			spectateHostBtn.classList.toggle('active', localPlayer.isSpectator);
 			broadcastLobbyState();
 		}
