@@ -3148,7 +3148,7 @@ input.disabled {
 
 	animation: fadeAndRemove 0.5s ease forwards;
 
-	animation-delay: 3s;
+	animation-delay: 4s;
 }
 
 @keyframes fadeAndRemove {
@@ -3857,7 +3857,7 @@ function handlePoolCycle(cycleType = 0, direction = 1){
 
 
 playerTileIconBtn.addEventListener("click", () => {
-	handlePoolCycle(0);
+	handlePoolCycle(1);
 });
 
 
@@ -6495,7 +6495,7 @@ const SOLDIER_DATA = {
 const CASTLE_DATA = {
 	// listed in this order.
 	
-	"shipyard":      { canMove: 0, frames: 1, visibleName: "Shipyard",     name: "shipyard",      type:"castle", defaultImage: "shipyard", subtype: "shipyard", level: 0, cost: 20, sell: 5},
+	"shipyard":      { canMove: 0, frames: 1, visibleName: "Shipyard",     name: "shipyard",      type:"castle", defaultImage: "shipyard", subtype: "shipyard", level: 0, cost: 5, sell: 2},
 	
 	"fortress": { canMove: 0, frames: 1, visibleName: "Fortress",name: "fortress", type:"castle", defaultImage: "castle3", level: 3, cost: 200, sell: 50},
 	
@@ -6626,6 +6626,23 @@ let minOtherCost = getCheapestCost(UNITS.other);
 
 
 
+
+function canBuySoldierOrCastle(totalSavings){
+	for (const key in UNITS.soldier) {
+		const entry = UNITS.soldier[key];
+		if(totalSavings >= entry.cost) {
+			return true;
+		}
+	}
+	for (const key in UNITS.castle) {
+		const entry = UNITS.castle[key];
+		if(totalSavings >= entry.cost) {
+			return true;
+		}
+	}
+	return false;
+}
+
 function canBuyAnything(totalSavings){
 	for (const key in UNITS.ALL) {
 		const entry = UNITS.ALL[key];
@@ -6749,7 +6766,7 @@ let gameState = {
 		maxMines: 14,
 		maxBoats: 30,
 		mineCost: 4,
-		boatCost: 5,
+		boatCost: 3,
 		undoAC: true, // "allow undo after claiming"
 	},
 	players: [], // { id, name, color, isSpectator, isAI }
@@ -8285,6 +8302,7 @@ const lobbyTextureTypeMsg = document.getElementById('lobby-texture-type-msg');
 hostTextureType.addEventListener("change", function(){
 	let player = getMyPlayer();
 	player.textureType = parseInt(hostTextureType.value, 10);
+	setLocalStorageItem("player_texture", player.textureType);
 	
 	broadcastLobbyState();
 	
@@ -12217,11 +12235,25 @@ function drawHighlights(){
 					
 					let poolSelected = 0;
 					
+					let isSelectedEnemyPool = false;
+					
 					if(highlightedEnemyPlayer){
 						if(highlightedEnemyPlayer.playerIndex === tile.ownerIndex){
 							opacity = 1;
 							color = lightenHexColor(player.color, 0.6);
 							poolSelected = 1;
+							
+							
+							if(enemyHighlightedPool && enemyHighlightedPool.length > 0){
+								for(let p = 0; p < enemyHighlightedPool.length; p++){
+									let pool = enemyHighlightedPool[p];
+									if(pool.q == q && pool.r == r){
+										isSelectedEnemyPool = true;
+										break;
+									}
+								}
+							}
+
 						}
 					}
 					
@@ -12245,6 +12277,10 @@ function drawHighlights(){
 								}
 							}
 						}
+						
+
+						
+						
 
 
 						ctx.setLineDash([12.5, 15]);
@@ -12273,11 +12309,17 @@ function drawHighlights(){
 							if(poolSelected){
 								pulse = pulseScale(0.3, 1.0, 0.008);
 							}
+							if(isSelectedEnemyPool){
+								ctx.setLineDash([12.5, 15]);
+							}
 							ctx.strokeStyle = hexToRgba(color, opacity*pulse);
 							ctx.lineWidth = 3;
 							ctx.lineCap = 'round';
 							ctx.stroke();
 							ctx.lineCap = 'butt'; // reset to default
+							if(isSelectedEnemyPool){
+								ctx.setLineDash([]);
+							}
 						}
 					}
 				}
@@ -12913,12 +12955,14 @@ function createExplosion(ep) {
 
 
 
+let particleUndo = [];
 
 const textParticles = [];
 
-function spawnFloatingText({x, y, text = "+1", color = "yellow", font = "20px Arial"}){
-	let moveDuration = 0.3;
-	let fadeDuration = 3.5;
+
+function spawnFloatingText({x, y, text = "+1", color = "yellow", font = "20px Arial", moveDuration = 0.3, fadeDuration = 3.5, moveDistance = 55, useUnitImage = null, alpha = 1}){
+	//let moveDuration = 0.3;
+	//let fadeDuration = 3.5;
 	let totalLife = moveDuration+fadeDuration;
 	textParticles.push({
 		x,
@@ -12932,15 +12976,28 @@ function spawnFloatingText({x, y, text = "+1", color = "yellow", font = "20px Ar
 		font,
 
 		elapsed: 0,
-		alpha: 1,
+		alpha: alpha,
+		startAlpha: alpha,
 
 		moveDuration: moveDuration, // seconds
 		fadeDuration: fadeDuration,
-		moveDistance: 55,
-		totalLife: totalLife
+		moveDistance: moveDistance,
+		totalLife: totalLife,
+		useUnitImage: useUnitImage,
 	});
+	return textParticles.length-1;
 }
 
+
+function removeTextParticle(index){
+	//console.log("removeTextParticle be", index, textParticles);
+	if(index < textParticles.length){
+		textParticles.splice(index, 1);
+	}
+	
+	//console.log("removeTextParticle af", index, textParticles);
+
+}
 
 function updateTextParticles() {
 	
@@ -12965,8 +13022,8 @@ function updateTextParticles() {
 		// Fade after movement stops
 		if (p.elapsed > p.moveDuration) {
 			const fadeTime = p.elapsed - p.moveDuration;
-			const t = Math.min(fadeTime / p.fadeDuration, 1);
-			p.alpha = 1 - t;
+			const t = Math.min(fadeTime / p.fadeDuration, p.startAlpha);
+			p.alpha = p.startAlpha - t;
 		}
 
 		// Remove when dead
@@ -12977,8 +13034,40 @@ function updateTextParticles() {
 }
 
 function drawTextParticles() {
+	
 	for (const p of textParticles) {
 		if (p.alpha <= 0) continue;
+		
+
+
+		if(p.useUnitImage){
+			let ghostedType = p.useUnitImage;
+			
+			let {img, imageKey} = getUnitImageByType(ghostedType, false);
+			
+			let {xoff, yoff, dw, dh} = getImageOffsets(img, imageKey);
+			
+			
+			ctx.save();
+			
+			// move to object position
+			ctx.translate(p.x, p.y);
+			// undo viewport rotation
+			ctx.rotate(-viewport.rotation);
+			// now apply screen-space offsets
+			ctx.translate(-xoff, -yoff);
+			
+
+			
+			ctx.globalAlpha = p.alpha;
+
+			
+			// draw unit:
+			drawImageMippedCropped(ctx, imageKey, 0, 0, dw, dh, -1);
+			
+			ctx.restore();
+		
+		}
 
 		ctx.save();
 		
@@ -12991,7 +13080,7 @@ function drawTextParticles() {
 		
 		// draw text:
 		ctx.globalAlpha = p.alpha;
-		
+	
 		// stroke:
 		ctx.font = "30px sans-serif";
 		ctx.lineWidth = 4; // outline thickness
@@ -13005,6 +13094,8 @@ function drawTextParticles() {
 		
 		
 		ctx.restore();
+		
+		
 	}
 }
 
@@ -15348,7 +15439,7 @@ function updateSelectedPoolUi(){
 			//console.warn(selectedPool);
 
 			playerSavings.textContent = "?";
-			playerBalance.textContent = "?";
+			playerBalance.textContent = "("+formatPoolDecimal(enemySelectedPool.totalIncome-enemySelectedPool.totalWages)+")";
 			playerIncome.textContent = formatPoolDecimal(enemySelectedPool.totalIncome);
 			playerWages.textContent = formatPoolDecimal(enemySelectedPool.totalWages);
 			
@@ -19062,6 +19153,7 @@ function executeAction(playerId, action) {
 				type: ACTION.undo_counter, 
 				// no value needed, will be reset for all players.
 			});
+			
 
 			if(!isAiPlayer(playerIndex)){
 				broadcast({ type: ACTION.sound, name: "move", q:0, r:0, playerIndex: -1, action: action.type});
@@ -19247,6 +19339,7 @@ function findEconomyPools(playerIndex, log_enabled = false) {
 		const pool = {
 			hexes: [], // {q, r, tile}
 			soldiers: [],
+			castles: [],
 			totalSavings: 0, // recalculated from tile.savings
 			totalIncome: 0,
 			totalWages: 0
@@ -19273,12 +19366,15 @@ function findEconomyPools(playerIndex, log_enabled = false) {
 			const unit = getUnitAt(q, r);
 			
 			
-			if (unit && isSoldier(unit)) {
-			//if (unit && isSoldier(unit) && SOLDIER_DATA[unit.type]) {
-				const unitInfo = getUnitInfo(unit.type);
-				if(unitInfo){
-					pool.soldiers.push(unit);
-					pool.totalWages += unitInfo.wage;
+			if (unit) {
+				if(isSoldier(unit)){
+					const unitInfo = getUnitInfo(unit.type);
+					if(unitInfo){
+						pool.soldiers.push(unit);
+						pool.totalWages += unitInfo.wage;
+					}
+				}else if(isCastle(unit)){
+					pool.castles.push(unit);
 				}
 			}
 			
@@ -19429,7 +19525,7 @@ function getNextPlayerIndexAndProcessEndOfDay(currentIndex){
 		// make sure to process end of day even if a player is dead.
 		if(!alreadyAdvanced && nextIndex === gameState.turn.startPlayerIndex){
 			
-			
+			console.warn("END OF DAY, TIME TO KILL SOLDIERS TO STARVATION");
 			processEndOfDay();
 			alreadyAdvanced = true; // do this only once, in case everyone is dead/spectator.
 		}
@@ -20355,12 +20451,20 @@ function calculateBalanceAndKillSoldiers(pools, addedUnit = null, addMoney = tru
 	//for (let pool of pools) {
 	for(let p = 0; p < pools.length; p++){
 		let pool = pools[p];
-		// kill units BEFORE adding money to their pools:
 		
+		let savingsBefore = pool.totalSavings;
+		let wagesBefore = pool.totalWages;
+		let incomeBefore = pool.totalIncome;
+		let balanceBefore = savingsBefore+incomeBefore-wagesBefore;
+		
+		// kill units BEFORE adding money to their pools:
+
 		// avoid -0.000001 negative values or 0.000001 positive values (EPSILON):
 		
 		if(addMoney){
 			console.warn("adding savings to player", playerIndex);
+
+			
 			pool.totalSavings += pool.totalIncome;
 			pool.totalSavings -= pool.totalWages;
 			
@@ -20376,6 +20480,7 @@ function calculateBalanceAndKillSoldiers(pools, addedUnit = null, addMoney = tru
 					playerIndex: playerIndex, 
 					pool: pool,
 					poolIndex: p, // probably not needed.
+					info: {savingsBefore, wagesBefore, incomeBefore, balanceBefore, totalKills: pool.soldiers.length},
 				});// todo: allowKilling is not checked for this current player in turn??
 				
 				// dont reset tile data here.
@@ -20398,6 +20503,7 @@ function calculateBalanceAndKillSoldiers(pools, addedUnit = null, addMoney = tru
 						playerIndex: playerIndex, 
 						pool: pool,
 						poolIndex: p, // probably not needed.
+						info: {savingsBefore, wagesBefore, incomeBefore, balanceBefore, totalKills: pool.soldiers.length},
 					});
 					
 					// dont reset tile data here.
@@ -20641,6 +20747,58 @@ function getLastRemainingPlayer(){
 }
 
 
+function checkPlayerAbleToDoAnything(playerIndex){
+	let pools = findEconomyPools(playerIndex);
+
+	for(let i = 0; i < pools.length; i++){
+		let pool = pools[i];
+		
+		let canBuy = false;
+		let canMove = false;
+		
+		
+		if(pool.soldiers.length > 0){
+			canMove = true;
+			// check all possible buildable units, since there are soldiers:
+			if(canBuyAnything(pool.totalSavings)){
+				canBuy = true;
+			}
+		}else{
+			// no soldiers, check if you can build without using soldiers:
+			if(canBuySoldierOrCastle(pool.totalSavings)){
+				canBuy = true;
+			}
+		}
+		// check if you could build something by selling all of your castles:
+		if(pool.castles.length > 0){
+			let totalCastleSellAmount = 0;
+			for(let u = 0; u < pool.castles.length; u++){
+				totalCastleSellAmount += getUnitSellPrice(pool.castles[u]);
+			}
+			// if soldiers were found, check all possible buildable items:
+			if(canMove){
+				if(canBuyAnything(pool.totalSavings + totalCastleSellAmount)){
+					canBuy = true;
+				}
+			}else{
+				// no soldiers, check if you can build without using soldiers:
+				if(canBuySoldierOrCastle(pool.totalSavings + totalCastleSellAmount)){
+					canBuy = true;
+				}
+			}
+			
+		}
+		// break from loop if able to do anything:
+		if(canBuy || canMove){
+			return true;
+		}
+	}
+	return false;
+}
+
+
+
+
 
 // HOST-SIDE
 function executeEndTurn(playerIndex) {
@@ -20770,6 +20928,7 @@ function executeEndTurn(playerIndex) {
 			}
 			
 			if(doKill){
+				
 				console.warn("PLAYER HAS DIED: "+player.name);
 				// send ACTION.player_killed message and set player as dead:
 				batchActions.push(...killPlayer(player.playerIndex));
@@ -20847,6 +21006,7 @@ function executeEndTurn(playerIndex) {
 			if(killedPlayer.playerIndex !== playerIndex){
 				distributePoolSavings(killedPlayer.pool);
 			}
+			console.warn("killedPlayer info:", killedPlayer.info, "killedPlayer data:", killedPlayer);
 		}
 		// update savings to everyone:
 		let playingPlayers = getPlayingPlayers();
@@ -20854,13 +21014,18 @@ function executeEndTurn(playerIndex) {
 			updatePlayerSavings(playingPlayers[p].playerIndex);
 		}
 		
-		
+
 		currentTurnActions = []; // Clear undo stack
+		
+		
+		let candoanything = checkPlayerAbleToDoAnything(gameState.turn.currentPlayerIndex);
+	
 		
 		batchActions.push({ 
 			type: ACTION.turn_changed, 
 			currentPlayerIndex: gameState.turn.currentPlayerIndex, 
-			turnNumber: gameState.turn.turnNumber 
+			turnNumber: gameState.turn.turnNumber,
+			canDoAnything: candoanything,
 		});
 	}
 	
@@ -21359,18 +21524,18 @@ function handleHostData(data) {
 	console.log("handleHostData: data.type = "+actionToText(data.type));
 	
 	switch (data.type) {
-		case ACTION.ping: {
+		case ACTION.ping: { // client side
 			// respond to ping for the host:
 			sendToHost({ type: ACTION.pong, time: Date.now(), playerIndex: getMyPlayer().playerIndex });
 			console.warn("received ping from host.");
 		}
 		break;
-		case ACTION.day_changed: {
+		case ACTION.day_changed: { // client side
 			console.warn("day_changed", data);
 			addStatsChartDataAllPlayers();
 		}
 		break;
-		case ACTION.stats: {
+		case ACTION.stats: { // client side
 			
 			console.warn("ACTION.stats", data);
 
@@ -21408,7 +21573,7 @@ function handleHostData(data) {
 			
 		}
 		break;
-		case ACTION.check_balance: {
+		case ACTION.check_balance: { // client side
 			// called at the very last after action_move/action_build messages have been processed.
 			if(isHost()){
 				console.warn("handleHostData: check_balance");
@@ -21441,12 +21606,12 @@ function handleHostData(data) {
 			}
 		}
 		break;
-		case ACTION.progress_bar_update: {
+		case ACTION.progress_bar_update: { // client side
 			updateProgressbar(gameState.turn.currentPlayerIndex, "progress_bar_update", data);
 			updateProgressBarsUI();
 		}
 		break;
-		case ACTION.multiple_actions: {
+		case ACTION.multiple_actions: { // client side
 			console.warn("multiple_actions received");
 			//console.warn(data.actions);
 			// handle batch of actions in one run, so there is less individual messages sent to clients.
@@ -21460,7 +21625,7 @@ function handleHostData(data) {
 			return; // dont process anything after.
 		}
 		break;
-		case ACTION.game_start: {
+		case ACTION.game_start: { // client side
 			REPLAY_ENABLED = 0;
 			
 
@@ -21526,7 +21691,7 @@ function handleHostData(data) {
 			
 		}
 		break;
-		case ACTION.replay_start: {
+		case ACTION.replay_start: { // client side
 			REPLAY_ENABLED = 1;
 			
 			GAME_START_TIME = msNowFloor();
@@ -21546,7 +21711,7 @@ function handleHostData(data) {
 			console.warn("replay_start");
 		}
 		break;
-		case ACTION.full_state: {
+		case ACTION.full_state: { // client side
 			// for spectators, send full state:
 			gameState = data.state;
 			console.warn("handleHostData full_state");
@@ -21575,7 +21740,7 @@ function handleHostData(data) {
 			updateGameUI();
 		}
 		break;
-		case ACTION.player_changed: {
+		case ACTION.player_changed: { // client side
 			console.warn("player_changed:");
 			console.warn(data);
 			
@@ -21590,7 +21755,7 @@ function handleHostData(data) {
 			}
 		}
 		break;
-		case ACTION.settings_update: {
+		case ACTION.settings_update: { // client side
 			console.warn("settings_update");
 			
 			// dont allow settings update if game has started.
@@ -21613,13 +21778,13 @@ function handleHostData(data) {
 			
 		}
 		break;
-		case ACTION.lobby_update: {
+		case ACTION.lobby_update: { // client side
 			gameState.settings = data.settings;
 			gameState.players = data.players;
 
 			gameState.map = data.map;
 			
-			console.warn("SET: lobby_update:", data.map.name);
+			//console.warn("SET: lobby_update:", data.map.name);
 			
 			
 			
@@ -21637,10 +21802,10 @@ function handleHostData(data) {
 			updateLobbyUI();
 		}
 		break;
-		case ACTION.map_update: {
+		case ACTION.map_update: { // client side
 			gameState.map = data.map;
 			
-			console.warn("SET: map_update:", data.map.name);
+			//console.warn("SET: map_update:", data.map.name);
 			
 			//lobbyLoadedMapImg.src = data.map.imageData;
 			let catinfo = getMapCatIndex(data.map.name);
@@ -21651,7 +21816,7 @@ function handleHostData(data) {
 			updateLobbyUI();
 		}
 		break;
-		case ACTION.chat: {
+		case ACTION.chat: { // client side
 			data.message = data.message.slice(0, MAX_MESSAGE_LEN);
 			if(data.fromPlayerIndex !== undefined){
 				let fromPlayer = getPlayerByIndex(data.fromPlayerIndex);
@@ -21668,7 +21833,7 @@ function handleHostData(data) {
 			}
 		}
 		break;
-		case ACTION.lobby_chat: {
+		case ACTION.lobby_chat: { // client side
 			
 			data.message = data.message.slice(0, MAX_MESSAGE_LEN);
 			if(data.fromPlayerIndex !== undefined){
@@ -21684,7 +21849,14 @@ function handleHostData(data) {
 			}
 		}
 		break;
-		case ACTION.system_message:
+		case ACTION.user_event: // client side
+			pushUserEvent(data.text1, data.text2);
+			if(data.sound !== undefined){
+				playSound(data.sound);
+			}
+		break;
+		
+		case ACTION.system_message: // client side
 			addSystemChatMessage(data.message);
 			if(data.quittedPlayerIndex !== undefined){
 				let player = getPlayerByIndex(data.quittedPlayerIndex);
@@ -21699,7 +21871,7 @@ function handleHostData(data) {
 				}
 			}
 		break;
-		case ACTION.undo_counter: {
+		case ACTION.undo_counter: { // client side
 			let playerIndex = data.playerIndex;
 			
 			//console.warn("undo_counter");
@@ -21724,7 +21896,7 @@ function handleHostData(data) {
 			}
 		}
 		break;
-		case ACTION.unit_unloaded: {
+		case ACTION.unit_unloaded: { // client side
 			if(data.unitId !== undefined){
 				let unit = getUnitById(data.unitId);
 	
@@ -21740,7 +21912,7 @@ function handleHostData(data) {
 			}
 		}
 		break;
-		case ACTION.unit_loaded: {
+		case ACTION.unit_loaded: { // client side
 			if(data.unitId !== undefined && data.targetUnitId !== undefined){
 				let unit = getUnitById(data.unitId);
 				let targetUnit = getUnitById(data.targetUnitId);
@@ -21754,7 +21926,7 @@ function handleHostData(data) {
 			}
 		}
 		break;
-		case ACTION.tile_edited: {
+		case ACTION.tile_edited: { // client side
 			//console.warn("tile_edited");
 			let centerHex = data.hex;
 			let newType = data.tileType;
@@ -21939,7 +22111,7 @@ function handleHostData(data) {
 			
 		}
 		break;
-		case ACTION.tile_changed: {
+		case ACTION.tile_changed: { // client side
 			const tile = getTileAt(data.q, data.r);
 			if (tile) {
 				let oldObject = tile.object;
@@ -22028,7 +22200,7 @@ function handleHostData(data) {
 			//updateLocalPoolsInfo();
 		}
 		break;
-		case ACTION.object_changed: {
+		case ACTION.object_changed: { // client side
 			const tile = getTileAt(data.q, data.r);
 			if (tile) {
 				if (data.object !== undefined){
@@ -22077,7 +22249,7 @@ function handleHostData(data) {
 			//updateLocalPoolsInfo();
 		}
 		break;
-		case ACTION.unit_added: {
+		case ACTION.unit_added: { // client side
 			let unit = data.unit;
 			console.log("unit_added: gameState.units.push(data.unit);");
 			console.log(unit);
@@ -22086,6 +22258,17 @@ function handleHostData(data) {
 			addUnit(unit);
 			needsUIUpdate = true;
 			updateHighlights();
+			
+			// remove particles that were created by selling (removing unit):
+			for(let i = particleUndo.length-1; i >= 0; i--){
+				let undoinfo = particleUndo[i];
+				if(unit.id === undoinfo.unitId){
+					for(let p = undoinfo.indexes.length-1; p >= 0; p--){
+						removeTextParticle(undoinfo.indexes[p]);
+					}
+					particleUndo.splice(i, 1);
+				}
+			}
 			
 			updateProgressbar(unit.ownerIndex, "unit_added");
 			
@@ -22102,7 +22285,7 @@ function handleHostData(data) {
 			updatePlayerTileEmptyCount();
 		}
 		break;
-		case ACTION.unit_removed: {
+		case ACTION.unit_removed: { // client side
 			
 			
 			let unit = getUnitById(data.unitId);
@@ -22110,12 +22293,30 @@ function handleHostData(data) {
 			
 			// spawn Floating Text:
 			if(data.FText !== undefined && data.FText > 0){ // only show non-zero values.
-				spawnFloatingText({
+				let i1 = spawnFloatingText({
 					x: axialToPixelX(unit.q, unit.r),
 					y: axialToPixelY(unit.q, unit.r),
 					text: `+${data.FText}`,
 					color: "yellow"
 				});
+				let i2 = spawnFloatingText({
+					x: axialToPixelX(unit.q, unit.r),
+					y: axialToPixelY(unit.q, unit.r),
+					text: "$",
+					color: "yellow",
+					moveDuration: 6,
+					fadeDuration: 2,
+					moveDistance: 0,
+					useUnitImage: unit.type,
+					alpha: 0.5,
+				});
+				let indexes = [i1, i2].sort();
+				particleUndo.push({
+					unitId: data.unitId,
+					indexes: indexes,
+				});
+
+				
 			}
 			
 			if(data.explosion !== undefined){
@@ -22140,7 +22341,7 @@ function handleHostData(data) {
 			//updateLocalPoolsInfo();
 		}
 		break;
-		case ACTION.player_kicked: {
+		case ACTION.player_kicked: { // client side
 			if(localPlayer.id === data.playerId){
 				localPlayer.hasBeenKicked = true;
 				console.warn("you have been kicked from the game");
@@ -22150,7 +22351,7 @@ function handleHostData(data) {
 			}
 		}
 		break;
-		case ACTION.game_over: {
+		case ACTION.game_over: { // client side
 			// show popup of winning player, and popup for losers.
 
 			// winnerPlayerIndex is -1 if game was over when lost to an AI (no humans left in game): 
@@ -22246,7 +22447,7 @@ function handleHostData(data) {
 			updateGameUI();
 		}
 		break;
-		case ACTION.player_killed: {
+		case ACTION.player_killed: { // client side
 			let player = getPlayerByIndex(data.playerIndex);
 			
 			// cant check if(!player.isDead) here since it will be dead on host side immediately...
@@ -22263,9 +22464,11 @@ function handleHostData(data) {
 			
 			if(data.playerIndex === localPlayer.playerIndex){
 				// if at least 2 humans still playing against each other, show message:
-				if(remainingHumanPlayers() >= 2){
-					alert("You have died.");
-				}
+				//if(remainingHumanPlayers() >= 2){
+					//alert("You have died.");
+					pushUserEvent("NOTICE:", "You have died!");
+					playSound("defeat");
+				//}
 			}
 
 			addSystemChatMessage(`>>> Player ${player.name} has died!`, "#FFFFFF");
@@ -22274,7 +22477,7 @@ function handleHostData(data) {
 		}
 		break;
 		
-		case ACTION.unit_load_reset: {
+		case ACTION.unit_load_reset: { // client side
 			const unit = gameState.units.find(u => u.id === data.unitId);
 			if (unit) {
 				delete unit.loadedUnit;
@@ -22285,7 +22488,7 @@ function handleHostData(data) {
 			//updateLocalPoolsInfo();
 		}
 		break;
-		case ACTION.unit_move_reset: {
+		case ACTION.unit_move_reset: { // client side
 			const unit = gameState.units.find(u => u.id === data.unitId);
 			if (unit) {
 				unit.hasMoved = data.hasMoved;
@@ -22298,7 +22501,7 @@ function handleHostData(data) {
 			//updateLocalPoolsInfo();
 		}
 		break;
-		case ACTION.unit_moved: {
+		case ACTION.unit_moved: { // client side
 
 			
 			
@@ -22353,7 +22556,7 @@ function handleHostData(data) {
 			//updateLocalPoolsInfo();
 		}
 		break;
-		case ACTION.turn_changed: {
+		case ACTION.turn_changed: { // client side
 			
 			updateProgressbar(gameState.turn.currentPlayerIndex, "turn_changed");
 	
@@ -22363,6 +22566,9 @@ function handleHostData(data) {
 			
 			
 			clearLastActionMoves(gameState.turn.currentPlayerIndex);
+			
+			// clear particle undo:
+			particleUndo = [];
 
 			deselectUnit();
 			//deselectHex();
@@ -22371,15 +22577,24 @@ function handleHostData(data) {
 
 			addCurrentTurnChatMessage();
 			
-			if(gameState.turn.currentPlayerIndex === getMyPlayer().playerIndex){
+			let myPlayer = getMyPlayer();
+			
+			if(gameState.turn.currentPlayerIndex === myPlayer.playerIndex){
 				updatePlayerTileEmptyCount();
+				
+				if(!data.canDoAnything && !myPlayer.isDead){
+					pushUserEvent("NOTICE:", "You cannot do anything!");
+				}
 			}
+			
+			
+			
 
 			
 			//updateLocalPoolsInfo();
 		}
 		break;
-		case ACTION.sound: {
+		case ACTION.sound: { // client side
 			let play = true;
 			// dont play sounds for AI players:
 			if(data.playerIndex && data.playerIndex !== -1){
@@ -22398,7 +22613,7 @@ function handleHostData(data) {
 			}
 		}
 		break;
-		case ACTION.savings_update: {
+		case ACTION.savings_update: { // client side
 			// this is kinda useless, since the client should calculate them themselves to get full array of pool hexes for being able to know which pool is clicked.
 			//myCurrentSavings = data.total;
 			let poolsInfo = data.poolsInfo; // array of pools savings/income/wages info.
@@ -22431,7 +22646,7 @@ function handleHostData(data) {
 			//console.log(selectedPool);
 		}
 		break;
-		case ACTION.start_game_check: {
+		case ACTION.start_game_check: { // client side
 			console.log("start_game_check");
 			openSettingsCheck();
 		}
@@ -22577,8 +22792,17 @@ function handleClientData(peerId, data) {
 			
 			if (!gameStarted()) {
 				let colors = getNextFreeColors();
-				player.color = colors.color;
-				player.textColor = colors.textColor;
+				
+				if(data.customColorSet){
+					player.color = data.color;
+				}else{
+					player.color = colors.color;
+				}
+				if(data.customTextureSet){
+					player.textureType = data.textureType;
+				}
+
+				player.textColor = getPlayerTextColor(player.color);
 				player.colorName = hexToColorName(player.color);
 				player.isSpectator = data.isSpectator;
 			} else {
@@ -23040,16 +23264,29 @@ function executeJoin(hostPeerId) {
 		
 		// Send our initial join info
 		let colors = getNextFreeColors();
-		conn.send({
+		
+		let savedColor = getLocalStorageItem("player_color");
+		let savedTexture = getLocalStorageItem("player_texture");
+		
+		let playerData = {
 			type: ACTION.join,
 			name: localPlayer.name,
-			color: colors.color,
-			textColor: colors.textColor,
-			colorName: hexToColorName(colors.color),
 			isSpectator: localPlayer.isSpectator,
 			country: getSetting('country'),
 			userAgent: navigator.userAgent,
-		});
+		};
+		playerData.color = savedColor ?? colors.color;
+		playerData.customColorSet = savedColor ? true : false;
+		playerData.customTextureSet = savedTexture ? true : false;
+		playerData.textColor = getPlayerTextColor(playerData.color);
+		playerData.colorName = hexToColorName(playerData.color);
+		
+		if(savedTexture){
+			playerData.textureType = parseInt(savedTexture);
+			lobbyTextureType.value = playerData.textureType;
+		}
+		
+		conn.send(playerData);
 		
 		// Go to lobby page
 		lobbyPlayerNameInput.value = localPlayer.name.trim();
@@ -23130,8 +23367,18 @@ function hostGame() {
 			localPlayer.name = sanitizeName(playerNameInput.value);
 			
 			let colors = getNextFreeColors();
-			localPlayer.color = colors.color;
-			localPlayer.textColor = colors.textColor;
+			
+			let savedColor = getLocalStorageItem("player_color");
+			let savedTexture = getLocalStorageItem("player_texture");
+			
+			if(savedTexture){
+				localPlayer.textureType = parseInt(savedTexture);
+				hostTextureType.value = localPlayer.textureType;
+			}
+			
+			
+			localPlayer.color = savedColor ?? colors.color;
+			localPlayer.textColor = getPlayerTextColor(localPlayer.color);
 			localPlayer.colorName = hexToColorName(localPlayer.color);
 			localPlayer.country = getSetting('country');
 			
@@ -26212,6 +26459,32 @@ function applyUnitCostsFromSettings(){
 }
 
 
+// gives more money for pools with 1-2 tiles only, so they wont die easily
+function givePoolBonuses(){
+	for(let i = 0; i < gameState.players.length; i++){
+		let player = gameState.players[i];
+		if(player.isSpectator){
+			continue;
+		}
+		let pools = findEconomyPools(player.playerIndex);
+		if(pools){
+			for(let p = 0; p < pools.length; p++){
+				let hexes = pools[p].hexes;
+				// only give bonus for 1-2 hex pools:
+				if(hexes.length < 3){
+					let bonus = 3-hexes.length; // 1 hex = 3-1 = +2, 2 hex = 3-2 = +1
+					let bonusPerTile = bonus / hexes.length;
+					for(let h = 0; h < hexes.length; h++){
+						hexes[h].tile.savings += bonusPerTile;
+						//console.warn("bonus at tile:", hexes[h].tile, "amount:", bonusPerTile);
+					}
+				}
+			}
+		}
+	}
+}
+
+
 // claims extra tiles, if set in player settings before game start.
 function applyTileGrow(){
 	for(let p = 0; p < gameState.players.length; p++){
@@ -26429,9 +26702,10 @@ function startGame() {
 		
 		applyTileGrow();
 		
+		
+		
 		spawnTrees();
 		spawnRocks();
-		
 		spawnMines();
 		
 
@@ -26445,6 +26719,9 @@ function startGame() {
 				tile.savings += gameState.settings.startMoneyPerHex + startMoneyAdd;
 			}
 		}
+		
+		givePoolBonuses(); // 1-2 hex size pools will get +2 or +1 extra savings.
+		
 		
 		let myPlayer = getMyPlayer();
 		if(myPlayer.isSpectator){
@@ -27057,7 +27334,7 @@ document.addEventListener('mousedown', (e) => {
 		closeEndTurnConfirmation();
 	}
 
-	console.warn("mouseDownInsidePopup:", mouseDownInsidePopup);
+	//console.warn("mouseDownInsidePopup:", mouseDownInsidePopup);
 });
 
 document.addEventListener('click', handleOutside);
@@ -27918,6 +28195,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 	
 	lobbyTextureType.onchange = (e) => {
 		localPlayer.textureType = parseInt(e.target.value, 10);
+		setLocalStorageItem("player_texture", localPlayer.textureType);
 		sendToHost({
 			type: ACTION.player_update,
 			textureType: localPlayer.textureType,
