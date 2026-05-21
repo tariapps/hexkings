@@ -12957,8 +12957,44 @@ function createExplosion(ep) {
 
 let particleUndo = [];
 
+function addParticleUndoForHex(q, r, playerIndex, idList){
+	particleUndo.push({q, r, playerIndex, idList});
+	//pushUserEvent("particleUndo:", `${q},${r}: [${idList[0]},${idList[1]}], ${playerIndex}`);
+}
+
+function removeParticleUndoForHex(q, r){
+	// remove particles that were created by selling (removing unit):
+	for(let i = particleUndo.length-1; i >= 0; i--){
+		let undoinfo = particleUndo[i];
+		if(q === undoinfo.q && r === undoinfo.r){
+			for(let p = undoinfo.idList.length-1; p >= 0; p--){
+				removeTextParticleById(undoinfo.idList[p]);
+			}
+			// also remove this particle undo:
+			particleUndo.splice(i, 1);
+		}
+	}
+}
+
+
+
 const textParticles = [];
 
+
+function removeTextParticleById(id){
+	//console.log("removeTextParticle be", index, textParticles);
+	for(let i = 0; i < textParticles.length; i++){
+		if(textParticles[i].id === id){
+			textParticles.splice(i, 1);
+			break;
+		}
+	}
+	
+	//console.log("removeTextParticle af", index, textParticles);
+
+}
+
+let particleIdCounter = 0;
 
 function spawnFloatingText({x, y, text = "+1", color = "yellow", font = "20px Arial", moveDuration = 0.3, fadeDuration = 3.5, moveDistance = 55, useUnitImage = null, alpha = 1}){
 	//let moveDuration = 0.3;
@@ -12984,20 +13020,16 @@ function spawnFloatingText({x, y, text = "+1", color = "yellow", font = "20px Ar
 		moveDistance: moveDistance,
 		totalLife: totalLife,
 		useUnitImage: useUnitImage,
+		
+		id: particleIdCounter,
 	});
-	return textParticles.length-1;
-}
-
-
-function removeTextParticle(index){
-	//console.log("removeTextParticle be", index, textParticles);
-	if(index < textParticles.length){
-		textParticles.splice(index, 1);
-	}
+	let idOut = particleIdCounter;
+	particleIdCounter++;
 	
-	//console.log("removeTextParticle af", index, textParticles);
-
+	return idOut;
 }
+
+
 
 function updateTextParticles() {
 	
@@ -18968,14 +19000,12 @@ function executeAction(playerId, action) {
 					unitActionHex = {q: lastAction.unit.q, r: lastAction.unit.r};
 				//}
 				
-	
-				console.log("addCost to actionPool, cost = "+lastAction.cost);
-				console.log(actionPool);
 
 				addCost(actionPool, lastAction.cost, poolHex, action.type);
 				
 				// handle boats add undo:
-				if(isTypeBoat(lastAction.unitType)){
+				if(isTypeBoat(lastAction.unit.type)){
+
 					// give back boats count:
 					updates.push({
 						type: ACTION.player_changed, 
@@ -22259,16 +22289,10 @@ function handleHostData(data) {
 			needsUIUpdate = true;
 			updateHighlights();
 			
-			// remove particles that were created by selling (removing unit):
-			for(let i = particleUndo.length-1; i >= 0; i--){
-				let undoinfo = particleUndo[i];
-				if(unit.id === undoinfo.unitId){
-					for(let p = undoinfo.indexes.length-1; p >= 0; p--){
-						removeTextParticle(undoinfo.indexes[p]);
-					}
-					particleUndo.splice(i, 1);
-				}
+			if(unit.ownerIndex !== getMyPlayer().playerIndex){
+				removeParticleUndoForHex(unit.q, unit.r);
 			}
+			
 			
 			updateProgressbar(unit.ownerIndex, "unit_added");
 			
@@ -22291,7 +22315,7 @@ function handleHostData(data) {
 			let unit = getUnitById(data.unitId);
 			let ownerIndex = unit.ownerIndex;
 			
-			// spawn Floating Text:
+			// if sold an unit; spawn Floating Text:
 			if(data.FText !== undefined && data.FText > 0){ // only show non-zero values.
 				let i1 = spawnFloatingText({
 					x: axialToPixelX(unit.q, unit.r),
@@ -22299,22 +22323,23 @@ function handleHostData(data) {
 					text: `+${data.FText}`,
 					color: "yellow"
 				});
-				let i2 = spawnFloatingText({
-					x: axialToPixelX(unit.q, unit.r),
-					y: axialToPixelY(unit.q, unit.r),
-					text: "$",
-					color: "yellow",
-					moveDuration: 6,
-					fadeDuration: 2,
-					moveDistance: 0,
-					useUnitImage: unit.type,
-					alpha: 0.5,
-				});
-				let indexes = [i1, i2].sort();
-				particleUndo.push({
-					unitId: data.unitId,
-					indexes: indexes,
-				});
+				// only add ghosted units for enemy players:
+				if(unit.ownerIndex !== getMyPlayer().playerIndex){
+					let i2 = spawnFloatingText({
+						x: axialToPixelX(unit.q, unit.r),
+						y: axialToPixelY(unit.q, unit.r),
+						text: "$",
+						color: "yellow",
+						moveDuration: 6,
+						fadeDuration: 2,
+						moveDistance: 0,
+						useUnitImage: unit.type,
+						alpha: 0.5,
+					});
+
+					addParticleUndoForHex(unit.q, unit.r, unit.ownerIndex, [i1, i2].sort());
+				}
+		
 
 				
 			}
