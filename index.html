@@ -1769,6 +1769,9 @@ input.disabled {
 #build-soldier-btn[disabled] {
 	filter: brightness(0.5);
 }
+#build-soldier-btn.disabled-look {
+	filter: brightness(0.5);
+}
 
 
 #build-castle-btn {
@@ -1778,6 +1781,9 @@ input.disabled {
 	filter: brightness(0.5);
 }
 #build-castle-btn[disabled] {
+	filter: brightness(0.5);
+}
+#build-castle-btn.disabled-look {
 	filter: brightness(0.5);
 }
 
@@ -1866,7 +1872,9 @@ input.disabled {
 #build-other-btn[disabled] {
 	filter: brightness(0.5);
 }
-
+#build-other-btn.disabled-look {
+	filter: brightness(0.5);
+}
 
 #sell-unit-btn {
 	background-image: url('images/ui/sell.png');
@@ -2438,6 +2446,10 @@ input.disabled {
 				<div><span style="color:yellow">A</span> = Previous pool</div>
 				<div><span style="color:yellow">S</span> = Change pool cycle type: all, empty, vacant</div>
 				<div><span style="color:yellow">D</span> = Next pool</div>
+				
+				<div class="space"></div>
+				
+				<div><span style="color:yellow">H</span> = Show your unprotected hexes</div>
 				
 				<div class="space"></div>
 				
@@ -5681,7 +5693,7 @@ let gameRules = {
 	tileIncome: 1,
 };
 
-// sounds =
+// sounds = game sounds = 
 let gameSounds = {
 	moveunit:     {filename: "sounds/down.mp3",    gain: 1,   filter: false},
 	moveunit2:    {filename: "sounds/down2.mp3",   gain: 1,   filter: false},
@@ -5699,7 +5711,7 @@ let gameSounds = {
 	defeat:       {filename: "sounds/defeat.mp3",  gain: 0.2,   filter: false},
 	join:         {filename: "sounds/join.mp3",    gain: 0.6,   filter: false},
 	//quit:         {filename: "sounds/quit.mp3",    gain: 0.6,   filter: false},
-	quit:         {filename: "sounds/end-call.mp3",gain: 0.6,   filter: false},
+	quit:         {filename: "sounds/end-call.mp3",gain: 0.4,   filter: false},
 	
 	message:      {filename: "sounds/message.mp3", gain: 0.6,   filter: false},
 	turnbegins:   {filename: "sounds/turn-begins.mp3", gain: 0.5,   filter: false},
@@ -6501,10 +6513,10 @@ const SOLDIER_DATA = {
 	// visibleName = text shown to user.
 	// name = internal name, same as the key (maybe useful later).
 	// defaultImage = imageAssets key for the unit image first animation frame (default image).
-	"dragon":  { canMove: 1, frames: 2, visibleName: "Dragon",  name: "dragon",  type:"soldier", defaultImage: "soldier4", level: 4, cost: 40, wage: 54, sell: 20 },
-	"horse":   { canMove: 1, frames: 2, visibleName: "Horse",   name: "horse",   type:"soldier", defaultImage: "soldier3", level: 3, cost: 30, wage: 18, sell: 15 },
-	"knight":  { canMove: 1, frames: 2, visibleName: "Knight",  name: "knight",  type:"soldier", defaultImage: "soldier2", level: 2, cost: 20, wage: 8, sell: 10 },
-	"peasant": { canMove: 1, frames: 2, visibleName: "Peasant", name: "peasant", type:"soldier", defaultImage: "soldier1", level: 1, cost: 10, wage: 3, sell: 5 },
+	"dragon":  { canMove: 1, frames: 2, visibleName: "Dragon",  name: "dragon",  type:"soldier", defaultImage: "soldier4", level: 4, cost: 40, wage: 54, sell: 20, upgradeTo: null },
+	"horse":   { canMove: 1, frames: 2, visibleName: "Horse",   name: "horse",   type:"soldier", defaultImage: "soldier3", level: 3, cost: 30, wage: 18, sell: 15, upgradeTo: "dragon" },
+	"knight":  { canMove: 1, frames: 2, visibleName: "Knight",  name: "knight",  type:"soldier", defaultImage: "soldier2", level: 2, cost: 20, wage: 8, sell: 10, upgradeTo: "horse" },
+	"peasant": { canMove: 1, frames: 2, visibleName: "Peasant", name: "peasant", type:"soldier", defaultImage: "soldier1", level: 1, cost: 10, wage: 3, sell: 5, upgradeTo: "knight" },
 };
 
 // castles castle_units
@@ -6512,13 +6524,13 @@ const SOLDIER_DATA = {
 const CASTLE_DATA = {
 	// listed in this order.
 	
-	"shipyard":      { canMove: 0, frames: 1, visibleName: "Shipyard",     name: "shipyard",      type:"castle", defaultImage: "shipyard", subtype: "shipyard", level: 0, cost: 5, sell: 2},
+	"shipyard":      { canMove: 0, frames: 1, visibleName: "Shipyard",     name: "shipyard",      type:"castle", defaultImage: "shipyard", subtype: "shipyard", level: 0, cost: 5, sell: 2, upgradeTo: null},
 	
-	"fortress": { canMove: 0, frames: 1, visibleName: "Fortress",name: "fortress", type:"castle", defaultImage: "castle3", level: 3, cost: 200, sell: 50},
+	"fortress": { canMove: 0, frames: 1, visibleName: "Fortress",name: "fortress", type:"castle", defaultImage: "castle3", level: 3, cost: 200, sell: 50, upgradeTo: null},
 	
-	"castle":   { canMove: 0, frames: 1, visibleName: "Castle",  name: "castle",   type:"castle", defaultImage: "castle2", level: 2, cost: 40, sell: 10},
+	"castle":   { canMove: 0, frames: 1, visibleName: "Castle",  name: "castle",   type:"castle", defaultImage: "castle2", level: 2, cost: 40, sell: 10, upgradeTo: "fortress"},
 	
-	"hut":      { canMove: 0, frames: 1, visibleName: "Hut",     name: "hut",      type:"castle", defaultImage: "castle1", level: 1, cost: 10, sell: 3},
+	"hut":      { canMove: 0, frames: 1, visibleName: "Hut",     name: "hut",      type:"castle", defaultImage: "castle1", level: 1, cost: 10, sell: 3, upgradeTo: "castle"},
 };
 
 
@@ -6544,11 +6556,11 @@ const OTHER_UNITS_DATA = {
 	// - probably should have different image for different stages of timer, so it first loses its sail, and in the end looks almost sank.
 	
 	// unit.daysLeft = BOAT_MOVE_DAYS, explodes after 7 days.
-	"sailboat": { canMove: 1, frames: 1, visibleName: "Sailboat", name: "sailboat", type:"boat", defaultImage: "sailboat1", level: 1, cost: 1, wage: 0, sell: 0 },
+	"sailboat": { canMove: 1, frames: 1, visibleName: "Sailboat", name: "sailboat", type:"boat", defaultImage: "sailboat1", level: 1, cost: 1, wage: 0, sell: 0, upgradeTo: null },
 	
 	//"cannon": { canMove: 1, frames: 1, visibleName: "Cannon", name: "cannon", type:"cannon", defaultImage: "cannon", level: 1, cost: 1, wage: 0, sell: 0 },
 	
-	"landmine": { canMove: 0, frames: 1, visibleName: "Landmine", name: "landmine", type:"mine", isObject: true, isInvisible: true, defaultImage: "landmine", level: 0, cost: 1, wage: 0, sell: 0 },
+	"landmine": { canMove: 0, frames: 1, visibleName: "Landmine", name: "landmine", type:"mine", isObject: true, isInvisible: true, defaultImage: "landmine", level: 0, cost: 1, wage: 0, sell: 0, upgradeTo: null },
 	
 	// experimental, could buy airships that are kinda like boats but can fly anywhere.
 	// should also explode after a time.
@@ -12008,6 +12020,11 @@ function drawMapTiles(){
 			drawHexagonPath(x, y, tileSizePad);
 		}
 		
+
+		let showTileUnprotected = (undefendedHexesEnabled && tile.ownerIndex === localPlayer.playerIndex && !tile.isProtected);
+		
+	
+		
 		
 		//ctx.fillStyle = fallbackColor;
 		//ctx.fill();
@@ -12091,6 +12108,10 @@ function drawMapTiles(){
 						//}
 						let color = player.color;
 						
+						if(showTileUnprotected){
+							color = darkenHexColor(color, 0.3);
+						}
+						
 						
 						drawImageMipped(ctx, textureName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
 
@@ -12098,10 +12119,6 @@ function drawMapTiles(){
 						
 						
 						
-						if(!tile.isProtected){
-							// showing unprotected lands might make game boring, also confusing when it shows different color.
-							//color = lightenHexColor(player.color, 0.2);
-						}
 						// todo: make own images for each player texture?
 						// Multiply by player color
 						ctx.globalCompositeOperation = "multiply";
@@ -12109,9 +12126,17 @@ function drawMapTiles(){
 						ctx.fillRect(dx, dy, dWidth, dHeight);
 						ctx.globalCompositeOperation = "source-over";
 					}else{
-						ctx.fillStyle = darkenHexColor(player.color, 0.56);
+						let color = darkenHexColor(player.color, 0.56);
+						
+						if(showTileUnprotected){
+							color = darkenHexColor(color, 0.2);
+						}
+						
+						ctx.fillStyle = color;
 						ctx.fillRect(dx, dy, dWidth, dHeight);
 					}
+					
+
 					
 					// draw tile savings debug info:
 					//drawText(x, y, tile.savings);
@@ -12161,6 +12186,28 @@ function drawMapTiles(){
 		}
 		// Restore context (removes clip)
 		ctx.restore();
+		
+		
+		if(showTileUnprotected){
+			ctx.save();
+			drawHexagonPathLines(x,y, null, 0.7);
+			
+			let scale = pulseScale(0.6, HEX_LINE_MULTI*8, PULSE_SPEED*2);
+		
+			ctx.lineDashOffset = 8*scale;
+			
+			ctx.setLineDash([12.5, 15]);
+	
+			ctx.strokeStyle = "#FFFF00";
+			ctx.lineWidth = 3;
+
+			ctx.lineCap = 'round';
+			ctx.stroke();
+			
+			ctx.lineCap = 'butt'; // reset to default
+			ctx.setLineDash([]);
+			ctx.restore();
+		}
 	}
 	
 
@@ -15295,9 +15342,18 @@ function updateGameUI() {
 		if(gameState.settings.gameOver){
 			canPlay = false;
 		}
-		buildOtherBtn.disabled = !canPlay;
-		buildSoldierBtn.disabled = !canPlay;
-		buildCastleBtn.disabled = !canPlay;
+		// make build buttons look like disabled when its not your turn (or cant play):
+		buildOtherBtn.classList.remove("disabled-look");
+		buildSoldierBtn.classList.remove("disabled-look");
+		buildCastleBtn.classList.remove("disabled-look");
+		if(!canPlay){
+			buildOtherBtn.classList.add("disabled-look");
+			buildSoldierBtn.classList.add("disabled-look");
+			buildCastleBtn.classList.add("disabled-look");
+		}
+		//buildOtherBtn.disabled = !canPlay;
+		//buildSoldierBtn.disabled = !canPlay;
+		//buildCastleBtn.disabled = !canPlay;
 		sellUnitBtn.disabled = true;
 		endTurnBtn.disabled = !canPlay;
 		
@@ -16926,6 +16982,11 @@ function updateHighlights() {
 function openBuildPopup(type, position = null) {
 	placingUnit = null;
 	
+	let canPlay = isMyTurn() && !getMyPlayer().isSpectator;
+	if(gameState.settings.gameOver){
+		canPlay = false;
+	}
+	
 	// dont deselect unit if building boats.
 	// todo: make better check for boats only...
 	//if(type !== "other"){
@@ -17028,6 +17089,10 @@ function openBuildPopup(type, position = null) {
 				}
 			}
 		}
+		if(!canPlay){
+			isDisabled = true;
+		}
+		
 		if(isDisabled){
 			itemEl.classList.add('disabled');
 		}
@@ -26859,7 +26924,7 @@ function startGame() {
 // checks all tiles if they are protected or not.
 // only used in drawMapTiles() function.
 function setProtectedTiles(){
-	return; // not used anymore.
+	//return; // not used anymore.
 	
 	for(let t = 0; t < gameState.map.tilesData.length; t++){
 		const tile = gameState.map.tilesData[t];
@@ -26900,6 +26965,25 @@ document.addEventListener('contextmenu', function(event) {
 	}
 }, false);
 
+
+let undefendedHexesStartTime = 0;
+let undefendedHexesEnabled = false;
+let undefendedHexesTimer = null;
+
+function showUndefendedHexes(){
+	if(getMyPlayer().isSpectator){
+		return;
+	}
+	undefendedHexesStartTime = performance.now();
+	undefendedHexesEnabled = true;
+	
+	if(undefendedHexesTimer){
+		clearTimeout(undefendedHexesTimer);
+	}
+	undefendedHexesTimer = setTimeout(function(){
+		undefendedHexesEnabled = false;
+	}, 3000);
+}
 
 
 let BUILD_TYPES = [
@@ -27097,6 +27181,8 @@ document.addEventListener('keydown', (event) => {
 				enableBuildUnit(currentBuildIndex, quickBuildType, false);
 				
 				playSound('startmove');
+			}else if(code === 'KeyH') {
+				showUndefendedHexes();
 			}
 			
 		}
