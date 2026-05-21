@@ -1551,6 +1551,15 @@ button.redbutton:hover {
 	color:white;
 	padding-bottom: 4px;
 }
+#top-float-ui-date {
+	padding-left: 5px;
+	flex-grow: 1;
+	overflow-y: hidden;
+	text-shadow: 2px 2px 1px rgba(0, 0, 0, 1), 0px 0px 2px rgba(0, 0, 0, 1), 0px 0px 4px rgba(0, 0, 0, 1);
+	color:white;
+	padding-bottom: 4px;
+}
+
 
 
 
@@ -3084,6 +3093,7 @@ input.disabled {
 	
 	<div id="top-float-ui">
 		<div id="top-float-ui-players"></div>
+		<div id="top-float-ui-date"></div>
 		<div id="top-float-ui-messages"></div>
 	</div>
 	
@@ -3139,7 +3149,14 @@ input.disabled {
 					
 <style>
 
+.date-event {
+	text-shadow: 2px 2px 1px rgba(0, 0, 0, 1), 0px 0px 2px rgba(0, 0, 0, 1), 0px 0px 4px rgba(0, 0, 0, 1);
+	opacity: 1;
 
+	animation: fadeAndRemove 0.5s ease forwards;
+
+	animation-delay: 7s;
+}
 
 
 .user-event {
@@ -8371,6 +8388,9 @@ const chatMessages = document.getElementById('chat-messages');
 const topFloatUiChatMessages = document.getElementById('top-float-ui-messages');
 const topFloatUiPlayers = document.getElementById('top-float-ui-players');
 
+const topFloatUiDate = document.getElementById('top-float-ui-date');
+
+
 topFloatUiPlayers.addEventListener('click', (e) => {
 	const item = e.target.closest('.player-list-item-top');
 
@@ -10241,7 +10261,20 @@ function addCurrentTurnChatMessage(){
 	if(player.isAI){
 		tag = " (AI)";
 	}
-	addSystemChatMessage(`${turnDate} - ${player.name}'s${tag} turn.`, player.textColor);
+	//let addTopChat = false;
+	//addSystemChatMessage(`${turnDate} - ${player.name}'s${tag} turn.`, player.textColor, addTopChat);
+	
+	// add current turn into own div:
+	
+	topFloatUiDate.classList.remove("date-event");
+	
+	void topFloatUiDate.offsetWidth; // needed to trigger dom update. const unused = el.offsetWidth; works also.
+	
+	topFloatUiDate.classList.add("date-event");
+	
+	topFloatUiDate.style.color = player.textColor;
+	topFloatUiDate.textContent = `${turnDate} - ${player.name}'s${tag} turn.`;
+
 	
 	if(isMyTurn()){
 		showTurnPopup();
@@ -10485,7 +10518,7 @@ function throttledMarkUserActive(e) {
 
 
 // pushsystemchat
-function addSystemChatMessage(message, color = '#FFF') {
+function addSystemChatMessage(message, color = '#FFF', addTopChat = true) {
 	
 	// moved on top here so it will be ready for rendering chat.
 	// show chat messages on top if topleft ui is not open
@@ -10512,11 +10545,13 @@ function addSystemChatMessage(message, color = '#FFF') {
 	
 	limitChatUIMessages();
 	
-	const item2 = item.cloneNode(true);
-	topFloatUiChatMessages.appendChild(item2);
-	topFloatUiChatMessages.scrollTop = topFloatUiChatMessages.scrollHeight;
+	if(addTopChat){
+		const item2 = item.cloneNode(true);
+		topFloatUiChatMessages.appendChild(item2);
+		topFloatUiChatMessages.scrollTop = topFloatUiChatMessages.scrollHeight;
 
-	limitTopFloatUIMessages();
+		limitTopFloatUIMessages();
+	}
 }
 
 
@@ -22329,7 +22364,7 @@ function handleHostData(data) {
 						x: axialToPixelX(unit.q, unit.r),
 						y: axialToPixelY(unit.q, unit.r),
 						text: "$",
-						color: "yellow",
+						color: "#00FF00",
 						moveDuration: 6,
 						fadeDuration: 2,
 						moveDistance: 0,
@@ -22338,6 +22373,15 @@ function handleHostData(data) {
 					});
 
 					addParticleUndoForHex(unit.q, unit.r, unit.ownerIndex, [i1, i2].sort());
+					
+					pushLastActionHexCheckParams(
+						unit.ownerIndex, 
+						0, 
+						unit.q, 
+						unit.r, 
+						unit.id, 
+						"#00FF00"
+					);
 				}
 		
 
