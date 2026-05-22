@@ -6805,7 +6805,7 @@ let gameState = {
 		// these are initialized when map is generated:
 		width: 0,
 		height: 0,
-		imageData: "",
+		//imageData: "",
 		name: "",
 		bounds: {},
 		tiles: {}, 
@@ -24632,22 +24632,22 @@ async function buildMapList(mapSizeName, totalMaps) {
 		const name = `map${t}${n}`;
 		const mapBasePath = `maps/${mapSizeName}/${name}`;
 		const mapFile = `${mapBasePath}.dat`;
-		const mapImageFile = `${mapBasePath}.png`;
+		//const mapImageFile = `${mapBasePath}.png`;
 
 		try {
 			const mapdata = await parseMap(mapFile, true);
 			if (!mapdata) return null;
 
 			// Convert image to base64
-			const imageResponse = await fetch(mapImageFile);
-			if (!imageResponse.ok) throw new Error(`Image not found: ${mapImageFile}`);
+			//const imageResponse = await fetch(mapImageFile);
+			//if (!imageResponse.ok) throw new Error(`Image not found: ${mapImageFile}`);
+			//const blob = await imageResponse.blob();
+			//const imageData = await blobToBase64(blob); // convert blob → base64
 
-			const blob = await imageResponse.blob();
-			const imageData = await blobToBase64(blob); // convert blob → base64
-
-			mapdata.preview = mapImageFile; // original URL (optional)
+			//mapdata.preview = mapImageFile; // original URL (optional)
 			mapdata.name = name;
-			mapdata.imageData = imageData; // base64 string ready for <img src="...">
+			mapdata.imageData = "";
+			//mapdata.imageData = imageData; // base64 string ready for <img src="...">
 			mapdata.tileCount = getTileCountCompact(mapdata);
 			mapdata.format = 2; // 1 = ["W00", "W00", ...] format, 2 = "____oooOoo___" etc, one byte per tile.
 			mapdata.data = compressMap(mapdata.data);
@@ -24684,6 +24684,7 @@ async function loadmaps(){
 	//  buildMapList("normal", 40),
 	//  buildMapList("small", 41)
 	//]);
+	customMaps = {};
 
 	await buildMapList("normal", 40);
 	console.log("buildMapList normal finished");
@@ -24698,6 +24699,7 @@ async function loadmaps(){
 	console.warn(jsonString);
 }
 //loadmaps(); // used only to recompile maps again into one file.
+// dont call loadMapsFromJSON when compiling maps list (all-compiled.json).
 
 
 
@@ -24772,7 +24774,7 @@ function loadParsedMinimap(parsedMap, state, compact = true){
 	let height = parsedMap.data.length;
 	state.map.width = width;
 	state.map.height = height;
-	state.map.imageData = parsedMap.imageData;
+	//state.map.imageData = parsedMap.imageData;
 	state.map.name = parsedMap.name;
 	
 	// TODO: check if width/height is used properly in the loops! not sure which is which...
@@ -25395,7 +25397,7 @@ function loadMap(category, index) {
 	loadedMapImg.dataset.index = index;
 
 	loadMinimap(category, index, 256, lobbyLoadedMapImg);
-	lobbyLoadedMapImg.src = map.imageData;
+	//lobbyLoadedMapImg.src = map.imageData;
 	lobbyLoadedMapImg.dataset.category = category;
 	lobbyLoadedMapImg.dataset.index = index;
 
@@ -25656,7 +25658,7 @@ function loadParsedMap(parsedMap, compact = true){
 	let height = parsedMap.height;
 	gameState.map.width = parsedMap.width;
 	gameState.map.height = parsedMap.height;
-	gameState.map.imageData = parsedMap.imageData;
+	//gameState.map.imageData = parsedMap.imageData;
 	gameState.map.name = parsedMap.name;
 	
 	//console.log("parsedMap");
