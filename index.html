@@ -1525,6 +1525,12 @@ button.redbutton:hover {
 .trans-panel {
 	background: rgba(0, 0, 0, 0.6);
 }
+.warning-panel {
+	background: rgba(128, 0, 0, 0.6);
+    color: yellow;
+}
+
+
 
 
 
@@ -2246,7 +2252,7 @@ input.disabled {
 <div id="end-turn-confirmation-popup" class="popup-overlay-noncenter no-select">
 	<div id="end-turn-confirmation-wrapper" class="popup-container">
 		<div id="end-turn-confirmation-wrapper2" class="settings-panel-endturn trans-panel">
-			<div class="popup-title-endturn">You have unmoved units, end turn?</div>
+			<div id="end-turn-confirmation-title" class="popup-title-endturn"></div>
 			<div class="button-row-end-turn">
 				<button id="confirm-end-turn-yes" style="width:58px" class="primary nomargin">Yes</button>
 				<button id="confirm-end-turn-no" class="danger nomargin">No</button>
@@ -9482,6 +9488,9 @@ openEndgamePopupBtn.addEventListener("click", () => {
 const endTurnPopup = document.getElementById('end-turn-confirmation-popup');
 const endTurnPopupWrapper = document.getElementById('end-turn-confirmation-wrapper');
 const endTurnPopupWrapper2 = document.getElementById('end-turn-confirmation-wrapper2');
+const endTurnPopupTitle = document.getElementById('end-turn-confirmation-title');
+
+
 
 const confirmYes = document.getElementById('confirm-end-turn-yes');
 const confirmNo = document.getElementById('confirm-end-turn-no');
@@ -9491,10 +9500,23 @@ function callEndTurn(){
 		// Check if there are any units belonging to the player that haven't moved
 		const myPlayerIndex = getMyPlayer().playerIndex;
 
-		if (hasUnmovedUnits(myPlayerIndex)) {
+		// remove warning style: (added later if needed)
+		endTurnPopupWrapper2.classList.remove("warning-panel");
+		
+		if(hasPoolsWithNegativeBalance(myPlayerIndex)){
+			// Show the warning popup:
+			endTurnPopup.classList.add('active');
+			// set warning style:
+			endTurnPopupWrapper2.classList.add("warning-panel");
+			
+			endTurnPopupTitle.innerHTML = "<b>Warning:</b> you have pools with negative balance, all their soldiers will die next turn. End turn anyway?";
+		}else if(hasUnmovedUnits(myPlayerIndex)){
 			// Show the confirmation popup
 			endTurnPopup.classList.add('active');
-		} else {
+			
+			endTurnPopupTitle.textContent = "You have unmoved units, end turn?";
+
+		}else{
 			// No unmoved units, end turn immediately
 			performEndTurn();
 		}
@@ -13468,6 +13490,96 @@ function drawMoveDirectionsOverlay() {
 
 
 
+function drawCompass(ctx, options = {}) {
+	const {
+		x = canvas.width-40,
+		y = 40,
+		radius = 20,
+		rotation = 0, // viewport/camera rotation in radians
+		color = "#FFFF00",
+		lineWidth = 1,
+		fontSize = 10,
+	} = options;
+	
+	let font = fontSize+"px Arial";
+
+	ctx.save();
+
+	// Move compass to HUD position
+	ctx.translate(x, y);
+
+	// Rotate opposite of camera so compass stays correct
+	ctx.rotate(rotation);
+
+	ctx.strokeStyle = color;
+	ctx.fillStyle = color;
+	ctx.lineWidth = lineWidth;
+	ctx.font = font;
+	ctx.textAlign = "center";
+	ctx.textBaseline = "middle";
+
+	// Draw cross
+	ctx.beginPath();
+
+	// North/South line
+	ctx.moveTo(0, -radius);
+	ctx.lineTo(0, radius);
+
+	// East/West line
+	ctx.moveTo(-radius, 0);
+	ctx.lineTo(radius, 0);
+
+	ctx.stroke();
+
+	// Optional center dot
+	ctx.beginPath();
+	ctx.arc(0, 0, 3, 0, Math.PI * 2);
+	ctx.fill();
+
+	// Cardinal letters
+	const letterOffset = radius + fontSize;
+
+	
+
+	//ctx.fillText("N", 0, -letterOffset);
+	//ctx.fillText("S", 0, letterOffset);
+	//ctx.fillText("E", letterOffset, 0);
+	//ctx.fillText("W", -letterOffset, 0);
+	
+	
+    const offset = radius + fontSize;
+	
+	// Helper for upright letters
+	function drawCompassLetter(letter, px, py) {
+		ctx.save();
+
+		// Move to rotated position
+		ctx.translate(px, py);
+
+		// Undo compass rotation
+		ctx.rotate(-rotation);
+
+		ctx.font = font;
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+
+		ctx.fillText(letter, 0, 0);
+
+		ctx.restore();
+	}
+
+	ctx.fillStyle = "#FFFF00";
+	drawCompassLetter("N", 0, -offset);
+	drawCompassLetter("S", 0, offset);
+	ctx.fillStyle = "#FFFFFF";
+	drawCompassLetter("E", offset, 0);
+	drawCompassLetter("W", -offset, 0);
+
+	ctx.restore();
+}
+
+
+
 viewport.rotation = defaultViewportRotation;//0.62;//-Math.PI/4;
 
 let drawRanges = 0;
@@ -14290,6 +14402,8 @@ function render() {
 	if(getSetting('drawPointers')){
 		drawMoveDirectionsOverlay();
 	}
+	
+    drawCompass(ctx, {rotation: viewport.rotation});
 	
 	
 	requestAnimationFrame(render);
@@ -15157,6 +15271,17 @@ function isMyTurn() {
 }
 
 
+function hasPoolsWithNegativeBalance(playerIndex){
+	let pools = findEconomyPools(playerIndex);
+	for(let i = 0; i < pools.length; i++){
+		let pool = pools[i];
+		let balance = pool.totalIncome + pool.totalSavings - pool.totalWages;
+		if(balance < 0){
+			return true;
+		}
+	}
+	return false;
+}
 
 function countUnmovedUnitsByType(unitTypeValue, playerIndex = -1){
 	let count = 0;
