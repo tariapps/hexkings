@@ -13521,9 +13521,17 @@ function drawCompass(ctx, options = {}) {
 	// Draw cross
 	ctx.beginPath();
 
+	ctx.strokeStyle = "#FFFF00";
+
 	// North/South line
 	ctx.moveTo(0, -radius);
 	ctx.lineTo(0, radius);
+	
+	ctx.stroke();
+	
+	ctx.beginPath();
+	
+	ctx.strokeStyle = "#FFFFFF";
 
 	// East/West line
 	ctx.moveTo(-radius, 0);
@@ -13533,6 +13541,7 @@ function drawCompass(ctx, options = {}) {
 
 	// Optional center dot
 	ctx.beginPath();
+	ctx.fillStyle = "#000000";
 	ctx.arc(0, 0, 3, 0, Math.PI * 2);
 	ctx.fill();
 
