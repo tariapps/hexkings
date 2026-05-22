@@ -5332,7 +5332,7 @@ function openMapPreviewPopup(){
 	
 	addPopupState(imagePopup);
 	
-	console.warn("openMapPreviewPopup");
+	//console.warn("openMapPreviewPopup");
 	
 	imagePopup.classList.add('active');
 }
@@ -5355,12 +5355,11 @@ function getMapCatIndex(name){
 }
 
 
-/*
-	rotation: 0.21,
-	x: 120*scalefactor,
-	y: 10*scalefactor,
-	zoom: 0.078*scalefactor,
-*/
+
+// you can update the preview by calling:
+// updateimg({zoomMulti: 2});
+// atm only zoomMulti is effective, needs x/y adjustments also...
+
 function updateimg(viewportIn){
 	let category = loadedMapImg.dataset.category;
 	let index = parseInt(loadedMapImg.dataset.index);
@@ -25106,6 +25105,7 @@ function drawMinimapTiles(minimapCanvas, state, size, savedState = null, viewpor
 		x: 120*scalefactor,
 		y: 10*scalefactor,
 		zoom: 0.078*scalefactor,
+		zoomMulti: 1, // default, adjustable when zooming in preview minimap.
 	};
 	if(viewportIn){
 		tempViewport = {...tempViewport, ...viewportIn};
@@ -25195,7 +25195,7 @@ function drawMinimapTiles(minimapCanvas, state, size, savedState = null, viewpor
 	const zoomX = (minimapCanvas.width - padding * 2) / rotatedWidth;
 	const zoomY = (minimapCanvas.height - padding * 2) / rotatedHeight;
 
-	tempViewport.zoom = Math.min(zoomX, zoomY);
+	tempViewport.zoom = Math.min(zoomX, zoomY)*tempViewport.zoomMulti;
 	
 	
 	//console.warn("zoom:", tempViewport.zoom);
@@ -27591,7 +27591,7 @@ preventBackNavigation();
 function addPopupState(elem){
 	//console.warn("addPopupState");
 	if (popupOpen){
-		console.warn("addPopupState: popup was already open");
+		//console.warn("addPopupState: popup was already open");
 		return;
 	}
 	popupOpen = true;
