@@ -2414,6 +2414,9 @@ input.disabled {
 				<div class="settings-title-oneline">
 					Gameplay:
 				</div>
+				<span style="color:yellow">Note:</span> Undo is disabled if soldier dies on a mine, or soldier is unloaded from boat.
+				<br>
+				
 				<ul style="padding-left: 20px;">
 					<li><span style="color:yellow">Goal:</span> kill all enemies (game end rule decides if you also need to steal their lands).</li>
 					<li>You need to <span style="color:yellow">conquer land</span> (hexes) to get more income to afford more soldiers/castles etc. One hex gives +1 income for that hex. Your joined hexes (pool) savings decides what you can afford to build on or around that pool.</li>
@@ -2654,12 +2657,6 @@ input.disabled {
 					<button id="ingame-player-surrender-btn" class="gamebutton redbutton" style="width:30%" title="">Surrender</button>
 				</div>
 				
-				<div>
-					<div class="settings-title">
-						<span style="color:yellow">Undo is disabled if:</span> Unit dies on a mine, Unit is unloaded from boat.<br>
-						<br>
-					</div>
-				</div>
 				
 				<div>
 					<div class="input-group">
@@ -3174,7 +3171,7 @@ input.disabled {
 
 	animation: fadeAndRemove 0.5s ease forwards;
 
-	animation-delay: 7s;
+	animation-delay: 8s;
 }
 
 
@@ -3184,7 +3181,7 @@ input.disabled {
 
 	animation: fadeAndRemove 0.5s ease forwards;
 
-	animation-delay: 4s;
+	animation-delay: 8s;
 }
 
 @keyframes fadeAndRemove {
@@ -8011,7 +8008,15 @@ function drawPaletteImage(ctx2, bmp, dx = 0, dy = 0) {
 
 
 let waterAllPath = "images/water-all.bmp";
-let lavaAllPath = "images/lava-all.bmp";
+
+
+function enableLavaMode(){
+	waterAllPath = "images/lava-all.bmp?v="+randomFunc();
+	imageAssets['dirt'].path = 'images/dirt2_lava.jpg?v='+randomFunc();
+	overrideWaterShading = "rgba(120,82,0, 0.9)";
+	
+	loadImages();
+}
 
 
 async function loadImages() {
@@ -9497,7 +9502,7 @@ function openGameSettings(){
 	
 	gameSettingsUi.style.display = "flex";
 
-	if(!isMyTurn()){
+	if(!isMyTurn() || gameState.settings.gameOver){
 		ingamePlayerSurrenderBtn.disabled = true;
 		ingamePlayerSurrenderBtn.title = "You can surrender only when its your turn";
 	}else{
@@ -11791,6 +11796,7 @@ let hex_pad = 0;
 
 
 
+let overrideWaterShading = null;
 
 
 // type = 0 = (water 3d effect), 1 = water shores, 2 = tiles shading.
@@ -11828,6 +11834,9 @@ function drawMapShading(type){
 					color = "#16181C";
 					//       #16181C blueish dark brown seems best, darker brown pops up too much.
 					//       #18140C dark brown
+				}
+				if(overrideWaterShading !== null){
+					color = overrideWaterShading;
 				}
 				
 				if(type === 0){ // water 3d
