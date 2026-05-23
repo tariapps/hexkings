@@ -2193,7 +2193,7 @@ input.disabled {
 
 <div id="turn-popup-overlay" class="turn-popup-overlay">
 	<div class="turn-popup" id="turn-popup">
-		<div class="turn-popup-text" id="turn-popup-text">
+		<div class="turn-popup-text turn-popup-pulse" id="turn-popup-text">
 			YOUR TURN
 		</div>
 	</div>
@@ -2649,8 +2649,9 @@ input.disabled {
 			
 			<div class="tab tab-game active">
 				<div class="ingame-class hidden">
-					<button id="game-settings-stats-btn" class="gamebutton" style="width:40%">Open game stats</button>
-					<button id="ingame-player-settings-btn" class="gamebutton" style="width:40%">Player settings</button>
+					<button id="game-settings-stats-btn" class="gamebutton" style="width:35%">Open game stats</button>
+					<button id="ingame-player-settings-btn" class="gamebutton" style="width:32%">Player settings</button>
+					<button id="ingame-player-surrender-btn" class="gamebutton redbutton" style="width:30%" title="">Surrender</button>
 				</div>
 				
 				<div>
@@ -3570,7 +3571,7 @@ input.disabled {
 								<span id="cycle-unit-type-count"></span>
 							</div>
 
-							<div class="imageSelectListOptions">
+							<div id="imageSelectListOptionsWrap2" class="imageSelectListOptions">
 								<div><button id="switch-cycle-unit-mode" class="gamebutton compact active" title="Toggle center at unit">Center</button></div>
 								<div class="imageSelectListOption" data-value="sailboat" data-title="Sailboat"><img src="images/orig-scaled/128x128/sailboat.png"><span class="count">123x</span></div>
 								<div class="imageSelectListOption" data-value="dragon" data-title="Dragon"><img src="images/orig-scaled/128x128/soldier4.png"><span class="count">123x</span></div>
@@ -3712,6 +3713,9 @@ const playerTileEmptyCount = document.getElementById("player-tile-empty-count");
 
 const cycleUnitTypeCount = document.getElementById("cycle-unit-type-count");
 const switchCycleUnitModeBtn = document.getElementById("switch-cycle-unit-mode");
+
+
+
 
 switchCycleUnitModeBtn.addEventListener("click", () => {
 	centerUnitToggle();
@@ -3944,6 +3948,10 @@ const cycleUnitType = document.getElementById("cycle-unit-type");
 const cycleUnitTypeListSelected = cycleUnitType.querySelector(".imageSelectListSelected");
 const cycleUnitTypeListOptions = cycleUnitType.querySelectorAll(".imageSelectListOption");
 
+const cycleUnitTypeListWrap2 = document.getElementById("imageSelectListOptionsWrap2");
+
+
+
 let cycleUnitTypeValue = null; // null = cycle all units. otherwise "peasant" etc.
 
 function clearCycleUnitType(){
@@ -4025,14 +4033,7 @@ cycleUnitTypeListSelected.addEventListener("click", () => {
 	}
 });
 
-// close on outside click
-document.addEventListener("click", (e) => {
-	if (!cycleUnitType.contains(e.target)) {
-		cycleUnitType.classList.remove("open");
-		
-		//console.log("closing list");
-	}
-});
+
 
 // handle selection
 cycleUnitTypeListOptions.forEach(option => {
@@ -5719,7 +5720,7 @@ let gameSounds = {
 	quit:         {filename: "sounds/end-call.mp3",gain: 0.4,   filter: false},
 	
 	message:      {filename: "sounds/message.mp3", gain: 0.6,   filter: false},
-	turnbegins:   {filename: "sounds/turn-begins.mp3", gain: 0.5,   filter: false},
+	turnbegins:   {filename: "sounds/turn-begins.mp3", gain: 0.4,   filter: false},
 	
 	// need one sound per castle level so the explosion animation gets chosen correctly.
 	build0:        {filename: "sounds/build.mp3",    gain: 0.4,   filter: false},
@@ -8500,6 +8501,22 @@ const playerSettingsBtn = document.getElementById('player-settings-btn');
 const lobbyPlayerSettingsBtn = document.getElementById('lobby-player-settings-btn');
 const ingamePlayerSettingsBtn = document.getElementById('ingame-player-settings-btn');
 
+const ingamePlayerSurrenderBtn = document.getElementById('ingame-player-surrender-btn');
+
+
+ingamePlayerSurrenderBtn.addEventListener('click', function(e){
+	//let playerIndex = getMyPlayer().playerIndex;
+	//killPlayerNow(playerIndex);
+	//executeEndTurn(playerIndex);
+
+	const confirmed = confirm("Are you sure you want surrender?");
+	if(confirmed){
+		sendToHost({ type: ACTION.action_end_turn, surrender: true });
+		closeGameSettings();
+	}
+	
+	//batchActions.push({ type: ACTION.action_end_turn, surrender: true });
+});
 
 const closePlayerSettingsBtn = document.getElementById('close-player-settings-btn');
 
@@ -8512,57 +8529,85 @@ const playerSettingsUiWrapper2 = document.getElementById('player-settings-ui-wra
 
 const hostPlayerSettingsList = document.getElementById('host-player-settings-list');
 
+let applyToAllStyle = 0;
 
 
 // Add a single 'change' event listener to the container
 hostPlayerSettingsList.addEventListener('change', function(event) {
 	if(isHost() && !gameStarted()){
 		const target = event.target;
+		
+		const applyToAllStyleElem = document.getElementById('apply-to-all-style');
+		
+		if (target === applyToAllStyleElem) {
+			console.warn("applyToAllStyle", target, applyToAllStyleElem);
+			applyToAllStyle = parseInt(applyToAllStyleElem.value);
+		}else{
+		
 
-		// Check if the element that triggered the change is a select or our radio button
-		const isSelect = target.tagName.toLowerCase() === 'select';
-		const isRadio = target.tagName.toLowerCase() === 'input' && target.type === 'radio';
+			// Check if the element that triggered the change is a select or our radio button
+			const isSelect = target.tagName.toLowerCase() === 'select';
+			const isRadio = target.tagName.toLowerCase() === 'input' && target.type === 'radio';
 
-		if (isSelect || isRadio) {
-			// Grab the data-peer attribute using the dataset property
-			const peerId = target.dataset.peer;
-			let player = getPlayer(peerId);
-			
-			// Grab the new value that was just selected/checked
-			const newValue = target.value;
+			if (isSelect || isRadio) {
+				// Grab the data-peer attribute using the dataset property
+				const peerId = target.dataset.peer;
+				let applyToPlayers = [];
+				if(peerId === ""){
+					let playingPlayers = getPlayingPlayers();
+					if(applyToAllStyle === 0){
+						// all players:
+						applyToPlayers = playingPlayers;
+					}else if(applyToAllStyle === 1){
+						// AI only:
+						applyToPlayers = playingPlayers.filter(p => p.isAI);
+					}else if(applyToAllStyle === 2){
+						// humans only:
+						applyToPlayers = playingPlayers.filter(p => !p.isAI);
+					}
+				}else{
+					// apply to only one player selected:
+					applyToPlayers = [getPlayer(peerId)];
+				}
+				
+				// Grab the new value that was just selected/checked
+				const newValue = target.value;
 
-			// --- Handle specific changes based on the element's class or name ---
-			
-			if (target.classList.contains('player-moneyadd-select')) {
-				let startMoneyAdd = parseFloat(newValue);
-				player.startMoneyAdd = startMoneyAdd;
-				
-				console.log(`Tile money add for peer ${peerId} changed to ${startMoneyAdd}`);
-				// Update your gameState here, e.g.,
-				// let player = gameState.players.find(p => p.id == peerId);
-				// if (player) player.moneyMulti = parseFloat(newValue);
+				// --- Handle specific changes based on the element's class or name ---
+				for(let i = 0; i < applyToPlayers.length; i++){
+					let player = applyToPlayers[i];
+					if (target.classList.contains('player-moneyadd-select')) {
+						let startMoneyAdd = parseFloat(newValue);
+						player.startMoneyAdd = startMoneyAdd;
+						
+						console.log(`Tile money add for peer ${peerId} changed to ${startMoneyAdd}`);
+						// Update your gameState here, e.g.,
+						// let player = gameState.players.find(p => p.id == peerId);
+						// if (player) player.moneyMulti = parseFloat(newValue);
 
-			} else if (target.classList.contains('player-team-select')) {
-				let teamIndex = parseInt(newValue);
-				player.teamIndex = teamIndex;
+					} else if (target.classList.contains('player-team-select')) {
+						let teamIndex = parseInt(newValue);
+						player.teamIndex = teamIndex;
+						
+						console.log(`Team for peer ${peerId} changed to ${teamIndex}`);
+						
+					} else if (target.classList.contains('player-spots-select')) {
+						let totalSpots = parseInt(newValue);
+						player.totalSpots = totalSpots;
+						
+						console.log(`Spots for peer ${peerId} changed to ${totalSpots}`);
+						
+					} else if (target.classList.contains('player-grow-select')) {
+						let tileGrow = parseInt(newValue);
+						player.tileGrow = tileGrow;
+						
+						console.log(`Grow for peer ${peerId} changed to ${tileGrow}`);
+						
+					}
+				}
 				
-				console.log(`Team for peer ${peerId} changed to ${teamIndex}`);
-				
-			} else if (target.classList.contains('player-spots-select')) {
-				let totalSpots = parseInt(newValue);
-				player.totalSpots = totalSpots;
-				
-				console.log(`Spots for peer ${peerId} changed to ${totalSpots}`);
-				
-			} else if (target.classList.contains('player-grow-select')) {
-				let tileGrow = parseInt(newValue);
-				player.tileGrow = tileGrow;
-				
-				console.log(`Grow for peer ${peerId} changed to ${tileGrow}`);
-				
+				broadcastLobbyState();
 			}
-			
-			broadcastLobbyState();
 		}
 	}
 });
@@ -8656,6 +8701,38 @@ function generatePlayerSettingsInputs(){
 }
 
 
+function createListStartTileMoney(selectedValue = null){
+	let startTileMoneyOptions = "";
+	let startTileSelectedSet = false;
+	
+	for(let i = 0; i < playerSettingsInputs.moneyAdd.list.length; i++){
+		let elem = playerSettingsInputs.moneyAdd.list[i];
+		let selectedStr = "";
+		if(elem.value === selectedValue && !startTileSelectedSet){
+			startTileSelectedSet = true;
+			selectedStr = "selected";
+		}
+		startTileMoneyOptions += `<option value="${elem.value}" ${selectedStr}>${elem.text}</option>`;
+	}
+	return startTileMoneyOptions;
+}
+
+function createListTileGrow(selectedValue = null){
+	let tileGrowOptions = "";
+	let tileGrowSelectedSet = false;
+	
+	for(let i = 0; i < playerSettingsInputs.tileGrow.list.length; i++){
+		let elem = playerSettingsInputs.tileGrow.list[i];
+		let selectedStr = "";
+		if(elem.value === selectedValue && !tileGrowSelectedSet){
+			tileGrowSelectedSet = true;
+			selectedStr = "selected";
+		}
+		tileGrowOptions += `<option value="${elem.value}" ${selectedStr}>${elem.text}</option>`;
+	}
+	return tileGrowOptions;
+}
+
 
 function updateHostPlayerSettingsList() {
 	// Build an array of HTML strings, then join them at the end.
@@ -8716,31 +8793,10 @@ function updateHostPlayerSettingsList() {
 			let startMoneyAdd = p.startMoneyAdd ?? null;
 			let tileGrow = p.tileGrow ?? null;
 			
-			let startTileMoneyOptions = "";
-			let startTileSelectedSet = false;
+			let startTileMoneyOptions = createListStartTileMoney(startMoneyAdd);
+			let tileGrowOptions = createListTileGrow(tileGrow);
 			
-			for(let i = 0; i < playerSettingsInputs.moneyAdd.list.length; i++){
-				let elem = playerSettingsInputs.moneyAdd.list[i];
-				let selectedStr = "";
-				if(elem.value === startMoneyAdd && !startTileSelectedSet){
-					startTileSelectedSet = true;
-					selectedStr = "selected";
-				}
-				startTileMoneyOptions += `<option value="${elem.value}" ${selectedStr}>${elem.text}</option>`;
-			}
 			
-			let tileGrowOptions = "";
-			let tileGrowSelectedSet = false;
-			
-			for(let i = 0; i < playerSettingsInputs.tileGrow.list.length; i++){
-				let elem = playerSettingsInputs.tileGrow.list[i];
-				let selectedStr = "";
-				if(elem.value === tileGrow && !tileGrowSelectedSet){
-					tileGrowSelectedSet = true;
-					selectedStr = "selected";
-				}
-				tileGrowOptions += `<option value="${elem.value}" ${selectedStr}>${elem.text}</option>`;
-			}
 			
 			//player.startMoneyAdd = startMoneyAdd;
 			// player.teamIndex = teamIndex;
@@ -8794,7 +8850,47 @@ function updateHostPlayerSettingsList() {
 			</div>`;
 		}
 	});
+	
+	if(!gameStarted() && isHost()){
+		let startTileMoneyOptions = createListStartTileMoney();
+		let tileGrowOptions = createListTileGrow();
 
+
+		listHTML += `
+			<div style="margin-top:10px">Batch options:</div>
+			
+			<div class="player-list-item" style="display: flex; align-items: center; gap: 8px;">
+				
+				<div class="player-name-cell" style="flex-grow: 1; display: flex; align-items: center; overflow: hidden;">
+					<span style="color: #FFFFFF; width:100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+						<select id="apply-to-all-style">
+							<option value="0" ${applyToAllStyle === 0 ? " selected" : ""}>All players</option>
+							<option value="1" ${applyToAllStyle === 1 ? " selected" : ""}>AI only</option>
+							<option value="2" ${applyToAllStyle === 2 ? " selected" : ""}>Humans only</option>
+						</select>
+					</span>
+				</div>
+				
+				<div class="player-grow-cell" style="width: 60px;">
+					<select class="player-grow-select compact-input" title="How many extra tiles a pool will get" data-peer="" style="flex-shrink: 0;">
+						${tileGrowOptions}
+					</select>
+				</div>
+
+				
+				<div class="player-moneyadd-cell" style="width: 60px;">
+					<select class="player-moneyadd-select compact-input" title="Start tiles money add" data-peer="" style="flex-shrink: 0;">
+						${startTileMoneyOptions}
+					</select>
+				</div>
+				
+				<div class="player-is-starting cursor-help" title="Starting player" style="width: 60px; flex-shrink: 0;">
+					
+				</div>
+			</div>
+		`;
+	}
+	
 	// 4. Inject the entire HTML string into the DOM at once
 	hostPlayerSettingsList.innerHTML = listHTML;
 }
@@ -8806,6 +8902,8 @@ function openPlayerSettings(){
 	chatInput.blur();
 	
 	playerSettingsUi.style.display = "flex";
+	
+	updateHostPlayerSettingsList();
 	
 	addPopupState(playerSettingsUi);
 }
@@ -8916,7 +9014,10 @@ function disableUnitAddButtons(toggle){
 }
 
 editorCloseBtn.addEventListener("click", () => {
-	closeEditor();
+	if(isHost()){
+		closeEditor();
+		broadcastSettings();
+	}
 });
 
 
@@ -9395,9 +9496,18 @@ function openGameSettings(){
 	chatInput.blur();
 	
 	gameSettingsUi.style.display = "flex";
+
+	if(!isMyTurn()){
+		ingamePlayerSurrenderBtn.disabled = true;
+		ingamePlayerSurrenderBtn.title = "You can surrender only when its your turn";
+	}else{
+		ingamePlayerSurrenderBtn.disabled = false;
+		ingamePlayerSurrenderBtn.title = "Surrender? (Asks confirmation)";
+	}
 	
 	addPopupState(gameSettingsUi);
 }
+
 function closeGameSettings(){
 	gameSettingsUi.style.display = "none";
 	
@@ -9489,6 +9599,7 @@ const endTurnPopup = document.getElementById('end-turn-confirmation-popup');
 const endTurnPopupWrapper = document.getElementById('end-turn-confirmation-wrapper');
 const endTurnPopupWrapper2 = document.getElementById('end-turn-confirmation-wrapper2');
 const endTurnPopupTitle = document.getElementById('end-turn-confirmation-title');
+
 
 
 
@@ -10815,6 +10926,7 @@ function resizeCanvas(){
 	//console.warn(`resizeCanvas(): old = ${canvas.width}x${canvas.height}, new = ${window.innerWidth}x${window.innerHeight}`);
 	canvas.width = window.innerWidth;
 	canvas.height = window.innerHeight;
+	isMobileGameMode();
 }
 
 function refreshCanvas(){
@@ -12719,7 +12831,7 @@ function drawUnitsRoutes(){
 		}
 		// draw soldier routes:
 		if(unit.pq !== undefined){
-			if(focusedHex){
+			if(focusedHex && !isMobileMode){
 				if(unit.q === focusedHex.q && unit.r === focusedHex.r){
 					let route = [
 						{q: unit.pq, r: unit.pr}, 
@@ -13508,8 +13620,10 @@ function drawCompass(ctx, options = {}) {
 	// Move compass to HUD position
 	ctx.translate(x, y);
 
+	let northRotation = rotation-defaultViewportRotation;
+	
 	// Rotate opposite of camera so compass stays correct
-	ctx.rotate(rotation);
+	ctx.rotate(northRotation);
 
 	ctx.strokeStyle = color;
 	ctx.fillStyle = color;
@@ -13521,7 +13635,7 @@ function drawCompass(ctx, options = {}) {
 	// Draw cross
 	ctx.beginPath();
 
-	ctx.strokeStyle = "#FFFF00";
+	ctx.strokeStyle = "rgba(255, 255, 0, 0.5)";
 
 	// North/South line
 	ctx.moveTo(0, -radius);
@@ -13531,7 +13645,7 @@ function drawCompass(ctx, options = {}) {
 	
 	ctx.beginPath();
 	
-	ctx.strokeStyle = "#FFFFFF";
+	ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
 
 	// East/West line
 	ctx.moveTo(-radius, 0);
@@ -13541,7 +13655,7 @@ function drawCompass(ctx, options = {}) {
 
 	// Optional center dot
 	ctx.beginPath();
-	ctx.fillStyle = "#000000";
+	ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
 	ctx.arc(0, 0, 3, 0, Math.PI * 2);
 	ctx.fill();
 
@@ -13566,7 +13680,7 @@ function drawCompass(ctx, options = {}) {
 		ctx.translate(px, py);
 
 		// Undo compass rotation
-		ctx.rotate(-rotation);
+		ctx.rotate(-northRotation);
 
 		ctx.font = font;
 		ctx.textAlign = "center";
@@ -13577,10 +13691,10 @@ function drawCompass(ctx, options = {}) {
 		ctx.restore();
 	}
 
-	ctx.fillStyle = "#FFFF00";
+	ctx.fillStyle = "rgba(255, 255, 0, 0.5)";
 	drawCompassLetter("N", 0, -offset);
 	drawCompassLetter("S", 0, offset);
-	ctx.fillStyle = "#FFFFFF";
+	ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
 	drawCompassLetter("E", offset, 0);
 	drawCompassLetter("W", -offset, 0);
 
@@ -13717,7 +13831,7 @@ function getNearestValidHex(point){
 
 
 function drawFocusedHex(){
-	if(focusedHex){
+	if(focusedHex && !isMobileMode){
 		// dont draw focused hex for selected castles.
 		if(selectedUnit && !placingUnit && isTypeCastle(selectedUnit.type)){
 			return;
@@ -14189,7 +14303,7 @@ function drawRouteLines(route, color = "#FFFFFF", dashed = false, speedMulti = 1
 
 
 function drawTileOwnerTooltip(){
-	if(focusedHex){
+	if(focusedHex && !isMobileMode){
 		
 		let tile = getTileAt(focusedHex.q, focusedHex.r);
 		if(tile){
@@ -14359,7 +14473,7 @@ function render() {
 	
 	
 	
-	if(focusedHexEnabled){
+	if(focusedHexEnabled && !isMobileMode){
 		drawFocusedHex();
 	}
 	
@@ -14575,6 +14689,19 @@ let lastDist = null; // for pinch-zoom
 let initialAngle = 0;
 let isRotating = false;
 
+let isMobileMode = false;
+
+function isMobileGameMode() {
+	const touch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+	const coarse = window.matchMedia('(pointer: coarse)').matches;
+	const noHover = window.matchMedia('(hover: none)').matches;
+
+	isMobileMode = (touch || coarse || noHover);
+	return isMobileMode;
+}
+// set value here, so you could later reinitialize it if you changed from mobile to desktop view.
+isMobileGameMode();
+
 
 
 function isBuildPopupOpen(){
@@ -14607,6 +14734,12 @@ function handleTouchStart(e) {
 	chatInput.blur();
 
 	const touch = e.touches[0];
+	
+	// crappy fix to close the cycle unit menu:
+	if (!cycleUnitTypeListWrap2.contains(touch.target)) {
+		cycleUnitType.classList.remove("open");
+	}
+	
 	const target = document.elementFromPoint(touch.clientX, touch.clientY);
 	
 	if(gameState.settings.editorEnabled && editor.forceDraw && e.touches.length === 1){
@@ -19405,10 +19538,13 @@ function executeAction(playerId, action) {
 			if(gameState.settings.gameOver) return;
 			// end turn
 			
+			let surrender = action.surrender ?? false;
+
+			
 			console.warn("executeAction action_end_turn");
 			
 			
-			executeEndTurn(playerIndex);
+			executeEndTurn(playerIndex, surrender);
 			
 			//console.warn("clearing all undo counters");
 			// clear undo counter for all players:
@@ -19850,6 +19986,7 @@ function randomItem(arr){
 // findbestmove
 // find_ai_best_move findaibestmove aifindbestmove aimove ai_move ai_turn
 // ai turn ai move
+// handle ai turn handle_ai_turn
 function ai_find_best_move(player) {
 	//console.log("ai_find_best_move (improved)");
 
@@ -19916,9 +20053,9 @@ function ai_find_best_move(player) {
 				}
 			}else if(tile.object === "mine1"){
 				if(getUnitLevel(unit.type) > 1){
-					score -= 1;
+					score += 3;
 				}else{
-					//score -= 1;
+					score -= 1;
 				}
 			}else{
 				if(tile.ownerIndex === player.playerIndex){
@@ -20951,13 +21088,17 @@ balance: 5
 
 
 // kill and return actions array:
-function killPlayer(playerIndex){
+function killPlayer(playerIndex, surrender = false){
 	let player = getPlayerByIndex(playerIndex);
-	player.isDead = true;
+	if(surrender){
+		player.surrendered = true; // must check later to set isDead.
+	}else{
+		player.isDead = true;
+	}
 
 	let batchActions = [];
 	
-	batchActions.push({ type: ACTION.player_killed, playerIndex: playerIndex });
+	batchActions.push({ type: ACTION.player_killed, playerIndex: playerIndex, surrender: surrender });
 
 	let killedUnits = killPlayerUnits(playerIndex);
 	if(killedUnits.length > 0){
@@ -20966,6 +21107,12 @@ function killPlayer(playerIndex){
 
 	return batchActions;
 }
+
+function surrenderPlayer(playerIndex){
+	return killPlayer(playerIndex, true);
+}
+
+
 
 // for testing: kill and broadcast:
 function killPlayerNow(playerIndex){
@@ -21064,7 +21211,7 @@ function checkPlayerAbleToDoAnything(playerIndex){
 
 
 // HOST-SIDE
-function executeEndTurn(playerIndex) {
+function executeEndTurn(playerIndex, surrender = false) {
 	// --- 1. Apply income and wages for current player ---
 	//const player = getPlayerByIndex(playerIndex);
 	//let pools = findEconomyPools(playerIndex);
@@ -21104,6 +21251,10 @@ function executeEndTurn(playerIndex) {
 	let pools = killdata.curPlayerPools;
 	let killedPlayers = killdata.killedPlayers;
 	
+	if(surrender){
+		batchActions.push(...surrenderPlayer(playerIndex));
+	}
+
 	//let pools = findEconomyPools(playerIndex);
 	
 	
@@ -21190,11 +21341,16 @@ function executeEndTurn(playerIndex) {
 				}
 			}
 			
-			if(doKill){
+			if(doKill || player.surrendered){
 				
-				console.warn("PLAYER HAS DIED: "+player.name);
-				// send ACTION.player_killed message and set player as dead:
-				batchActions.push(...killPlayer(player.playerIndex));
+				if(player.surrendered){
+					// finally set the surrendered player as dead, so end game checks work:
+					player.isDead = true;
+				}else{
+					console.warn("PLAYER HAS DIED: "+player.name);
+					// send ACTION.player_killed message and set player as dead:
+					batchActions.push(...killPlayer(player.playerIndex));
+				}
 			
 				let allStats = [];
 				for(let i = 0; i < gameState.players.length; i++){
@@ -21756,6 +21912,9 @@ function getPlayerMovePercent(playerIndex){
 
 function updateProgressbar(playerIndex, from, data = null){
 	let elemWrap = document.getElementById(`progress-line-top-${playerIndex}`);
+	if(!elemWrap){
+		return;
+	}
 	let elem = elemWrap.querySelector('.progress-line-elem');
 	
 	let percent = 100;
@@ -22720,7 +22879,11 @@ function handleHostData(data) {
 			// cant check if(!player.isDead) here since it will be dead on host side immediately...
 			// and it is required for checkaiturn function to be dead...
 			//if(!player.isDead){
-			player.isDead = true;
+			if(data.surrender){
+				player.surrendered = true;
+			}else{
+				player.isDead = true;
+			}
 			
 			// unsynced animations (clients wont get tile updates any other way):
 			killPlayerTiles(data.playerIndex);
@@ -22738,7 +22901,11 @@ function handleHostData(data) {
 				//}
 			}
 
-			addSystemChatMessage(`>>> Player ${player.name} has died!`, "#FFFFFF");
+			if(data.surrender){
+				addSystemChatMessage(`>>> Player ${player.name} has surrendered!`, "#FFFF00");
+			}else{
+				addSystemChatMessage(`>>> Player ${player.name} has died!`, "#FFFFFF");
+			}
 			updateGameUI();
 			//}
 		}
@@ -25235,7 +25402,7 @@ function drawMinimapTiles(minimapCanvas, state, size, savedState = null, viewpor
 	
 
 	let tempViewport = {
-		rotation: 0.21,
+		rotation: defaultViewportRotation,
 		x: 120*scalefactor,
 		y: 10*scalefactor,
 		zoom: 0.078*scalefactor,
@@ -27487,12 +27654,18 @@ function openEditor(){
 	settingsElems['game-settings-editor'].elem.checked = true;
 	gameState.settings.editorEnabled = true;
 	uiEditor.style.display = "block";
+	
+	editorCloseBtn.hidden = !isHost(); // close button hidden if not hosting.
+
 	// cancel all selections etc:
 	cancelAll();
+	
 }
+
 function closeEditor(){
 	settingsElems['game-settings-editor'].elem.checked = false;
 	gameState.settings.editorEnabled = false;
+	
 	uiEditor.style.display = "none";
 }
 
@@ -27569,7 +27742,7 @@ function handleOutside(e) {
 		//playerSettingsUi.style.display = "none";
 	}
 	
-	
+
 	// Game stats
 	if (!gameStatsPopupUiWrapper2.contains(e.target)) {
 		gameStatsPopup.style.display = "none";
@@ -27610,6 +27783,7 @@ document.addEventListener('mousedown', (e) => {
 		pickerWrapper.contains(e.target) ||
 		gameSettingsUiWrapper2.contains(e.target) ||
 		endTurnPopupWrapper2.contains(e.target) ||
+		cycleUnitTypeListWrap2.contains(e.target) ||
 		playerSettingsUiWrapper2.contains(e.target) ||
 		//endTurnPopupWrapper.contains(e.target) || // todo: fix it to cancel by clicking outside.
 		gameStatsPopupUiWrapper2.contains(e.target) ||
@@ -27623,6 +27797,9 @@ document.addEventListener('mousedown', (e) => {
 	// close end turn confirmation popup:
 	if (!endTurnPopupWrapper2.contains(e.target)) {
 		closeEndTurnConfirmation();
+	}
+	if (!cycleUnitTypeListWrap2.contains(e.target)) {
+		cycleUnitType.classList.remove("open");
 	}
 
 	//console.warn("mouseDownInsidePopup:", mouseDownInsidePopup);
@@ -28233,12 +28410,14 @@ function rotateAroundScreenCenter(theta) {
 function rotateLeftSnapped(){
 	// snap at 30 degree rotations even when current rotation was not 30 degree step:
 	let snappedDeg = Math.round(rad2deg(viewport.rotation-deg2rad(30)) / 30) * 30;
-	rotateAroundScreenCenter(deg2rad(snappedDeg) - viewport.rotation);
+	// +defaultViewportRotation to make it always have same rotational offset 
+	rotateAroundScreenCenter(deg2rad(snappedDeg) - viewport.rotation+defaultViewportRotation);
 }
 function rotateRightSnapped(){
 	// snap at 30 degree rotations even when current rotation was not 30 degree step:
 	let snappedDeg = Math.round(rad2deg(viewport.rotation+deg2rad(30)) / 30) * 30;
-	rotateAroundScreenCenter(deg2rad(snappedDeg) - viewport.rotation);
+	// +defaultViewportRotation to make it always have same rotational offset 
+	rotateAroundScreenCenter(deg2rad(snappedDeg) - viewport.rotation+defaultViewportRotation);
 }
 
 
