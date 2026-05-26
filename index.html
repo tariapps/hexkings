@@ -418,9 +418,25 @@ label {
 	margin-bottom:5px;
 }
 
+.game-help-btn {
+	background-color:#008000;
+	color:#94f59c;
+	font-weight:bold;
+}
+.game-help-btn:hover {
+	background-color: #00A000;
+	color:#ccffcc;
+}
 
 .space {
 	height: 20px;
+}
+
+.space-line {
+	height: 1px;
+	background-color:#555555;
+	margin-top:15px;
+	margin-bottom:25px;
 }
 
 .player-list {
@@ -1941,6 +1957,16 @@ input.disabled {
     border-right: 0;
 }
 
+#spectate-btn {
+	background-color: #000000;
+	border: 1px dashed #4f4f4f;
+	box-sizing: border-box;
+	padding: 11px;
+	color: #ffffff;
+}
+#spectate-btn:hover {
+	background-color: #101010;
+}
 
 #spectate-btn[disabled] {
 	filter: brightness(0.5);
@@ -2379,7 +2405,7 @@ input.disabled {
 		<div id="game-settings-ui-wrapper2" class="ui-menu ui-panel settings-panel scrollable">
 
 			<div class="input-group">
-				<div style="flex: 4; padding: 10px 0 10px 0; font-size: 20px; font-weight:bold">
+				<div id="game-settings-title" style="flex: 4; padding: 10px 0 10px 0; font-size: 20px; font-weight:bold">
 					Settings
 				</div>
 				<div style="flex: 3;" class="ingame-class hidden">
@@ -2394,7 +2420,7 @@ input.disabled {
 			</div>
 			
 			
-			<div class="input-group-tabs">
+			<div class="input-group-tabs" id="game-settings-tabs-wrap">
 				<div style="flex: 1;">
 					<button data-tabclass="tab-game" class="tab-game-settings tab-button active">Game</button>
 				</div>
@@ -2413,18 +2439,23 @@ input.disabled {
 			</div>
 			
 			<!-- not used yet, supposed to show this class when prompting user with confirmation, for-settings should be the visible class -->
-			<div class="for-confirmation">
+			<div class="for-confirmation" hidden>
 				Press accept settings for host to start game:
 				<button id="confirm-game-settings-btn" class="gamebutton">Accept Settings</button>
 			</div>
 			
 			
 			<div class="tab tab-keys">
+				<div>
+					<span style="color:yellow">Note:</span> Undo is disabled if soldier dies on a mine, or soldier is unloaded from boat.
+				</div>
+				
+				<div class="space"></div>
+				
 				<div class="settings-title-oneline">
 					Gameplay:
 				</div>
-				<span style="color:yellow">Note:</span> Undo is disabled if soldier dies on a mine, or soldier is unloaded from boat.
-				<br>
+				
 				
 				<ul style="padding-left: 20px;">
 					<li><span style="color:yellow">Goal:</span> kill all enemies (game end rule decides if you also need to steal their lands).</li>
@@ -2939,8 +2970,7 @@ input.disabled {
 			</div>
 		</div>
 		
-		<label for="game-name-input">Game Room Name:</label>
-		<input type="text" id="game-name-input" value="default-room">
+
 		<div class="input-group" style="display: flex; gap: 10px; align-items: center; margin-top: 7px;">
 			<label for="server-name-input">Server:</label>
 			<select id="server-name-input">
@@ -2953,10 +2983,37 @@ input.disabled {
 			
 			</select>
 		</div>
-		<button id="host-btn" class="primary">Host Game</button>
-		<button id="join-btn" disabled>Join Game</button>
-		<button id="spectate-btn" disabled>Join as Spectator</button>
-		<button id="check-server-status-btn">Wake up server</button>
+		
+		<label for="game-name-input">Game Room Name:</label>
+		<input type="text" id="game-name-input" value="default-room">
+		
+		<div class="input-group">
+			<div style="flex:1">
+				<button id="host-btn" class="primary">Host Game</button>
+			</div>
+			<div style="flex:1">
+				<button id="join-btn" disabled>Join Game</button>
+			</div>
+			<div style="flex:1.3">
+				<button id="spectate-btn" disabled>Join as Spectator</button>
+			</div>
+		</div>
+		
+		<div class="space-line"></div>
+		
+		<div class="input-group">
+			<div style="flex:1">
+				<button id="check-server-status-btn">Wake up server</button>
+			</div>
+			<div style="flex:1.3">
+				<button id="game-help-btn" class="game-help-btn">How to play?</button>
+			</div>
+		</div>
+			
+		
+		
+		
+		
 		<div id="server-wakeup-status" style="text-align: center; margin-top: 10px; font-size: 14px;"></div>
 		<div id="connection-status" style="text-align: center; margin-top: 10px; font-size: 14px;">Initializing...</div>
 		<div id="clients-count" style="text-align: center; margin-top: 10px; font-size: 14px;"></div>
@@ -3091,6 +3148,15 @@ input.disabled {
 			<p><strong>Players:</strong></p>
 			<ul id="load-game-players"></ul>
 		</div>
+		
+		<div class="space-line"></div>
+		
+		<div class="input-group">
+			<div style="flex:1">
+				<button id="game-help-btn3" class="game-help-btn">How to play?</button>
+			</div>
+		</div>
+		
 	</div>
 </div>
 
@@ -3189,6 +3255,16 @@ input.disabled {
 			
 
 		</div>
+		
+	
+		<div class="space-line"></div>
+		
+		<div class="input-group">
+			<div style="flex:1">
+				<button id="game-help-btn2" class="game-help-btn">How to play?</button>
+			</div>
+		</div>
+			
 		
 		
 		
@@ -4909,6 +4985,9 @@ function openFlagBrowser(){
 
 function giveRandomName(){
 	playerNameInput.value = randomPlayerName();
+	if(isValidName(playerNameInput.value)){
+		setLocalStorageItem("playerName", playerNameInput.value);
+	}
 }
 
 // set random nick on first start:
@@ -9069,6 +9148,31 @@ const closeGameSettingsBtn = document.getElementById('close-game-settings-btn');
 const gameSettingsUi = document.getElementById('game-settings-ui');
 const gameSettingsUiWrapper2 = document.getElementById('game-settings-ui-wrapper2');
 
+const gameSettingsTabsWrap = document.getElementById('game-settings-tabs-wrap');
+
+const gameSettingsTitle = document.getElementById('game-settings-title');
+
+const gameHelpBtn = document.getElementById('game-help-btn');
+const gameHelpBtn2 = document.getElementById('game-help-btn2');
+const gameHelpBtn3 = document.getElementById('game-help-btn3');
+
+gameHelpBtn.addEventListener("click", function(event){
+	setTimeout(function(){
+		openGameHelp();
+	}, 50);
+});
+
+gameHelpBtn2.addEventListener("click", function(event){
+	setTimeout(function(){
+		openGameHelp();
+	}, 50);
+});
+
+gameHelpBtn3.addEventListener("click", function(event){
+	setTimeout(function(){
+		openGameHelp();
+	}, 50);
+});
 
 
 const uiEditor = document.getElementById('ui-editor');
@@ -9609,11 +9713,36 @@ lobbyGameSettingsBtn.addEventListener("click", (e) => {
 });
 
 
+function activateGameSettingsTabByTabName(tabName){
+	const tabElem = gameSettingsTabsWrap.querySelector(`[data-tabclass="${tabName}"]`);
+
+	activateGameSettingsTab(tabElem, tabName);
+	
 
 
-function openGameSettings(){
+}
+
+
+function openGameHelp(){
+	let showOnlyTab = "tab-keys";
+	
+	activateGameSettingsTabByTabName(showOnlyTab);
+	
+	openGameSettings(showOnlyTab);
+}
+
+
+function openGameSettings(showOnlyTab = null){
 	// unfocus chatinput:
 	chatInput.blur();
+	
+	if(!showOnlyTab){
+		gameSettingsTabsWrap.style.display = "flex";
+		gameSettingsTitle.textContent = "Settings";
+	}else{
+		gameSettingsTabsWrap.style.display = "none";
+		gameSettingsTitle.textContent = "How to play?";
+	}
 	
 	gameSettingsUi.style.display = "flex";
 
@@ -9624,6 +9753,8 @@ function openGameSettings(){
 		ingamePlayerSurrenderBtn.disabled = false;
 		ingamePlayerSurrenderBtn.title = "Surrender? (Asks confirmation)";
 	}
+	
+	gameSettingsUiWrapper2.scrollTop = 0; // scroll to top on game settings wrapper.
 	
 	addPopupState(gameSettingsUi);
 }
@@ -10189,6 +10320,10 @@ function showPage(pageId) {
 		if(!musicMuted){
 			playMusic();
 		}
+	}
+	
+	if(pageId === 'start' || pageId === 'host' || pageId === 'lobby'){
+		activateGameSettingsTabByTabName("tab-game");
 	}
 
 	Object.values(pages).forEach(page => page.classList.remove('active'));
@@ -28161,6 +28296,45 @@ function closeEditor(){
 }
 
 
+function activateGameSettingsTab(element, tabClass){
+
+	//console.warn("tabClass:", tabClass);
+	//console.warn(element);
+	
+
+	// make settings popup transparent if on graphics tab and game started:
+	if(tabClass === 'tab-graphics' && gameStarted()){
+		document.querySelectorAll(".settings-panel").forEach(el => {
+			el.classList.add("trans");
+		});
+	}else{
+		document.querySelectorAll(".settings-panel").forEach(el => {
+			el.classList.remove("trans");
+		});
+	}
+	
+	// remove active buttons from all tab-buttons:
+	document.querySelectorAll(".tab-button").forEach(el => {
+		el.classList.remove("active");
+	});
+	
+	
+	element.classList.add("active");
+	
+	// Hide all tabs
+	document.querySelectorAll(".tab").forEach(el => {
+		el.classList.remove("active");
+	});
+
+	// Show selected tab
+	const activeTab = document.querySelector(".tab." + tabClass);
+	if (activeTab) {
+		//console.warn("activeTab", activeTab);
+		activeTab.classList.add("active");
+	}
+}
+
+
 let mouseDownInsidePopup = false;
 
 // handlePointer bugged, if x or y is zero, causes error.
@@ -28169,37 +28343,7 @@ function handleOutside(e) {
 	
 	if (e.target.classList.contains("tab-game-settings")){
 		const tabClass = e.target.dataset.tabclass;
-		
-
-		// make settings popup transparent if on graphics tab and game started:
-		if(tabClass === 'tab-graphics' && gameStarted()){
-			document.querySelectorAll(".settings-panel").forEach(el => {
-				el.classList.add("trans");
-			});
-		}else{
-			document.querySelectorAll(".settings-panel").forEach(el => {
-				el.classList.remove("trans");
-			});
-		}
-		
-		// remove active buttons from all tab-buttons:
-		document.querySelectorAll(".tab-button").forEach(el => {
-			el.classList.remove("active");
-		});
-		
-		
-		e.target.classList.add("active");
-		
-		// Hide all tabs
-		document.querySelectorAll(".tab").forEach(el => {
-			el.classList.remove("active");
-		});
-
-		// Show selected tab
-		const activeTab = document.querySelector(".tab." + tabClass);
-		if (activeTab) {
-			activeTab.classList.add("active");
-		}
+		activateGameSettingsTab(e.target, tabClass);
 	}
 	
 	
