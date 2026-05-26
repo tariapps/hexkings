@@ -2857,8 +2857,9 @@ input.disabled {
 		<button id="join-btn" disabled>Join Game</button>
 		<button id="spectate-btn" disabled>Join as Spectator</button>
 		<button id="check-server-status-btn">Wake up server</button>
-		<div id="server-wakeup-status"></div>
+		<div id="server-wakeup-status" style="text-align: center; margin-top: 10px; font-size: 14px;"></div>
 		<div id="connection-status" style="text-align: center; margin-top: 10px; font-size: 14px;">Initializing...</div>
+		<div id="clients-count" style="text-align: center; margin-top: 10px; font-size: 14px;"></div>
 	</div>
 </div>
 
@@ -4471,12 +4472,19 @@ if(window.APP_CONFIG.LOCAL == true){
 
 // cache angle calculations:
 const HEX_CORNERS = [];
+const HEX_CORNERS_MID = [];
 for (let i = 0; i < 7; i++) { // 7 because i+1 is called, so it gets back to the first item.
 	const angle = 2 * Math.PI / 6 * (i + 1); // +0.5 instead of +1 for pointy top
 	HEX_CORNERS.push({
 		x: Math.cos(angle),
 		y: Math.sin(angle)
 	});
+	const angle2 = 2 * Math.PI / 6 * (i + 0.5);
+	HEX_CORNERS_MID.push({
+		x: Math.cos(angle2),
+		y: Math.sin(angle2)
+	});
+	
 }
 
 
@@ -4515,6 +4523,7 @@ function connectToServer(serverUrl) {
 	// 1. Close existing EventSource if any
 	if (eventSource) {
 		eventSource.close(); // stops listening and frees resources
+		clientsCountElem.textContent = "";
 		console.log('Closed previous EventSource');
 	}
 
@@ -4523,7 +4532,10 @@ function connectToServer(serverUrl) {
 
 	// 3. Listen for messages
 	eventSource.onmessage = (event) => {
-		if (event.data === 'games_updated') {
+		// `data: games_updated/${clients.length}\n\n`;
+		let [msg, clientsCount] = event.data.split("/");
+		if (msg === 'games_updated') {
+			clientsCountElem.textContent = "Total "+clientsCount+" connected clients.";
 			console.log('Games updated — reloading list...');
 			fetchOpenGames(selectedServerIndex); // or your own function
 		}
@@ -4531,6 +4543,7 @@ function connectToServer(serverUrl) {
 
 	eventSource.onerror = (err) => {
 		console.error('EventSource error', err);
+		clientsCountElem.textContent = "";
 	};
 
 	console.log('Connected to EventSource at', serverUrl);
@@ -4542,6 +4555,8 @@ function connectToServer(serverUrl) {
 
 
 const gamesListInput = document.getElementById("games-list-input");
+
+const clientsCountElem = document.getElementById("clients-count");
 
 gamesListInput.addEventListener("change", function() {
 	const selectedValue = this.value;
@@ -5430,6 +5445,7 @@ const mapScale = document.getElementById('map-scale');
 
 
 function loadRandomMap(){
+	
 	loadMap(((random(0,1) == 0) ? "normal" : "small"), random(0,39));
 }
 
@@ -5532,7 +5548,6 @@ async function renderMapList(category) {
 			// <div>${map.width} x ${map.height}</div>
 			div.addEventListener('click', () => {
 				loadMap(category, index);
-				setLocalStorageObject("currentMap", {category:category, index:index});
 				console.log("map loaded: ",category,index);
 
 				closePopup();
@@ -10445,6 +10460,342 @@ function getDayTurnNumber(playerIndex){
 
 
 
+
+
+class Tantrix {
+	constructor(){
+		//this.canvas = document.createElement("canvas");
+		//this.ctx = canvas.getContext("2d");
+		this.SC = 0; // short curve
+		this.LC = 1; // long curve
+		this.SL = 2; // straight line
+		this.thickness = 6;
+		this.borderThickness = 2;
+		this.borderColor = "#000000";
+		this.backgroundColor = "rgba(0,0,0, 0.3)";
+		this.pack = [];
+		
+		this.colorList = {
+			R: {color: "#D71F2B", key: "R"}, // 0 = Red
+			Y: {color: "#FFFF00", key: "Y"}, // 1 = Yellow
+			G: {color: "#22AA55", key: "G"}, // 2 = Green
+			B: {color: "#2363BB", key: "B"}, // 3 = Blue
+		};
+		/*
+		this.colorList = {
+			R: {color: "#FFFFFF", key: "R"}, // 0 = Red
+			Y: {color: "#FFFFFF", key: "Y"}, // 1 = Yellow
+			G: {color: "#FFFFFF", key: "G"}, // 2 = Green
+			B: {color: "#FFFFFF", key: "B"}, // 3 = Blue
+		};
+		*/
+		
+		
+
+		
+		// 4 different styles of tiles line linkings only.
+		// geometry: 2 different size semi circles, 1 straight line.
+		//
+		// colors in same order as links.
+		// colors letters links to colors array.
+		this.tiles = [
+			{ // type 0, (folder 1):
+				links: [[0,2], [1,4], [3,5]],
+				// seems like render links and renderData doesnt match properly,
+				// need to think how to use the links data to render it properly without
+				// forcing renderData to match links. or then the links are weird.
+				renderData: [[2,this.LC], [2,this.SL], [5,this.LC]],
+				// colors in same order as links.
+				colors: [
+					"RBY", "BYR", "BRY", "YGR", 
+					"YRG", "RYG", "BGR", "GBR",
+					"GRB", "GYB", "GBY", "YGB",
+				],
+			},
+			{ // type 1, (folder 2):
+				links: [[0,5], [1,3], [2,4]],
+				renderData: [[4,this.SC], [1,this.LC], [2,this.LC]],
+				// colors in same order as links.
+				colors: [
+					"YBR", "BYR", "BRY", "YRB", 
+					"RBY", "RYB", "YGR", "YRG", 
+					"RGY", "RYG", "RBG", "RGB", 
+					"GRY", "GYR", "GRB", "BGR", 
+					"BRG", "GBR", "GBY", "GYB", 
+					"YGB", "YBG", "BGY", "BYG", 
+				],
+			},
+			{ // type 2, (folder 3):
+				links: [[0,5], [1,4], [2,3]],
+				renderData: [[5,this.SC], [1,this.SL], [2,this.SC]],
+				// colors in same order as links.
+				colors: [
+					"RBY", "YRB", "BYR", "GRY", 
+					"RYG", "YGR", "GBR", "RGB", 
+					"BRG", "BYG", "GBY", "YGB", 
+				],
+			},
+			{ // type 3, (folder 4):
+				links: [[0,5], [1,2], [3,4]],
+				renderData: [[5,this.SC], [1,this.SC], [3,this.SC]],
+				// colors in same order as links.
+				colors: [
+					"RBY", "RYB", "GRY", "GYR", 
+					"BGR", "BRG", "YGB", "YBG", 
+				],
+			},
+		];
+		
+		
+		this.createPack();
+	}
+	
+	createPack(){
+		this.pack = [];
+		for(let i = 0; i < this.tiles.length; i++){
+			let tile = this.tiles[i];
+			for(let c = 0; c < tile.colors.length; c++){
+				this.pack.push({
+					type: i,
+					coloringIndex: c,
+					rotation: 0,
+				});
+			}
+		}
+		this.pack = shuffle(this.pack);
+		console.warn(this.pack);
+	}
+	
+	getColorByCode(code){
+		return this.colorList[code].color;
+	}
+	
+	drawTile(data, drawCenter = false){
+		const q = data.q;
+		const r = data.r;
+		
+		const x = axialToPixelX(q, r);
+		const y = axialToPixelY(q, r);
+		
+		ctx.save();
+		
+		drawHexagonPath(x, y);
+		
+		//ctx.clip();
+		
+		ctx.fillStyle = this.backgroundColor;
+		ctx.fill();
+		
+		
+		
+		let tile = this.tiles[data.type]; // 0-3
+		let colors = tile.colors[data.coloringIndex]; // "RBY"
+		//renderData: [[5,this.SC], [1,this.SC], [3,this.SC]],
+
+		
+		for(let i = 0; i < tile.renderData.length; i++){
+			let [startSide, drawType] = tile.renderData[i];
+			let color = this.getColorByCode(colors[i]);
+			switch(drawType){
+				case this.SC:
+					this.drawSmallCurve(x, y, startSide, data.rotation, this.thickness, color, drawCenter);
+				break;
+				case this.LC:
+					this.drawLargeCurve(x, y, startSide,  data.rotation, this.thickness, color, drawCenter);
+				break;
+				case this.SL:
+					this.drawStraight(x, y, startSide,  data.rotation, this.thickness, color);
+				break;
+			}
+		}
+		
+		
+		//this.tiles
+		
+		
+		
+		/*
+		this.drawLargeCurve(x,y, 0, 6, "#FFFF00");
+		this.drawSmallCurve(x,y, 1, 6, "#FFEE00");
+		this.drawSmallCurve(x,y, 2, 6, "#FFAA00");
+		this.drawLargeCurve(x,y, 4, 6, "#FF8800");
+		*/
+		
+		let size = 6;
+		
+		for(let i = 0; i < 6; i++){
+			//this.drawStraight(x,y, i, size, "#FFFF00");
+			//this.drawLargeCurve(x,y, i, size, "#FF6600");
+			//this.drawSmallCurve(x,y, i, size, "#FFBB00");
+		}
+		//this.drawStraight(x,y, 4, 6, "#FF8800");
+		//this.drawStraight(x,y, 5, 6, "#FF4400");
+		/*
+		this.drawLargeCurve(x,y, 1, 6, "#FFEE00");
+		this.drawLargeCurve(x,y, 2, 6, "#FFDD00");
+		this.drawLargeCurve(x,y, 3, 6, "#FFCC00");
+		this.drawLargeCurve(x,y, 4, 6, "#FFBB00");
+		this.drawLargeCurve(x,y, 5, 6, "#FFAA00");
+		*/
+		
+		ctx.restore();
+	}
+	
+	getEdgeMidpoint(cx, cy, side, rotation) {
+		let EDGE_RADIUS = HEX_SIZE * Math.sqrt(3) / 2;
+		return {
+			x: cx + HEX_CORNERS_MID[side].x * EDGE_RADIUS,
+			y: cy + HEX_CORNERS_MID[side].y * EDGE_RADIUS
+		};
+	}
+
+	drawStraight(cx, cy, side, rotation, lineWidth, color) {
+		const p0 = this.getEdgeMidpoint(cx, cy, (side+rotation)%6);
+		const p1 = this.getEdgeMidpoint(cx, cy, (side+rotation + 3) % 6);
+
+		ctx.strokeStyle = this.borderColor;
+		ctx.lineWidth = lineWidth+this.borderThickness*2;
+		ctx.lineCap = "butt";
+
+		ctx.beginPath();
+		ctx.moveTo(p0.x, p0.y);
+		ctx.lineTo(p1.x, p1.y);
+		ctx.stroke();
+		
+		
+		ctx.strokeStyle = color;
+		ctx.lineWidth = lineWidth;
+		ctx.lineCap = "butt";
+
+		ctx.beginPath();
+		ctx.moveTo(p0.x, p0.y);
+		ctx.lineTo(p1.x, p1.y);
+		ctx.stroke();
+	}
+	
+	drawLargeCurve(cx, cy, side, rotation, lineWidth, color, drawCenter = false) {
+		// sqrt(3) to get the distance to next hex center.
+		cx += HEX_SIZE * HEX_CORNERS_MID[(side+rotation)%6].x*Math.sqrt(3); // 1.72...
+		cy += HEX_SIZE * HEX_CORNERS_MID[(side+rotation)%6].y*Math.sqrt(3);
+		
+		const a0 = (0 + side * 60 + rotation*60) * Math.PI / 180;
+		const a1 = a0 + 1 * Math.PI / 3;
+
+		const radius = HEX_SIZE * 1.5;
+
+		ctx.strokeStyle = this.borderColor;
+		ctx.lineWidth = lineWidth+this.borderThickness*2;
+		ctx.lineCap = "butt";
+		
+		ctx.beginPath();
+		ctx.arc(
+			cx,
+			cy,
+			radius,
+			a0 + Math.PI,
+			a1 + Math.PI
+		);
+
+		ctx.stroke();
+		
+		
+		ctx.strokeStyle = color;
+		ctx.lineWidth = lineWidth;
+		ctx.lineCap = "butt";
+		
+		ctx.beginPath();
+		ctx.arc(
+			cx,
+			cy,
+			radius,
+			a0 + Math.PI,
+			a1 + Math.PI
+		);
+
+		ctx.stroke();
+		
+		if(drawCenter){
+			ctx.lineCap = "round";
+			
+			ctx.beginPath();
+			ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+			ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+			ctx.fill();
+		}
+		
+		
+	}
+	
+	
+	drawSmallCurve(cx, cy, side, rotation, lineWidth, color, drawCenter = false) {
+		cx += HEX_SIZE * HEX_CORNERS[(side+rotation)%6].x;
+		cy += HEX_SIZE * HEX_CORNERS[(side+rotation)%6].y;
+
+		const a0 = (0 + side * 60 + rotation*60) * Math.PI / 180;
+		const a1 = a0 + 2*Math.PI / 3;
+
+		const radius = HEX_SIZE * 0.5;
+
+
+		ctx.strokeStyle = this.borderColor;
+		ctx.lineWidth = lineWidth+this.borderThickness*2;
+		ctx.lineCap = "butt";
+		
+		ctx.beginPath();
+		ctx.arc(
+			cx,
+			cy,
+			radius,
+			a0 + Math.PI,
+			a1 + Math.PI
+		);
+
+		ctx.stroke();
+		
+		
+		ctx.strokeStyle = color;
+		ctx.lineWidth = lineWidth;
+		ctx.lineCap = "butt";
+		
+		ctx.beginPath();
+		ctx.arc(
+			cx,
+			cy,
+			radius,
+			a0 + Math.PI,
+			a1 + Math.PI
+		);
+
+		ctx.stroke();
+		
+		if(drawCenter){
+			ctx.lineCap = "round";
+			
+			ctx.beginPath();
+			ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+			ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+			ctx.fill();
+		}
+	}
+	
+	/*
+		{ q: q,     r: r + 1 }, // bottom       0
+		{ q: q - 1, r: r + 1 }, // bottom left  1
+		{ q: q - 1, r: r },     // top left     2
+		{ q: q,     r: r - 1 }, // top          3
+		{ q: q + 1, r: r - 1 }, // top right    4
+		{ q: q + 1, r: r },     // bottom right 5
+	*/
+
+};
+
+
+let drawTantrix = 0;
+let tantrix = new Tantrix();
+//console.warn(tantrix);
+
+
+
 /*
 let lostUnits = {
 	total: 4,
@@ -13613,8 +13964,8 @@ function drawMoveDirectionsOverlay() {
 
 function drawCompass(ctx, options = {}) {
 	const {
-		x = canvas.width-40,
-		y = 40,
+		x = 40,
+		y = canvas.height-40,
 		radius = 20,
 		rotation = 0, // viewport/camera rotation in radians
 		color = "#FFFF00",
@@ -13644,7 +13995,7 @@ function drawCompass(ctx, options = {}) {
 	// Draw cross
 	ctx.beginPath();
 
-	ctx.strokeStyle = "rgba(255, 255, 0, 0.5)";
+	ctx.strokeStyle = "rgba(255, 255, 0, 0.6)";
 
 	// North/South line
 	ctx.moveTo(0, -radius);
@@ -13654,7 +14005,7 @@ function drawCompass(ctx, options = {}) {
 	
 	ctx.beginPath();
 	
-	ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+	ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
 
 	// East/West line
 	ctx.moveTo(-radius, 0);
@@ -13664,7 +14015,7 @@ function drawCompass(ctx, options = {}) {
 
 	// Optional center dot
 	ctx.beginPath();
-	ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+	ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
 	ctx.arc(0, 0, 3, 0, Math.PI * 2);
 	ctx.fill();
 
@@ -13700,10 +14051,10 @@ function drawCompass(ctx, options = {}) {
 		ctx.restore();
 	}
 
-	ctx.fillStyle = "rgba(255, 255, 0, 0.5)";
+	ctx.fillStyle = "rgba(255, 255, 0, 0.6)";
 	drawCompassLetter("N", 0, -offset);
 	drawCompassLetter("S", 0, offset);
-	ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+	ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
 	drawCompassLetter("E", offset, 0);
 	drawCompassLetter("W", -offset, 0);
 
@@ -14525,6 +14876,35 @@ function render() {
 	}
 	
 	
+	if(drawTantrix){
+		
+		let packindex = 0;
+		let qoff = -10;
+		
+		for(let q = 0; q < 8; q++){
+			for(let r = 0; r < 7; r++){
+				let qq = q+10+qoff;
+				let rr = r-10;
+				let packTile = tantrix.pack[packindex];
+				tantrix.drawTile({
+					q:qq, 
+					r:rr, 
+					type: packTile.type, 
+					coloringIndex: packTile.coloringIndex,
+					rotation: packTile.rotation,
+				}, false);
+				packindex++;
+			}
+		}
+		
+		// testing all tiles rotation render:
+		for(let i = 0; i < 4; i++){
+			for(let r = 0; r < 6; r++){
+				tantrix.drawTile({q:12+i+7+qoff,r:3+r-13, type: i, coloringIndex: 0, rotation: r});
+			}
+		}
+	
+	}
 	
 	
 	ctx.restore();
@@ -25687,6 +26067,8 @@ function drawMinimapTiles(minimapCanvas, state, size, savedState = null, viewpor
 
 	
 function loadMap(category, index) {
+	setLocalStorageObject("currentMap", {category:category, index:index});
+	
 	// unload loaded game so it wont mess up new game:
 	unloadGame();
 	
