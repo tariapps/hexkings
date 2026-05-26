@@ -2995,7 +2995,7 @@ input.disabled {
 				<button id="join-btn" disabled>Join Game</button>
 			</div>
 			<div style="flex:1.3">
-				<button id="spectate-btn" disabled>Join as Spectator</button>
+				<button id="spectate-btn" title="Joins as a non-player who can only watch" disabled>Join as Spectator</button>
 			</div>
 		</div>
 		
@@ -3003,7 +3003,7 @@ input.disabled {
 		
 		<div class="input-group">
 			<div style="flex:1">
-				<button id="check-server-status-btn">Wake up server</button>
+				<button id="check-server-status-btn" title="If server is not responding, press this button">Wake up server</button>
 			</div>
 			<div style="flex:1.3">
 				<button id="game-help-btn" class="game-help-btn">How to play?</button>
@@ -24360,6 +24360,21 @@ function executeJoin(hostPeerId) {
 	});
 }
 
+
+function sanitizePeerId(str) {
+	return str
+		.normalize("NFD")                  // split accented chars
+		.replace(/[\u0300-\u036f]/g, "")   // remove accents
+		.replace(/[^\w-]/g, "-")           // replace invalid chars
+		//.replace(/-+/g, "-") // replace multiple sequential - chars into single - char.
+		.replace(/[-_]+/g, "-") // replace multiple _ and - sequential into -
+		//.replace(/-$/, "") // remove last - char if any. (peer id cant end in dash).
+		.replace(/[-_]$/, "") // remove last _ or - char if any. (peer id cant end in _ or -).
+		.toLowerCase();
+}
+
+
+
 function joinGame(isSpectator) {
 	localPlayer.isSpectator = isSpectator;
 	localPlayer.name = sanitizeName(playerNameInput.value);
@@ -24371,7 +24386,8 @@ function joinGame(isSpectator) {
 		addSystemChatMessage("Joined as spectator");
 	}
 	
-	hostPeerId = gameNameInput.value.trim();
+	hostPeerId = sanitizePeerId(gameNameInput.value.trim());
+	
 	if (!hostPeerId) {
 		alert('Please enter a Game Room Name (which is the Host\'s ID).');
 		return;
@@ -24398,7 +24414,7 @@ function joinGame(isSpectator) {
 
 
 function hostGame() {
-	const gameName = gameNameInput.value.trim();
+	const gameName = sanitizePeerId(gameNameInput.value.trim());
 	if (!gameName) {
 		alert("Please enter a Game Room Name.");
 		return;
