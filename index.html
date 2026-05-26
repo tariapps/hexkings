@@ -1766,7 +1766,8 @@ input.disabled {
 
 
 
-#build-soldier-btn {
+#build-soldier-btn,
+.build-soldier-btn {
 	background-image: url('images/orig-scaled/128x128/soldier1.png');
 }
 #build-soldier-btn.disabled {
@@ -1780,7 +1781,8 @@ input.disabled {
 }
 
 
-#build-castle-btn {
+#build-castle-btn,
+.build-castle-btn {
 	background-image: url('images/orig-scaled/128x128/castle1.png');
 }
 #build-castle-btn.disabled {
@@ -1794,7 +1796,8 @@ input.disabled {
 }
 
 
-#undo-btn {
+#undo-btn,
+.undo-btn {
 	background-image: url('images/ui/undo.png');
 }
 #undo-btn.disabled {
@@ -1812,7 +1815,8 @@ input.disabled {
 }
 
 
-#toggle-ui-btn {
+#toggle-ui-btn,
+.toggle-ui-btn {
 	background-image: url('images/ui/chat.png');
 }
 
@@ -1869,7 +1873,8 @@ input.disabled {
 
 
 
-#build-other-btn {
+#build-other-btn,
+.build-other-btn {
 	background-image: url('images/ui/build.png');
 }
 #build-other-btn.disabled {
@@ -1882,7 +1887,8 @@ input.disabled {
 	filter: brightness(0.5);
 }
 
-#sell-unit-btn {
+#sell-unit-btn,
+.sell-unit-btn {
 	background-image: url('images/ui/sell.png');
 }
 #sell-unit-btn.disabled {
@@ -1893,7 +1899,8 @@ input.disabled {
 }
 
 
-#end-turn-btn {
+#end-turn-btn,
+.end-turn-btn {
 	background-image: url('images/ui/endturn.png');
 }
 #end-turn-btn[disabled] {
@@ -1904,7 +1911,8 @@ input.disabled {
 
 
 
-#next-unit-btn {
+#next-unit-btn,
+.next-unit-btn {
 	background-image: url('images/ui/next.png');
 }
 #next-unit-btn[disabled] {
@@ -1917,7 +1925,8 @@ input.disabled {
 	height:44px;
 }
 
-#previous-unit-btn {
+#previous-unit-btn,
+.previous-unit-btn {
 	background-image: url('images/ui/previous.png');
 }
 #previous-unit-btn[disabled] {
@@ -2434,6 +2443,97 @@ input.disabled {
 				</ul>
 				
 				<div class="space"></div>
+				
+				<div class="settings-title-oneline">
+					Buttons:
+				</div>
+				<div class="input-group">
+					<div style="flex: 0; align-content: center; width: 44px">
+						<button class="gamebutton primary end-turn-btn" style="margin:0; width:44px; height:44px"></button>
+					</div>
+					<div style="flex: 1; align-content: center;">
+						End your turn
+					</div>
+				</div>
+				
+				<div class="input-group">
+					<div style="flex: 0; align-content: center; width: 44px">
+						<button class="gamebutton toggle-ui-btn" style="margin:0; width:44px; height:44px"></button>
+					</div>
+					<div style="flex: 1; align-content: center;">
+						Open chat (and rotation buttons)
+					</div>
+				</div>
+				
+				<div class="input-group">
+					<div style="flex: 0; align-content: center; width: 44px">
+						<button class="gamebutton sell-unit-btn" style="margin:0; width:44px; height:44px"></button>
+					</div>
+					<div style="flex: 1; align-content: center;">
+						Sell selected soldier or castle
+					</div>
+				</div>
+				
+				<div class="input-group">
+					<div style="flex: 0; align-content: center; width: 44px">
+						<button class="gamebutton redbutton undo-btn" style="margin:0; width:44px; height:44px"></button>
+					</div>
+					<div style="flex: 1; align-content: center;">
+						Undo previous move
+					</div>
+				</div>
+				
+				<div class="input-group">
+					<div style="flex: 0; align-content: center; width: 44px">
+						<button class="gamebutton build-other-btn" style="margin:0; width:44px; height:44px"></button>
+					</div>
+					<div style="flex: 1; align-content: center;">
+						Build item with selected unit (mine or boat)
+					</div>
+				</div>
+				
+				<div class="input-group">
+					<div style="flex: 0; align-content: center; width: 44px">
+						<button class="gamebutton build-soldier-btn" style="margin:0; width:44px; height:44px"></button>
+					</div>
+					<div style="flex: 1; align-content: center;">
+						Build soldier
+					</div>
+				</div>
+				
+				<div class="input-group">
+					<div style="flex: 0; align-content: center; width: 44px">
+						<button class="gamebutton build-castle-btn" style="margin:0; width:44px; height:44px"></button>
+					</div>
+					<div style="flex: 1; align-content: center;">
+						Build castle (or shipyard)
+					</div>
+				</div>
+				
+				<div class="input-group">
+					<div style="flex: 0.35; align-content: center; ">
+						<button class="gamebutton previous-unit-btn" style="margin:0; width:44px; height:44px"></button>
+						<button class="gamebutton next-unit-btn" style="margin:0; width:44px; height:44px"></button>
+					</div>
+					<div style="flex: 1; align-content: center;">
+						Select previous/next unit
+					</div>
+				</div>
+				
+				<div class="input-group">
+					<div style="flex: 0; align-content: center; width: 44px">
+						<img src="images/ui/select-all.png" style="width:44px; height:44px; background: var(--btn-bg); border-radius: 6px;">
+					</div>
+					<div style="flex: 1; align-content: center;">
+						Unit type to cycle with previous/next buttons (star = any unit)
+					</div>
+				</div>
+				
+				<div class="space"></div>
+				
+				
+				
+		
 				
 				<div class="settings-title-oneline">
 					Keys:
