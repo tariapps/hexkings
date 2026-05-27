@@ -2434,7 +2434,7 @@ input.disabled {
 					<button data-tabclass="tab-other" class="tab-game-settings tab-button">Other</button>
 				</div>
 				<div style="flex: 1;">
-					<button data-tabclass="tab-keys" class="tab-game-settings tab-button">Help</button>
+					<button data-tabclass="tab-keys" id="tab-help-btn" class="tab-game-settings tab-button">Help</button>
 				</div>
 			</div>
 			
@@ -2445,180 +2445,199 @@ input.disabled {
 			</div>
 			
 			
-			<div class="tab tab-keys">
-				<div>
-					<span style="color:yellow">Note:</span> Undo is disabled if soldier dies on a mine, or soldier is unloaded from boat.
-				</div>
-				
-				<div class="space"></div>
-				
-				<div class="settings-title-oneline">
-					Gameplay:
-				</div>
-				
-				
-				<ul style="padding-left: 20px;">
-					<li><span style="color:yellow">Goal:</span> kill all enemies (game end rule decides if you also need to steal their lands).</li>
-					<li>You need to <span style="color:yellow">conquer land</span> (hexes) to get more income to afford more soldiers/castles etc. One hex gives +1 income for that hex. Your joined hexes (pool) savings decides what you can afford to build on or around that pool.</li>
-					<li>You must <span style="color:yellow">select your pool</span> (by clicking them) to build stuff in or around them. Soldiers can be built around them, but castles only inside them.</li>
-					<li>Each soldier or castle defends <span style="color:yellow">1 hex range</span> around them for same or lower level units. Example: hut defends against peasants, but not against knights, and peasant defends against other peasants but not knights (or higher level units).</li>
-					<li>You must <span style="color:yellow">avoid</span> your pool (joined hexes) savings+income-wages (balance) to become negative, or you will lose all your soldiers to starvation in that pool after turn ends.</li>
-					<li>You should try to <span style="color:yellow">split</span> enemy pools in hope to cause them to starve to death.</li>
-					<li>You should try to avoid the enemy <span style="color:yellow">splitting</span> your pools.</li>
-					<li>You can <span style="color:yellow">sell soldiers</span> and get 50% of the cost back.</li>
-					<li>You can <span style="color:yellow">sell castles</span> and get ~30% of the cost back.</li>
-					<li>On PC: Use <span style="color:yellow">buttons 1,2,3,4</span> for quick build, and change type to build with <span style="color:yellow">§ button</span>.</li>
-					<li>Moving your soldier <span style="color:yellow">on a tree</span> will give +1 money.</li>
-					<li>Moving your soldier (knight or higher level) <span style="color:yellow">on a rock</span> will give +5 money.</li>
-					<li>Dead soldiers (with cross image) will become grass after 4 turns. Grass prevents you from getting income from that tile. Same goes for trees.</li>
-				</ul>
-				
-				<div class="space"></div>
-				
-				<div class="settings-title-oneline">
-					Buttons:
-				</div>
-				<div class="input-group">
-					<div style="flex: 0; align-content: center; width: 44px">
-						<button class="gamebutton primary end-turn-btn" style="margin:0; width:44px; height:44px"></button>
-					</div>
-					<div style="flex: 1; align-content: center;">
-						End your turn
-					</div>
-				</div>
-				
-				<div class="input-group">
-					<div style="flex: 0; align-content: center; width: 44px">
-						<button class="gamebutton toggle-ui-btn" style="margin:0; width:44px; height:44px"></button>
-					</div>
-					<div style="flex: 1; align-content: center;">
-						Open chat (and rotation buttons)
-					</div>
-				</div>
-				
-				<div class="input-group">
-					<div style="flex: 0; align-content: center; width: 44px">
-						<button class="gamebutton sell-unit-btn" style="margin:0; width:44px; height:44px"></button>
-					</div>
-					<div style="flex: 1; align-content: center;">
-						Sell selected soldier or castle
-					</div>
-				</div>
-				
-				<div class="input-group">
-					<div style="flex: 0; align-content: center; width: 44px">
-						<button class="gamebutton redbutton undo-btn" style="margin:0; width:44px; height:44px"></button>
-					</div>
-					<div style="flex: 1; align-content: center;">
-						Undo previous move
-					</div>
-				</div>
-				
-				<div class="input-group">
-					<div style="flex: 0; align-content: center; width: 44px">
-						<button class="gamebutton build-other-btn" style="margin:0; width:44px; height:44px"></button>
-					</div>
-					<div style="flex: 1; align-content: center;">
-						Build item with selected unit (mine or boat)
-					</div>
-				</div>
-				
-				<div class="input-group">
-					<div style="flex: 0; align-content: center; width: 44px">
-						<button class="gamebutton build-soldier-btn" style="margin:0; width:44px; height:44px"></button>
-					</div>
-					<div style="flex: 1; align-content: center;">
-						Build soldier
-					</div>
-				</div>
-				
-				<div class="input-group">
-					<div style="flex: 0; align-content: center; width: 44px">
-						<button class="gamebutton build-castle-btn" style="margin:0; width:44px; height:44px"></button>
-					</div>
-					<div style="flex: 1; align-content: center;">
-						Build castle (or shipyard)
-					</div>
-				</div>
-				
-				<div class="input-group">
-					<div style="flex: 0.35; align-content: center; ">
-						<button class="gamebutton previous-unit-btn" style="margin:0; width:44px; height:44px"></button>
-						<button class="gamebutton next-unit-btn" style="margin:0; width:44px; height:44px"></button>
-					</div>
-					<div style="flex: 1; align-content: center;">
-						Select previous/next unit
-					</div>
-				</div>
-				
-				<div class="input-group">
-					<div style="flex: 0; align-content: center; width: 44px">
-						<img src="images/ui/select-all.png" style="width:44px; height:44px; background: var(--btn-bg); border-radius: 6px;">
-					</div>
-					<div style="flex: 1; align-content: center;">
-						Unit type to cycle with previous/next buttons (star = any unit)
-					</div>
-				</div>
-				
-				<div class="space"></div>
-				
-				
-				
-		
-				
-				<div class="settings-title-oneline">
-					Keys:
-				</div>
-				<div><span style="color:yellow">Q</span> = Rotate counterclockwise (+shift = slower)</div>
-				<div><span style="color:yellow">E</span> = Rotate clockwise (+shift = slower)</div>
-				<div><span style="color:yellow">J,K,L,I</span> = Move screen (+shift = slower)</div>
-				
+			<div class="tab tab-keys" id="tab-keys-wrap">
 
-				<div class="space"></div>
-				
-				<div><span style="color:yellow">Z</span> = Previous unit</div>
-				<div><span style="color:yellow">C</span> = Next unit</div>
-				<div><span style="color:yellow">X</span> = Toggle centering unit (when using previous/next)</div>
-				<div><span style="color:yellow">V</span> = Center to selected unit</div>
-				
-				<div class="space"></div>
-				
-				<div><span style="color:yellow">A</span> = Previous pool</div>
-				<div><span style="color:yellow">S</span> = Change pool cycle type: all, empty, vacant</div>
-				<div><span style="color:yellow">D</span> = Next pool</div>
-				
-				<div class="space"></div>
-				
-				<div><span style="color:yellow">H</span> = Show your unprotected hexes</div>
-				
-				<div class="space"></div>
-				
-				<div><span style="color:yellow">F</span> = End turn</div>
-				
-				<div class="space"></div>
-				
-				<div><span style="color:yellow">"§½"</span> = Cycle quick build type (soldier, castle, item). Default is soldier type. If type is castle, button 1 builds hut etc.</div>
-				<div><span style="color:yellow">1</span> = Quick build (peasant | hut | landmine)</div>
-				<div><span style="color:yellow">2</span> = Quick build (knight | castle | sailboat)</div>
-				<div><span style="color:yellow">3</span> = Quick build (horse | fortress | none)</div>
-				<div><span style="color:yellow">4</span> = Quick build (dragon | shipyard | none)</div>
-				
-				<div class="space"></div>
-				
-				<div><span style="color:yellow">Space</span> = Show previous moves of units</div>
-				<div><span style="color:yellow">Left Click</span> = Select Unit (or move map)</div>
-				<div><span style="color:yellow">Right Click</span> = Cancel selections</div>
-				
-				<div class="space"></div>
-				
-				<div class="settings-title-oneline">
-					Editor:
+				<div class="input-group-tabs" id="game-settings-tabs-keys-wrap">
+					<div style="flex: 1;">
+						<button data-tabclass="tab-keys-gameplay" class="tab-game-settings-keys tab-button active">Gameplay</button>
+					</div>
+					<div style="flex: 1;">
+						<button data-tabclass="tab-keys-buttons" class="tab-game-settings-keys tab-button">Buttons</button>
+					</div>
+					<div style="flex: 1;">
+						<button data-tabclass="tab-keys-keys" class="tab-game-settings-keys tab-button">Keys</button>
+					</div>
 				</div>
-				<div><span style="color:yellow">CTRL + Left Click</span> = Draw (if "Move" enabled)</div>
-				<div><span style="color:yellow">Left Click</span> = Draw (if "Draw" enabled)</div>
-				<div><span style="color:yellow">Left Click</span> = Drag (if "Move" enabled)</div>
-				<div><span style="color:yellow">Right Click</span> = Drag (if "Draw" enabled)</div>
-				<div>Note: You can delete units/objects by clicking the unit/object again, if you hold it down, it will delete any unit under it.</div>
+				
+				<div class="tab tab-keys-gameplay active">
+					
+					<div>
+						<span style="color:yellow">Note:</span> Undo is disabled if soldier dies on a mine, or soldier is unloaded from boat.
+					</div>
+					
+					<div class="space"></div>
+					
+					<div class="settings-title-oneline">
+						Gameplay:
+					</div>
+					
+					
+					<ul style="padding-left: 20px;">
+						<li><span style="color:yellow">Goal:</span> kill all enemies (game end rule decides if you also need to steal their lands).</li>
+						<li>You need to <span style="color:yellow">conquer land</span> (hexes) to get more income to afford more soldiers/castles etc. One hex gives +1 income for that hex. Your joined hexes (pool) savings decides what you can afford to build on or around that pool.</li>
+						<li>You must <span style="color:yellow">select your pool</span> (by clicking them) to build stuff in or around them. Soldiers can be built around them, but castles only inside them.</li>
+						<li>Each soldier or castle defends <span style="color:yellow">1 hex range</span> around them for same or lower level units. Example: hut defends against peasants, but not against knights, and peasant defends against other peasants but not knights (or higher level units).</li>
+						<li>You must <span style="color:yellow">avoid</span> your pool (joined hexes) savings+income-wages (balance) to become negative, or you will lose all your soldiers to starvation in that pool after turn ends.</li>
+						<li>You should try to <span style="color:yellow">split</span> enemy pools in hope to cause them to starve to death.</li>
+						<li>You should try to avoid the enemy <span style="color:yellow">splitting</span> your pools.</li>
+						<li>You can <span style="color:yellow">sell soldiers</span> and get 50% of the cost back.</li>
+						<li>You can <span style="color:yellow">sell castles</span> and get ~30% of the cost back.</li>
+						<li>On PC: Use <span style="color:yellow">buttons 1,2,3,4</span> for quick build, and change type to build with <span style="color:yellow">§ button</span>.</li>
+						<li>Moving your soldier <span style="color:yellow">on a tree</span> will give +1 money.</li>
+						<li>Moving your soldier (knight or higher level) <span style="color:yellow">on a rock</span> will give +5 money.</li>
+						<li>Dead soldiers (with cross image) will become grass after 4 turns. Grass prevents you from getting income from that tile. Same goes for trees.</li>
+					</ul>
+				
+				</div>
+				
+				
+				<div class="tab tab-keys-buttons">
+				
+					<div class="settings-title-oneline">
+						Buttons:
+					</div>
+					<div class="input-group">
+						<div style="flex: 0; align-content: center; width: 44px">
+							<button class="gamebutton primary end-turn-btn" style="margin:0; width:44px; height:44px"></button>
+						</div>
+						<div style="flex: 1; align-content: center;">
+							End your turn
+						</div>
+					</div>
+					
+					<div class="input-group">
+						<div style="flex: 0; align-content: center; width: 44px">
+							<button class="gamebutton toggle-ui-btn" style="margin:0; width:44px; height:44px"></button>
+						</div>
+						<div style="flex: 1; align-content: center;">
+							Open chat (and rotation buttons)
+						</div>
+					</div>
+					
+					<div class="input-group">
+						<div style="flex: 0; align-content: center; width: 44px">
+							<button class="gamebutton sell-unit-btn" style="margin:0; width:44px; height:44px"></button>
+						</div>
+						<div style="flex: 1; align-content: center;">
+							Sell selected soldier or castle
+						</div>
+					</div>
+					
+					<div class="input-group">
+						<div style="flex: 0; align-content: center; width: 44px">
+							<button class="gamebutton redbutton undo-btn" style="margin:0; width:44px; height:44px"></button>
+						</div>
+						<div style="flex: 1; align-content: center;">
+							Undo previous move
+						</div>
+					</div>
+					
+					<div class="input-group">
+						<div style="flex: 0; align-content: center; width: 44px">
+							<button class="gamebutton build-other-btn" style="margin:0; width:44px; height:44px"></button>
+						</div>
+						<div style="flex: 1; align-content: center;">
+							Build item with selected unit (mine or boat)
+						</div>
+					</div>
+					
+					<div class="input-group">
+						<div style="flex: 0; align-content: center; width: 44px">
+							<button class="gamebutton build-soldier-btn" style="margin:0; width:44px; height:44px"></button>
+						</div>
+						<div style="flex: 1; align-content: center;">
+							Build soldier
+						</div>
+					</div>
+					
+					<div class="input-group">
+						<div style="flex: 0; align-content: center; width: 44px">
+							<button class="gamebutton build-castle-btn" style="margin:0; width:44px; height:44px"></button>
+						</div>
+						<div style="flex: 1; align-content: center;">
+							Build castle (or shipyard)
+						</div>
+					</div>
+					
+					<div class="input-group">
+						<div style="flex: 0.35; align-content: center; ">
+							<button class="gamebutton previous-unit-btn" style="margin:0; width:44px; height:44px"></button>
+							<button class="gamebutton next-unit-btn" style="margin:0; width:44px; height:44px"></button>
+						</div>
+						<div style="flex: 1; align-content: center;">
+							Select previous/next unit
+						</div>
+					</div>
+					
+					<div class="input-group">
+						<div style="flex: 0; align-content: center; width: 44px">
+							<img src="images/ui/select-all.png" style="width:44px; height:44px; background: var(--btn-bg); border-radius: 6px;">
+						</div>
+						<div style="flex: 1; align-content: center;">
+							Unit type to cycle with previous/next buttons (star = any unit)
+						</div>
+					</div>
+				
+				</div>
+				
+				
+				
+				<div class="tab tab-keys-keys">
+					
+					<div class="settings-title-oneline">
+						Keys:
+					</div>
+					<div><span style="color:yellow">Q</span> = Rotate counterclockwise (+shift = slower)</div>
+					<div><span style="color:yellow">E</span> = Rotate clockwise (+shift = slower)</div>
+					<div><span style="color:yellow">J,K,L,I</span> = Move screen (+shift = slower)</div>
+					
+
+					<div class="space"></div>
+					
+					<div><span style="color:yellow">Z</span> = Previous unit</div>
+					<div><span style="color:yellow">C</span> = Next unit</div>
+					<div><span style="color:yellow">X</span> = Toggle centering unit (when using previous/next)</div>
+					<div><span style="color:yellow">V</span> = Center to selected unit</div>
+					
+					<div class="space"></div>
+					
+					<div><span style="color:yellow">A</span> = Previous pool</div>
+					<div><span style="color:yellow">S</span> = Change pool cycle type: all, empty, vacant</div>
+					<div><span style="color:yellow">D</span> = Next pool</div>
+					
+					<div class="space"></div>
+					
+					<div><span style="color:yellow">H</span> = Show your unprotected hexes</div>
+					
+					<div class="space"></div>
+					
+					<div><span style="color:yellow">F</span> = End turn</div>
+					
+					<div class="space"></div>
+					
+					<div><span style="color:yellow">"§½"</span> = Cycle quick build type (soldier, castle, item). Default is soldier type. If type is castle, button 1 builds hut etc.</div>
+					<div><span style="color:yellow">1</span> = Quick build (peasant | hut | landmine)</div>
+					<div><span style="color:yellow">2</span> = Quick build (knight | castle | sailboat)</div>
+					<div><span style="color:yellow">3</span> = Quick build (horse | fortress | none)</div>
+					<div><span style="color:yellow">4</span> = Quick build (dragon | shipyard | none)</div>
+					
+					<div class="space"></div>
+					
+					<div><span style="color:yellow">Space</span> = Show previous moves of units</div>
+					<div><span style="color:yellow">Left Click</span> = Select Unit (or move map)</div>
+					<div><span style="color:yellow">Right Click</span> = Cancel selections</div>
+					
+					<div class="space"></div>
+					
+					<div class="settings-title-oneline">
+						Editor:
+					</div>
+					<div><span style="color:yellow">CTRL + Left Click</span> = Draw (if "Move" enabled)</div>
+					<div><span style="color:yellow">Left Click</span> = Draw (if "Draw" enabled)</div>
+					<div><span style="color:yellow">Left Click</span> = Drag (if "Move" enabled)</div>
+					<div><span style="color:yellow">Right Click</span> = Drag (if "Draw" enabled)</div>
+					<div>Note: You can delete units/objects by clicking the unit/object again, if you hold it down, it will delete any unit under it.</div>
+				</div>
 				
 			</div>
 			
@@ -9149,6 +9168,11 @@ const gameSettingsUi = document.getElementById('game-settings-ui');
 const gameSettingsUiWrapper2 = document.getElementById('game-settings-ui-wrapper2');
 
 const gameSettingsTabsWrap = document.getElementById('game-settings-tabs-wrap');
+const gameSettingsTabsKeysWrap = document.getElementById('game-settings-tabs-keys-wrap');
+const tabKeysWrap = document.getElementById('tab-keys-wrap');
+const tabHelpBtn = document.getElementById('tab-help-btn');
+
+
 
 const gameSettingsTitle = document.getElementById('game-settings-title');
 
@@ -28314,8 +28338,8 @@ function closeEditor(){
 
 function activateGameSettingsTab(element, tabClass){
 
-	//console.warn("tabClass:", tabClass);
-	//console.warn(element);
+	console.warn("tabClass:", tabClass);
+	console.warn(element);
 	
 
 	// make settings popup transparent if on graphics tab and game started:
@@ -28329,8 +28353,9 @@ function activateGameSettingsTab(element, tabClass){
 		});
 	}
 	
+	
 	// remove active buttons from all tab-buttons:
-	document.querySelectorAll(".tab-button").forEach(el => {
+	gameSettingsTabsWrap.querySelectorAll(".tab-button").forEach(el => {
 		el.classList.remove("active");
 	});
 	
@@ -28342,6 +28367,40 @@ function activateGameSettingsTab(element, tabClass){
 		el.classList.remove("active");
 	});
 
+
+	// Show selected tab
+	const activeTab = document.querySelector(".tab." + tabClass);
+	if (activeTab) {
+		//console.warn("activeTab", activeTab);
+		activeTab.classList.add("active");
+	}
+}
+
+
+
+function activateGameSettingsTabKeys(element, tabClass){
+
+	console.warn("tabClass tabkeys:", tabClass);
+	console.warn(element);
+	
+	
+	// remove active buttons from all tab-buttons:
+	gameSettingsTabsKeysWrap.querySelectorAll(".tab-button").forEach(el => {
+		el.classList.remove("active");
+	});
+	
+	
+	element.classList.add("active");
+	
+	tabHelpBtn.classList.add("active");
+	
+	// Hide all tabs
+	document.querySelectorAll(".tab").forEach(el => {
+		//el.classList.remove("active");
+	});
+
+	tabKeysWrap.classList.add("active");
+	
 	// Show selected tab
 	const activeTab = document.querySelector(".tab." + tabClass);
 	if (activeTab) {
@@ -28360,8 +28419,19 @@ function handleOutside(e) {
 	if (e.target.classList.contains("tab-game-settings")){
 		const tabClass = e.target.dataset.tabclass;
 		activateGameSettingsTab(e.target, tabClass);
+		
+		if(tabClass === "tab-keys"){
+			const keyswrap = tabKeysWrap.querySelector(".tab-keys-gameplay");
+			keyswrap.classList.add("active");
+		}
 	}
-	
+	if (e.target.classList.contains("tab-game-settings-keys")){
+		const tabClass = e.target.dataset.tabclass;
+		activateGameSettingsTab(e.target, tabClass);
+		
+		
+		activateGameSettingsTabKeys(e.target, tabClass);
+	}
 	
 	// If the click started inside, do nothing
 	if (mouseDownInsidePopup) {
