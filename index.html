@@ -219,6 +219,8 @@ button[disabled] {
 	background-repeat: no-repeat;
 	background-size: contain;
 }
+
+
 	
 .gamebutton {
 	padding:4px;
@@ -235,6 +237,22 @@ button[disabled] {
 
 .gamebutton.compact {
 	margin:0;
+}
+
+
+.nonbutton {
+	background-color:var(--btn-bg);
+	cursor:default;
+}
+.nonbutton:hover {
+	background-color:var(--btn-bg);
+	cursor:default;
+}
+
+.texturebutton {
+	width: 68px;
+	height: 68px;
+	margin: 2px;
 }
 
 
@@ -377,6 +395,12 @@ label {
 }
 
 .input-group {
+	display: flex;
+	gap: 10px;
+	margin-bottom: 7px;
+}
+
+.input-group-margin {
 	display: flex;
 	gap: 10px;
 	margin-bottom: 7px;
@@ -1676,6 +1700,9 @@ input.disabled {
 	scrollbar-width: thin;
 	scrollbar-color: #555 #1e1e1e;
 }
+.fixed-scrollbar {
+	scrollbar-gutter: stable;
+}
 
 .scrollable::-webkit-scrollbar {
 	width: 10px;
@@ -2281,6 +2308,10 @@ input.disabled {
 			</div>
 			<button style="flex: 1" class="picker-popup-cancel" id="picker-popup-cancel">Cancel</button>
 		</div>
+		Texture:
+		<div id="picker-texture-wrap" style="padding:10px">
+			
+		</div>
 	</div>
 </div>
 
@@ -2402,7 +2433,7 @@ input.disabled {
 <!-- lobby settings -->
 <div id="game-settings-ui">
 	<div id="game-settings-ui-wrapper">
-		<div id="game-settings-ui-wrapper2" class="ui-menu ui-panel settings-panel scrollable">
+		<div id="game-settings-ui-wrapper2" class="ui-menu ui-panel settings-panel scrollable fixed-scrollbar">
 
 			<div class="input-group">
 				<div id="game-settings-title" style="flex: 4; padding: 10px 0 10px 0; font-size: 20px; font-weight:bold">
@@ -2460,18 +2491,12 @@ input.disabled {
 				</div>
 				
 				<div class="tab tab-keys-gameplay active">
-					
+					<!-- Gameplay: -->
 					<div>
 						<span style="color:yellow">Note:</span> Undo is disabled if soldier dies on a mine, or soldier is unloaded from boat.
 					</div>
 					
-					<div class="space"></div>
-					
-					<div class="settings-title-oneline">
-						Gameplay:
-					</div>
-					
-					
+			
 					<ul style="padding-left: 20px;">
 						<li><span style="color:yellow">Goal:</span> kill all enemies (game end rule decides if you also need to steal their lands).</li>
 						<li>You need to <span style="color:yellow">conquer land</span> (hexes) to get more income to afford more soldiers/castles etc. One hex gives +1 income for that hex. Your joined hexes (pool) savings decides what you can afford to build on or around that pool.</li>
@@ -2492,84 +2517,82 @@ input.disabled {
 				
 				
 				<div class="tab tab-keys-buttons">
-				
-					<div class="settings-title-oneline">
-						Buttons:
-					</div>
-					<div class="input-group">
+					
+					<!-- Buttons: -->
+					<div class="input-group-margin">
 						<div style="flex: 0; align-content: center; width: 44px">
-							<button class="gamebutton primary end-turn-btn" style="margin:0; width:44px; height:44px"></button>
+							<button class="gamebutton nonbutton primary end-turn-btn" style="margin:0; width:44px; height:44px"></button>
 						</div>
 						<div style="flex: 1; align-content: center;">
 							End your turn
 						</div>
 					</div>
 					
-					<div class="input-group">
+					<div class="input-group-margin">
 						<div style="flex: 0; align-content: center; width: 44px">
-							<button class="gamebutton toggle-ui-btn" style="margin:0; width:44px; height:44px"></button>
+							<button class="gamebutton nonbutton toggle-ui-btn" style="margin:0; width:44px; height:44px"></button>
 						</div>
 						<div style="flex: 1; align-content: center;">
 							Open chat (and rotation buttons)
 						</div>
 					</div>
 					
-					<div class="input-group">
+					<div class="input-group-margin">
 						<div style="flex: 0; align-content: center; width: 44px">
-							<button class="gamebutton sell-unit-btn" style="margin:0; width:44px; height:44px"></button>
+							<button class="gamebutton nonbutton sell-unit-btn" style="margin:0; width:44px; height:44px"></button>
 						</div>
 						<div style="flex: 1; align-content: center;">
 							Sell selected soldier or castle
 						</div>
 					</div>
 					
-					<div class="input-group">
+					<div class="input-group-margin">
 						<div style="flex: 0; align-content: center; width: 44px">
-							<button class="gamebutton redbutton undo-btn" style="margin:0; width:44px; height:44px"></button>
+							<button class="gamebutton nonbutton redbutton undo-btn" style="margin:0; width:44px; height:44px"></button>
 						</div>
 						<div style="flex: 1; align-content: center;">
 							Undo previous move
 						</div>
 					</div>
 					
-					<div class="input-group">
+					<div class="input-group-margin">
 						<div style="flex: 0; align-content: center; width: 44px">
-							<button class="gamebutton build-other-btn" style="margin:0; width:44px; height:44px"></button>
+							<button class="gamebutton nonbutton build-other-btn" style="margin:0; width:44px; height:44px"></button>
 						</div>
 						<div style="flex: 1; align-content: center;">
 							Build item with selected unit (mine or boat)
 						</div>
 					</div>
 					
-					<div class="input-group">
+					<div class="input-group-margin">
 						<div style="flex: 0; align-content: center; width: 44px">
-							<button class="gamebutton build-soldier-btn" style="margin:0; width:44px; height:44px"></button>
+							<button class="gamebutton nonbutton build-soldier-btn" style="margin:0; width:44px; height:44px"></button>
 						</div>
 						<div style="flex: 1; align-content: center;">
 							Build soldier
 						</div>
 					</div>
 					
-					<div class="input-group">
+					<div class="input-group-margin">
 						<div style="flex: 0; align-content: center; width: 44px">
-							<button class="gamebutton build-castle-btn" style="margin:0; width:44px; height:44px"></button>
+							<button class="gamebutton nonbutton build-castle-btn" style="margin:0; width:44px; height:44px"></button>
 						</div>
 						<div style="flex: 1; align-content: center;">
 							Build castle (or shipyard)
 						</div>
 					</div>
 					
-					<div class="input-group">
+					<div class="input-group-margin">
 						<div style="flex: 0.35; align-content: center; ">
-							<button class="gamebutton previous-unit-btn" style="margin:0; width:44px; height:44px"></button>
-							<button class="gamebutton next-unit-btn" style="margin:0; width:44px; height:44px"></button>
+							<button class="gamebutton nonbutton previous-unit-btn" style="margin:0; width:44px; height:44px"></button>
+							<button class="gamebutton nonbutton next-unit-btn" style="margin:0; width:44px; height:44px"></button>
 						</div>
 						<div style="flex: 1; align-content: center;">
 							Select previous/next unit
 						</div>
 					</div>
 					
-					<div class="input-group">
+					<div class="input-group-margin">
 						<div style="flex: 0; align-content: center; width: 44px">
 							<img src="images/ui/select-all.png" style="width:44px; height:44px; background: var(--btn-bg); border-radius: 6px;">
 						</div>
@@ -2584,9 +2607,7 @@ input.disabled {
 				
 				<div class="tab tab-keys-keys">
 					
-					<div class="settings-title-oneline">
-						Keys:
-					</div>
+					<!-- Keys: -->
 					<div><span style="color:yellow">Q</span> = Rotate counterclockwise (+shift = slower)</div>
 					<div><span style="color:yellow">E</span> = Rotate clockwise (+shift = slower)</div>
 					<div><span style="color:yellow">J,K,L,I</span> = Move screen (+shift = slower)</div>
@@ -3079,6 +3100,7 @@ input.disabled {
 						<option value="6">Emerald</option>
 						<option value="7">Crystal</option>
 						<option value="8">Mercury</option>
+						<option value="9">Colorful</option>
 					</select>
 					<div id="host-texture-type-msg" style="display:none"><i>Not available.</i></div>
 				</div>
@@ -3214,6 +3236,7 @@ input.disabled {
 						<option value="6">Emerald</option>
 						<option value="7">Crystal</option>
 						<option value="8">Mercury</option>
+						<option value="9">Colorful</option>
 					</select>
 					<div id="lobby-texture-type-msg" style="display:none"><i>Not available.</i></div>
 				</div>
@@ -4907,21 +4930,33 @@ const playerFlagList = document.getElementById('player-flag-list');
 
 playerFlagBtn.addEventListener('click', openFlagBrowser);
 
+
+
+
+function setPlayerFlagByCode(code){
+	if(!code){
+		return;
+	}
+	const countryName = countriesList[code];
+	const flagURL = `images/flags/w80/${code.toLowerCase()}.png`;
+
+	// set selected flag
+	setSetting('country', { code: code, name: countryName });
+	
+	setLocalStorageItem("player-countrycode", code);
+
+	// update main button
+	playerFlagBtn.style.backgroundImage = `url('${flagURL}')`;
+	playerFlagBtn.title = countryName;
+}
+
 // event delegation for all flag buttons
 playerFlagList.addEventListener('click', function (e) {
 	const btn = e.target.closest('.player-flag-list-btn');
 	if (!btn) return;
 
 	const code = btn.dataset.code;
-	const countryName = countriesList[code];
-	const flagURL = `images/flags/w80/${code.toLowerCase()}.png`;
-
-	// set selected flag
-	setSetting('country', { code: code, name: countryName });
-
-	// update main button
-	playerFlagBtn.style.backgroundImage = `url('${flagURL}')`;
-	playerFlagBtn.title = countryName;
+	setPlayerFlagByCode(code);
 
 	// close list
 	//playerFlagList.style.display = 'none';
@@ -5473,6 +5508,8 @@ function closeColorPicker(){
 
 function launchColorPicker(){
 	addPopupState(pickerPopup);
+	
+	generatePickerTextureHTML();
 	
 	let color = hexToRgb(getMyPlayer().color);
 	let hsl = rgbToHsl(color[0], color[1], color[2]);
@@ -7069,6 +7106,8 @@ function setSetting(key, value){
 	gameSettings[key] = value;
 }
 
+
+
 function getSetting(key){
 	if(gameSettings.performanceMode === 1){
 		if(key === 'drawShoresShading' ||
@@ -7622,7 +7661,10 @@ if(use_homm3){
 }
 
 // host-texture-type select list values link to this array indexes.
-let landTextures = ['land', 'land-c1', 'land-c2', 'land-c3', 'land-c4', 'land-c5', 'land-c6', 'land-c7', 'land-c8'];
+let landTextures = ['land', 'land-c1', 'land-c2', 'land-c3', 'land-c4', 'land-c5', 'land-c6', 'land-c7', 'land-c8', 'landcolor-c1'];
+
+const pickerTextureWrap = document.getElementById("picker-texture-wrap");
+
 
 // images =
 imageAssets = {
@@ -7668,6 +7710,9 @@ imageAssets = {
 	'land-c6':  {path:'images/land-c6.jpg', scale:1, offsetX: 0}, 
 	'land-c7':  {path:'images/land-c7.jpg', scale:1, offsetX: 0}, 
 	'land-c8':  {path:'images/land-c8.jpg', scale:1, offsetX: 0}, 
+	// colored lands without player color applied onto it:
+	'landcolor-c1':  {path:'images/landcolor-c1.jpg', scale:1, offsetX: 0}, 
+	
 	// NOTE: must update landTextures array if new textures added.
 	
 	'dirt':     {path:'images/dirt2.jpg', scale:1, offsetX: 0},
@@ -9752,6 +9797,8 @@ function openGameHelp(){
 	
 	activateGameSettingsTabByTabName(showOnlyTab);
 	
+	activateGameSettingsTabKeys(gameSettingsTabsKeysWrap, "tab-keys-gameplay");
+	
 	openGameSettings(showOnlyTab);
 }
 
@@ -9766,6 +9813,9 @@ function openGameSettings(showOnlyTab = null){
 	}else{
 		gameSettingsTabsWrap.style.display = "none";
 		gameSettingsTitle.textContent = "How to play?";
+		// activate gameplay button to be colored:
+		const tabElem = tabKeysWrap.querySelector(`[data-tabclass="tab-keys-gameplay"]`);
+		tabElem.classList.add("active");
 	}
 	
 	gameSettingsUi.style.display = "flex";
@@ -12515,6 +12565,7 @@ function drawPlayerTile(x, y, playerIndex){
 		const dy = y - dHeight / 2;
 		
 		let textureType = 0;
+		let isColorTexture = false;
 		
 		if(player.textureType !== undefined){
 			textureType = player.textureType;
@@ -12522,6 +12573,10 @@ function drawPlayerTile(x, y, playerIndex){
 			if(textureType > landTextures.length-1){
 				textureType = landTextures.length-1;
 			}
+			if(textureType < 0){
+				textureType = 0;
+			}
+			isColorTexture = landTextures[textureType].startsWith("landcolor");
 		}
 		
 		let textureName = landTextures[textureType];
@@ -12531,12 +12586,13 @@ function drawPlayerTile(x, y, playerIndex){
 		
 		drawImageMipped(ctx, textureName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
 
-		
-		// Multiply by player color
-		ctx.globalCompositeOperation = "multiply";
-		ctx.fillStyle = color; // e.g. "#ff0000"
-		ctx.fillRect(dx, dy, dWidth, dHeight);
-		ctx.globalCompositeOperation = "source-over";
+		if(!isColorTexture){
+			// Multiply by player color
+			ctx.globalCompositeOperation = "multiply";
+			ctx.fillStyle = color; // e.g. "#ff0000"
+			ctx.fillRect(dx, dy, dWidth, dHeight);
+			ctx.globalCompositeOperation = "source-over";
+		}
 	}
 	
 	ctx.restore();
@@ -12844,6 +12900,7 @@ function drawMapTiles(){
 					if(getSetting('drawLandTextures')){
 						
 						let textureType = 0;
+						let isColorTexture = false;
 						
 						if(player.textureType !== undefined){
 							textureType = player.textureType;
@@ -12851,6 +12908,10 @@ function drawMapTiles(){
 							if(textureType > landTextures.length-1){
 								textureType = landTextures.length-1;
 							}
+							if(textureType < 0){
+								textureType = 0;
+							}
+							isColorTexture = landTextures[textureType].startsWith("landcolor");
 						}
 						
 						let textureName = landTextures[textureType];
@@ -12867,16 +12928,15 @@ function drawMapTiles(){
 						
 						drawImageMipped(ctx, textureName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
 
+
+						if(!isColorTexture){
+							// Multiply by player color
+							ctx.globalCompositeOperation = "multiply";
+							ctx.fillStyle = color; // e.g. "#ff0000"
+							ctx.fillRect(dx, dy, dWidth, dHeight);
+							ctx.globalCompositeOperation = "source-over";
+						}
 						
-						
-						
-						
-						// todo: make own images for each player texture?
-						// Multiply by player color
-						ctx.globalCompositeOperation = "multiply";
-						ctx.fillStyle = color; // e.g. "#ff0000"
-						ctx.fillRect(dx, dy, dWidth, dHeight);
-						ctx.globalCompositeOperation = "source-over";
 					}else{
 						let color = darkenHexColor(player.color, 0.56);
 						
@@ -19024,29 +19084,7 @@ function executeAction(playerId, action) {
 							moneyAdded = 5;
 						}
 						
-						// handle mines:
-						//if(toTile.object === 'mine1'){
-							//killMovedUnit = true;
-
-							/*
-							toTile.object = 'dead'; // Turn to dead (crosses)
-							toTile.actionTurnNumber = gameState.turn.turnNumber;
-							
-							// add animation info for host:
-							toTile.creationTime = msNowFloor(); 
-							toTile.animationFinished = 0; // ensure no animation will be visible.
-							toTile.animationStyle = 1; // 1 = appear from bottom to up, 2 = appear from zero size to normal size
-							
-							updates.push({ 
-								type: ACTION.object_changed, 
-								q: toQ, 
-								r: toR, 
-								object: toTile.object,
-								animationStyle: toTile.animationStyle,
-							});
-							*/
-						//}
-						
+	
 						if(moneyAdded){
 							addCost(actionPool, moneyAdded, poolHex, action.type);
 						}
@@ -19972,38 +20010,6 @@ function executeAction(playerId, action) {
 					}
 				}
 				
-				/*
-				tile.object = 'dead'; // Turn to dead (crosses)
-				tile.actionTurnNumber = gameState.turn.turnNumber;
-				
-				// add animation info for host:
-				tile.creationTime = msNowFloor(); 
-				tile.animationFinished = 0; // ensure no animation will be visible.
-				tile.animationStyle = 1; // 1 = appear from bottom to up, 2 = appear from zero size to normal size
-				
-				batchActions.push({ 
-					type: ACTION.object_changed, 
-					q: soldier.q, 
-					r: soldier.r, 
-					object: tile.object,
-					animationStyle: tile.animationStyle,
-				});
-				batchActions.push({ 
-					type: ACTION.unit_removed, 
-					unitId: soldier.id,
-					unit: soldier,
-				});
-				
-				let pools = findEconomyPools(oldOwnerIndex);
-				let killdata = calculateBalanceAndKillSoldiers(pools);
-				
-				let batchActions = killdata.batchActions;
-				let poolsAfter = killdata.poolsAfter;
-				let poolsBefore = killdata.poolsBefore;
-				actionForUndo.batchActions = batchActions;
-				actionForUndo.poolsBefore = poolsBefore;
-				updates.push(...batchActions);
-				*/
 			
 
 				
@@ -21639,71 +21645,6 @@ function calculateBalanceAndKillSoldiers(pools, addedUnit = null, addMoney = tru
 
 
 
-function calculateBalanceAndKillSoldiers1(pools){
-	// check if soldiers will be killed:
-	// send actions in one array to speed up messages and avoiding clutter.
-	let batchActions = [];
-	
-	let allSoldiersKilled = [];
-	
-
-	// add income and deduct wages:
-	for (let pool of pools) {
-		pool.totalSavings += pool.totalIncome;
-		pool.totalSavings -= pool.totalWages;
-		
-		if (pool.totalSavings < 0) {
-			// Bankrupt!
-			pool.totalSavings = 0;
-			// todo: update modified info to localplayer?
-			for (const soldier of pool.soldiers) {
-				allSoldiersKilled.push(soldier);
-			}
-		}
-	}
-
-	
-	// kill soldiers kill units:
-	if(allSoldiersKilled.length > 0){
-		// --- 2. Kill soldiers & turn to crosses ---
-		for (const soldier of allSoldiersKilled) {
-			let tile = getTileAt(soldier.q, soldier.r);
-			if (tile) {
-				tile.object = 'dead'; // Turn to dead (crosses)
-				tile.actionTurnNumber = gameState.turn.turnNumber;
-				
-				// add animation info for host:
-				tile.creationTime = msNowFloor(); 
-				tile.animationFinished = 0; // ensure no animation will be visible.
-				tile.animationStyle = 1; // 1 = appear from bottom to up, 2 = appear from zero size to normal size
-				
-				batchActions.push({ 
-					type: ACTION.object_changed, 
-					q: soldier.q, 
-					r: soldier.r, 
-					object: tile.object,
-					animationStyle: tile.animationStyle,
-				});
-				batchActions.push({ 
-					type: ACTION.unit_removed, 
-					unitId: soldier.id,
-				});
-			}
-			
-			console.warn("allSoldiersKilled");
-			console.warn(allSoldiersKilled);
-
-			//gameState.units = gameState.units.filter(u => u.id !== soldier.id);
-			//broadcast({ type: ACTION.unit_removed, unitId: soldier.id });
-		}
-		
-
-		// send sound for died soldiers just once:
-		//batchActions.push({ type: ACTION.sound, name: "diedByStarving", q:0, r:0, playerIndex: -1, action: ACTION.action_end_turn});
-	}
-	
-	return {batchActions: batchActions, pools: pools};
-}
 
 
 
@@ -28410,26 +28351,76 @@ function activateGameSettingsTabKeys(element, tabClass){
 }
 
 
+function setMyPlayerTexture(textureTypeNumber){
+	if(isHost()){
+		let player = getMyPlayer();
+		player.textureType = parseInt(textureTypeNumber, 10);
+		setLocalStorageItem("player_texture", player.textureType);
+		hostTextureType.value = textureTypeNumber;
+		
+		broadcastLobbyState();
+	}else{
+		localPlayer.textureType = parseInt(textureTypeNumber, 10);
+		setLocalStorageItem("player_texture", localPlayer.textureType);
+		lobbyTextureType.value = textureTypeNumber;
+		
+		sendToHost({
+			type: ACTION.player_update,
+			textureType: localPlayer.textureType,
+		});
+	}
+}
+
+function generatePickerTextureHTML(){
+	let html = "";
+	for(let i = 0; i < landTextures.length; i++){
+		let name = landTextures[i];
+		let path = imageAssets[name].path;
+		let img = `
+			<button class="gamebutton texturebutton" data-texturecode="${i}" data-texturename="${name}" style="background-image:url('${path}')"></button>
+		`;
+		html += img;
+	}
+	pickerTextureWrap.innerHTML = html;
+}
+
+
 let mouseDownInsidePopup = false;
 
 // handlePointer bugged, if x or y is zero, causes error.
 function handleOutside(e) {
 	const path = e.composedPath();
 	
+	
+	if (e.target.classList.contains("texturebutton")){
+		console.warn("texturebutton clicked");
+		let texturecode = e.target.dataset.texturecode;
+		setMyPlayerTexture(texturecode);
+		updateColorPreview();
+	}
+	
 	if (e.target.classList.contains("tab-game-settings")){
 		const tabClass = e.target.dataset.tabclass;
 		activateGameSettingsTab(e.target, tabClass);
 		
 		if(tabClass === "tab-keys"){
+			// remove active tab coloring from buttons:
+			tabKeysWrap.querySelectorAll(".tab-game-settings-keys").forEach(el => {
+				el.classList.remove("active");
+			});
+			
+			// activate tab to be visible:
 			const keyswrap = tabKeysWrap.querySelector(".tab-keys-gameplay");
 			keyswrap.classList.add("active");
+
+			// activate tab button to be colored:
+			const tabElem = tabKeysWrap.querySelector(`[data-tabclass="tab-keys-gameplay"]`);
+			tabElem.classList.add("active");
 		}
 	}
 	if (e.target.classList.contains("tab-game-settings-keys")){
 		const tabClass = e.target.dataset.tabclass;
 		activateGameSettingsTab(e.target, tabClass);
-		
-		
 		activateGameSettingsTabKeys(e.target, tabClass);
 	}
 	
@@ -29695,13 +29686,21 @@ window.addEventListener('DOMContentLoaded', async () => {
 	sellUnitBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
 	sellUnitBtn.tabIndex = -1; //remove it from the tab order
 	
-	// detect user language:
-	let countryCode = detectUserLanguage(navigator.languages);
-	setSetting('country', {code: countryCode, name: countryCodeToCountry(countryCode)});
+
 	
-	let flagInfo = getCountryFlagImageInfo(getSetting('country'));
-	playerFlagBtn.style.backgroundImage = `url('${flagInfo.url}')`;
-	playerFlagBtn.title = flagInfo.name;
+	let playerCountrycode = getLocalStorageItem("player-countrycode");
+	if(playerCountrycode){
+		setPlayerFlagByCode(playerCountrycode);
+	}else{
+		// detect user language:
+		let countryCode = detectUserLanguage(navigator.languages);
+		setSetting('country', {code: countryCode, name: countryCodeToCountry(countryCode)});
+		
+		let flagInfo = getCountryFlagImageInfo(getSetting('country'));
+		playerFlagBtn.style.backgroundImage = `url('${flagInfo.url}')`;
+		playerFlagBtn.title = flagInfo.name;
+	}
+
 
 	initPeerJS();
 	
