@@ -254,7 +254,10 @@ button[disabled] {
 	height: 68px;
 	margin: 2px;
 }
-
+.texturebutton2 {
+	width: 48px;
+	height: 48px;
+}
 
 .largefont {
 	font-size:27px;
@@ -2026,7 +2029,7 @@ input.disabled {
 	justify-content: center;
 	align-items: center;
 	background: rgba(0, 0, 0, 0.7);
-	z-index: 9999;
+	z-index: 10000;
 }
 
 /* Visible state */
@@ -2295,12 +2298,38 @@ input.disabled {
 </div>
 
 
+<style>
+
+
+.color-picker-lightness-wrapper {
+	position: relative;
+	width: 100%;
+	max-width: 300px;
+}
+
+.lightness-marker {
+	position: absolute;
+	left: 50%;
+
+	top: 16px;
+	bottom: 16px;
+	width: 1px;
+	background: rgba(255,255,255, 0.5);
+	pointer-events: none;
+}
+
+</style>
 <div id="picker-popup">
 	<div id="picker-wrapper" class="no-select">
 		<div class="picker" id="picker">
 			<div class="indicator" id="indicator"></div>
 		</div>
-		<input type="range" id="lightness" min="0" max="100" value="50">
+
+		<div class="color-picker-lightness-wrapper">
+			<input type="range" id="lightness" min="1" max="100" value="50">
+			<div class="lightness-marker"></div>
+		</div>
+
 		<div class="input-group-center">
 			<button style="flex: 1" class="picker-popup-select primary" id="picker-popup-select">Select</button>
 			<div id="picker-preview-tile-wrapper">
@@ -3034,7 +3063,7 @@ input.disabled {
 			<div style="flex:1">
 				<button id="join-btn" disabled>Join Game</button>
 			</div>
-			<div style="flex:1.3">
+			<div style="flex:1.5">
 				<button id="spectate-btn" title="Joins as a non-player who can only watch" disabled>Join as Spectator</button>
 			</div>
 		</div>
@@ -5482,14 +5511,33 @@ let currentColor = "#FFFFFF";
 
 pickerPopupSelect.addEventListener("click", () => {
 	closeColorPicker();
+	let player = null;
+	if(isHost() || gameStarted()){
+		let peer = pickerWrapper.dataset.peer;
+		if(peer){
+			player = getPlayer(peer);
+		}
+	}
+	
 	let color = currentColor;
 	let textColor = getPlayerTextColor(color);
-	updatePlayerColor(color, textColor);
-	setLocalStorageItem("player_color", color);
+	
+	updatePlayerColor(color, textColor, -1, player);
+	
+	// only update local storage for your own color:
+	if(!player || player.playerIndex === getMyPlayer().playerIndex){
+		setLocalStorageItem("player_color", color);
+	}
+	
 	if(isHost()){
 		updateHostPreviewTile(color);
 	}else{
 		updateLobbyPreviewTile(color);
+	}
+	
+	// update top players list:
+	if(gameStarted()){
+		updateProgressBarsUI();
 	}
 });
 
@@ -5505,13 +5553,28 @@ function closeColorPicker(){
 	pickerPopup.style.display = "none";
 }
 
-
-function launchColorPicker(){
+// openpickerpopup
+function openColorPicker(playerId = null){
+	if(!playerId){
+		playerId = getMyPlayer().id;
+		pickerWrapper.dataset.peer = ""; // will only change your color.
+	}else{
+		// allow only host to change others colors or everyone if game started:
+		if(isHost() || gameStarted()){
+			//pickerPopupSelect.dataset.peer = playerId;
+			pickerWrapper.dataset.peer = playerId;
+		}
+	}
+	
+	let player = getPlayer(playerId);
+	if(!player){
+		return;
+	}
 	addPopupState(pickerPopup);
 	
-	generatePickerTextureHTML();
+	generatePickerTextureHTML(playerId);
 	
-	let color = hexToRgb(getMyPlayer().color);
+	let color = hexToRgb(player.color);
 	let hsl = rgbToHsl(color[0], color[1], color[2]);
 	hue = hsl.h;
 	saturation = hsl.s;
@@ -5526,12 +5589,12 @@ function launchColorPicker(){
 
 hostPreviewTile.addEventListener("click", (e) => {
 	e.stopPropagation(); // needed or it will close the popup instantly due to check of handleOutside()
-	launchColorPicker();
+	openColorPicker();
 });
 
 lobbyPreviewTile.addEventListener("click", (e) => {
 	e.stopPropagation(); // needed or it will close the popup instantly due to check of handleOutside()
-	launchColorPicker();
+	openColorPicker();
 });
 
 
@@ -6766,10 +6829,10 @@ const SOLDIER_DATA = {
 	// visibleName = text shown to user.
 	// name = internal name, same as the key (maybe useful later).
 	// defaultImage = imageAssets key for the unit image first animation frame (default image).
-	"dragon":  { canMove: 1, frames: 2, visibleName: "Dragon",  name: "dragon",  type:"soldier", defaultImage: "soldier4", level: 4, cost: 40, wage: 54, sell: 20, upgradeTo: null },
-	"horse":   { canMove: 1, frames: 2, visibleName: "Horse",   name: "horse",   type:"soldier", defaultImage: "soldier3", level: 3, cost: 30, wage: 18, sell: 15, upgradeTo: "dragon" },
-	"knight":  { canMove: 1, frames: 2, visibleName: "Knight",  name: "knight",  type:"soldier", defaultImage: "soldier2", level: 2, cost: 20, wage: 8, sell: 10, upgradeTo: "horse" },
-	"peasant": { canMove: 1, frames: 2, visibleName: "Peasant", name: "peasant", type:"soldier", defaultImage: "soldier1", level: 1, cost: 10, wage: 3, sell: 5, upgradeTo: "knight" },
+	"dragon":  { defendRadius: 1, canMove: 1, frames: 2, visibleName: "Dragon",  name: "dragon",  type:"soldier", defaultImage: "soldier4", level: 4, cost: 40, wage: 54, sell: 20, upgradeTo: null },
+	"horse":   { defendRadius: 1, canMove: 1, frames: 2, visibleName: "Horse",   name: "horse",   type:"soldier", defaultImage: "soldier3", level: 3, cost: 30, wage: 18, sell: 15, upgradeTo: "dragon" },
+	"knight":  { defendRadius: 1, canMove: 1, frames: 2, visibleName: "Knight",  name: "knight",  type:"soldier", defaultImage: "soldier2", level: 2, cost: 20, wage: 8, sell: 10, upgradeTo: "horse" },
+	"peasant": { defendRadius: 1, canMove: 1, frames: 2, visibleName: "Peasant", name: "peasant", type:"soldier", defaultImage: "soldier1", level: 1, cost: 10, wage: 3, sell: 5, upgradeTo: "knight" },
 };
 
 // castles castle_units
@@ -6777,13 +6840,13 @@ const SOLDIER_DATA = {
 const CASTLE_DATA = {
 	// listed in this order.
 	
-	"shipyard":      { canMove: 0, frames: 1, visibleName: "Shipyard",     name: "shipyard",      type:"castle", defaultImage: "shipyard", subtype: "shipyard", level: 0, cost: 5, sell: 2, upgradeTo: null},
+	"shipyard":      { defendRadius: 0, canMove: 0, frames: 1, visibleName: "Shipyard",     name: "shipyard",      type:"castle", defaultImage: "shipyard", subtype: "shipyard", level: 0, cost: 5, sell: 2, upgradeTo: null},
 	
-	"fortress": { canMove: 0, frames: 1, visibleName: "Fortress",name: "fortress", type:"castle", defaultImage: "castle3", level: 3, cost: 200, sell: 50, upgradeTo: null},
+	"fortress": { defendRadius: 1, canMove: 0, frames: 1, visibleName: "Fortress",name: "fortress", type:"castle", defaultImage: "castle3", level: 3, cost: 200, sell: 50, upgradeTo: null},
 	
-	"castle":   { canMove: 0, frames: 1, visibleName: "Castle",  name: "castle",   type:"castle", defaultImage: "castle2", level: 2, cost: 40, sell: 10, upgradeTo: "fortress"},
+	"castle":   { defendRadius: 1, canMove: 0, frames: 1, visibleName: "Castle",  name: "castle",   type:"castle", defaultImage: "castle2", level: 2, cost: 40, sell: 10, upgradeTo: "fortress"},
 	
-	"hut":      { canMove: 0, frames: 1, visibleName: "Hut",     name: "hut",      type:"castle", defaultImage: "castle1", level: 1, cost: 10, sell: 3, upgradeTo: "castle"},
+	"hut":      { defendRadius: 1, canMove: 0, frames: 1, visibleName: "Hut",     name: "hut",      type:"castle", defaultImage: "castle1", level: 1, cost: 10, sell: 3, upgradeTo: "castle"},
 };
 
 
@@ -6809,11 +6872,11 @@ const OTHER_UNITS_DATA = {
 	// - probably should have different image for different stages of timer, so it first loses its sail, and in the end looks almost sank.
 	
 	// unit.daysLeft = BOAT_MOVE_DAYS, explodes after 7 days.
-	"sailboat": { canMove: 1, frames: 1, visibleName: "Sailboat", name: "sailboat", type:"boat", defaultImage: "sailboat1", level: 1, cost: 1, wage: 0, sell: 0, upgradeTo: null },
+	"sailboat": { defendRadius: 0, canMove: 1, frames: 1, visibleName: "Sailboat", name: "sailboat", type:"boat", defaultImage: "sailboat1", level: 1, cost: 1, wage: 0, sell: 0, upgradeTo: null },
 	
 	//"cannon": { canMove: 1, frames: 1, visibleName: "Cannon", name: "cannon", type:"cannon", defaultImage: "cannon", level: 1, cost: 1, wage: 0, sell: 0 },
 	
-	"landmine": { canMove: 0, frames: 1, visibleName: "Landmine", name: "landmine", type:"mine", isObject: true, isInvisible: true, defaultImage: "landmine", level: 0, cost: 1, wage: 0, sell: 0, upgradeTo: null },
+	"landmine": { defendRadius: 0, canMove: 0, frames: 1, visibleName: "Landmine", name: "landmine", type:"mine", isObject: true, isInvisible: true, defaultImage: "landmine", level: 0, cost: 1, wage: 0, sell: 0, upgradeTo: null },
 	
 	// experimental, could buy airships that are kinda like boats but can fly anywhere.
 	// should also explode after a time.
@@ -7825,8 +7888,14 @@ let lightness = 50;
 function updateColorPreview() {
 	const [r, g, b] = hslToRgb(hue, saturation, lightness);
 	currentColor = rgbToHex(r, g, b);
+	let player = null;
+	if(pickerWrapper.dataset.peer){
+		player = getPlayer(pickerWrapper.dataset.peer);
+	}else{
+		player = getMyPlayer();
+	}
 	//preview.style.backgroundColor = rgbToHex(r, g, b);
-	updatePickerPreviewTile(currentColor);
+	updatePickerPreviewTile(currentColor, player);
 }
 
 
@@ -7960,17 +8029,25 @@ picker.addEventListener('touchstart', e => {
 });
 
 lightnessSlider.addEventListener('input', e => {
-	lightness = e.target.value; // 0-100
+	if (lightnessSlider.value < 15) {
+		lightnessSlider.value = 15;
+	}
+	lightness = lightnessSlider.value; // 0-100
+	
 	updateColorPreview();
 });
 
 
 
-function updatePickerPreviewTile(color){
-	let textureType = landTextures[getMyPlayer().textureType ?? 0];
+function updatePickerPreviewTile(color, player = null){
+	if(!player) player = getMyPlayer();
+	
+	let textureType = landTextures[player.textureType ?? 0];
 	createHexagonMaskedImage(getImage(textureType), HEX_SIZE, 1, pickerPreviewTile, color);
 	
-	updatePlayerTileIcon(color);
+	if(player.playerIndex === getMyPlayer().playerIndex){
+		updatePlayerTileIcon(color);
+	}
 }
 
 function updateHostPreviewTile(color){
@@ -8599,7 +8676,7 @@ const lobbyTextureTypeMsg = document.getElementById('lobby-texture-type-msg');
 
 hostTextureType.addEventListener("change", function(){
 	let player = getMyPlayer();
-	player.textureType = parseInt(hostTextureType.value, 10);
+	player.textureType = parseInt(hostTextureType.value, 10) || 0; // ensure zero if NaN
 	setLocalStorageItem("player_texture", player.textureType);
 	
 	broadcastLobbyState();
@@ -8803,7 +8880,7 @@ hostPlayerSettingsList.addEventListener('change', function(event) {
 		const applyToAllStyleElem = document.getElementById('apply-to-all-style');
 		
 		if (target === applyToAllStyleElem) {
-			console.warn("applyToAllStyle", target, applyToAllStyleElem);
+			//console.warn("applyToAllStyle", target, applyToAllStyleElem);
 			applyToAllStyle = parseInt(applyToAllStyleElem.value);
 		}else{
 		
@@ -9020,6 +9097,10 @@ function updateHostPlayerSettingsList() {
 			Spots
 		</div>
 		
+		<div class="player-color-cell cursor-help" title="Change player color and texture" style="width: 60px; flex-shrink: 0;">
+			Color
+		</div>
+		
 		<div class="player-grow-cell cursor-help" title="How many extra tiles around starting lands" style="width: 60px; flex-shrink: 0;">
 			Grow
 		</div>
@@ -9059,7 +9140,8 @@ function updateHostPlayerSettingsList() {
 			let startTileMoneyOptions = createListStartTileMoney(startMoneyAdd);
 			let tileGrowOptions = createListTileGrow(tileGrow);
 			
-			
+			let textureName = landTextures[p.textureType ?? 0];
+			let texturePath = imageAssets[textureName].path;
 			
 			//player.startMoneyAdd = startMoneyAdd;
 			// player.teamIndex = teamIndex;
@@ -9089,6 +9171,10 @@ function updateHostPlayerSettingsList() {
 						<option>Spots</option>
 						<option>1</option>
 					</select>
+				</div>
+				
+				<div class="player-grow-cell" style="width: 60px;">
+					<button class="gamebutton texturebutton2" data-peer="${p.id}" style="background-image:url('${texturePath}'); background-color: ${p.color}; background-blend-mode: multiply;"></button>
 				</div>
 				
 				<div class="player-grow-cell" style="width: 60px;">
@@ -11832,6 +11918,56 @@ function drawWaterShading(px, py, drawLines, color = "rgba(0,0,0, 0.6)"){
 
 
 
+function drawBigHexagonPathLines(){
+	if(!focusedHex){
+		return;
+	}
+	// only render if it has defend radius:
+	if(getDefendRadiusByType(placingUnit.type) < 1){
+		return;
+	}
+	let neigh = getHexNeighbors(focusedHex.q, focusedHex.r);
+
+	//ctx.save(); // probably not needed.
+
+	for(let i = 0; i < neigh.length; i++){
+		let q = neigh[i].q;
+		let r = neigh[i].r;
+		const x = axialToPixelX(q, r);
+		const y = axialToPixelY(q, r);
+		
+		// defined bottom part lines, and rotate them each neighbour hex:
+		let drawLines = [
+			(0+i) % 6, // bottom
+			(1+i) % 6, // bottom left
+			(5+i) % 6  // bottom right
+		];
+		
+		// create lines to draw:
+		drawHexagonPathLines(x, y, drawLines);
+		
+		// draw black under it:
+		ctx.strokeStyle = "#000000";
+		ctx.lineWidth = 2;
+		ctx.lineCap = 'round';
+		ctx.stroke();
+		
+		// draw colored dash on the black:
+		ctx.lineDashOffset = currentRenderFrame;
+		ctx.setLineDash([12.5, 15]);
+		ctx.strokeStyle = "#FFFF00";
+		ctx.lineWidth = 2;
+		ctx.lineCap = 'round';
+		ctx.stroke();
+		
+		ctx.lineCap = 'butt'; // reset to default
+		ctx.setLineDash([]);
+		
+		
+	}
+	
+	//ctx.restore();
+}
 
 
 
@@ -12565,7 +12701,7 @@ function drawPlayerTile(x, y, playerIndex){
 		const dy = y - dHeight / 2;
 		
 		let textureType = 0;
-		let isColorTexture = false;
+		//let isColorTexture = false;
 		
 		if(player.textureType !== undefined){
 			textureType = player.textureType;
@@ -12576,7 +12712,7 @@ function drawPlayerTile(x, y, playerIndex){
 			if(textureType < 0){
 				textureType = 0;
 			}
-			isColorTexture = landTextures[textureType].startsWith("landcolor");
+			//isColorTexture = landTextures[textureType].startsWith("landcolor");
 		}
 		
 		let textureName = landTextures[textureType];
@@ -12586,13 +12722,13 @@ function drawPlayerTile(x, y, playerIndex){
 		
 		drawImageMipped(ctx, textureName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
 
-		if(!isColorTexture){
+		//if(!isColorTexture){
 			// Multiply by player color
 			ctx.globalCompositeOperation = "multiply";
 			ctx.fillStyle = color; // e.g. "#ff0000"
 			ctx.fillRect(dx, dy, dWidth, dHeight);
 			ctx.globalCompositeOperation = "source-over";
-		}
+		//}
 	}
 	
 	ctx.restore();
@@ -12900,7 +13036,7 @@ function drawMapTiles(){
 					if(getSetting('drawLandTextures')){
 						
 						let textureType = 0;
-						let isColorTexture = false;
+						//let isColorTexture = false;
 						
 						if(player.textureType !== undefined){
 							textureType = player.textureType;
@@ -12911,7 +13047,7 @@ function drawMapTiles(){
 							if(textureType < 0){
 								textureType = 0;
 							}
-							isColorTexture = landTextures[textureType].startsWith("landcolor");
+							//isColorTexture = landTextures[textureType].startsWith("landcolor");
 						}
 						
 						let textureName = landTextures[textureType];
@@ -12929,13 +13065,13 @@ function drawMapTiles(){
 						drawImageMipped(ctx, textureName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
 
 
-						if(!isColorTexture){
+						//if(!isColorTexture){
 							// Multiply by player color
 							ctx.globalCompositeOperation = "multiply";
 							ctx.fillStyle = color; // e.g. "#ff0000"
 							ctx.fillRect(dx, dy, dWidth, dHeight);
 							ctx.globalCompositeOperation = "source-over";
-						}
+						//}
 						
 					}else{
 						let color = darkenHexColor(player.color, 0.56);
@@ -14508,6 +14644,11 @@ function getNearestValidHex(point){
 }
 
 
+function drawBuildRanges(){
+	if(placingUnit){
+		drawBigHexagonPathLines(placingUnit);
+	}
+}
 
 function drawFocusedHex(){
 	if(focusedHex && !isMobileMode){
@@ -15155,6 +15296,8 @@ function render() {
 	if(focusedHexEnabled && !isMobileMode){
 		drawFocusedHex();
 	}
+	
+	drawBuildRanges();
 	
 	
 
@@ -17702,7 +17845,7 @@ function getReachableHexes2(startHex, maxRange = 5) {
 
 
 let validSeaMoveHexes = [];
-let BOAT_MOVE_DIST = 6; // move dist per day
+let BOAT_MOVE_DIST = 10; // move dist per day
 let BOAT_MOVE_DAYS = 7; // days until explosion.
 let MAX_BOAT_MOVE_DIST = BOAT_MOVE_DIST*BOAT_MOVE_DAYS; // max dist to show with findfastestroute()
 
@@ -18113,6 +18256,9 @@ function openBuildPopup(type, position = null) {
 	showBuildPopup(position);
 }
 
+function getDefendRadiusByType(unitType){
+	return getUnitInfo(unitType).defendRadius ?? 0;
+}
 
 function getUnitInfo(unitType){
 	return UNITS.ALL[unitType] ?? null;
@@ -23822,7 +23968,7 @@ function handleClientData(peerId, data) {
 					player.color = colors.color;
 				}
 				if(data.customTextureSet){
-					player.textureType = data.textureType;
+					player.textureType = data.textureType || 0; // ensure zero if NaN
 				}
 
 				player.textColor = getPlayerTextColor(player.color);
@@ -23885,7 +24031,7 @@ function handleClientData(peerId, data) {
 				player.colorName = hexToColorName(player.color);
 			}
 			if(data.textureType !== undefined){
-				player.textureType = data.textureType;
+				player.textureType = data.textureType || 0; // ensure zero if NaN
 			}
 			
 			//console.warn("player_update");
@@ -24305,7 +24451,7 @@ function executeJoin(hostPeerId) {
 		playerData.colorName = hexToColorName(playerData.color);
 		
 		if(savedTexture){
-			playerData.textureType = parseInt(savedTexture);
+			playerData.textureType = parseInt(savedTexture) || 0; // ensure zero if NaN
 			lobbyTextureType.value = playerData.textureType;
 		}
 		
@@ -24411,7 +24557,7 @@ function hostGame() {
 			let savedTexture = getLocalStorageItem("player_texture");
 			
 			if(savedTexture){
-				localPlayer.textureType = parseInt(savedTexture);
+				localPlayer.textureType = parseInt(savedTexture) || 0; // ensure zero if NaN
 				hostTextureType.value = localPlayer.textureType;
 			}
 			
@@ -24808,17 +24954,67 @@ function updateHostLobbyUI() {
 }
 
 
-function updatePlayerColor(color, textColor){
-	localPlayer.color = color;
-	localPlayer.textColor = textColor;
-	localPlayer.colorName = hexToColorName(localPlayer.color);
-
-	sendToHost({
-		type: ACTION.player_update,
-		//name: localPlayer.name,
-		color: localPlayer.color,
-		textColor: localPlayer.textColor,
-	});
+function updatePlayerColor(color, textColor, textureType = -1, player = null){
+	if(isHost() || gameStarted()){
+		// allow editing if host or game started.
+	}else{
+		if(player){
+			// if client tried to edit other players colors, dont allow.
+			if(player.playerIndex !== getMyPlayer().playerIndex){
+				return;
+			}
+		}
+	}
+	
+	if(!player){
+		// if player not set, use my player:
+		player = getMyPlayer();
+	}else{
+		if(isHost() || gameStarted()){
+			// use given player if host or game started.
+		}else{
+			// dont allow changing other player colors if youre not host or game not started yet.
+			player = getMyPlayer();
+		}
+	}
+	
+	player.color = color;
+	player.textColor = textColor;
+	player.colorName = hexToColorName(player.color);
+	if(textureType !== -1){
+		player.textureType = textureType;
+	}
+	
+	if(isHost()){
+		// host updating any color:
+		broadcastLobbyState();
+	}else{
+		// client updating his own color:
+		// only update/send changes if game not started yet:
+		if(!gameStarted()){
+			let playerUpdate = {
+				type: ACTION.player_update,
+				//name: localPlayer.name,
+				color: player.color,
+				textColor: player.textColor,
+			};
+			// update localPlayer only if its your player being edited:
+			if(player.playerIndex === getMyPlayer().playerIndex){
+				localPlayer.color = player.color;
+				localPlayer.textColor = player.textColor;
+				localPlayer.colorName = player.colorName;
+				if(textureType !== -1){
+					localPlayer.textureType = textureType;
+				}
+			}
+			if(textureType !== -1){
+				playerUpdate.textureType = textureType;
+			}
+			sendToHost(playerUpdate);
+		}else{
+			// if game started, just edit existing players data. (done earlier).
+		}
+	}
 	updateLobbyUI(); // Re-render
 }
 
@@ -28351,33 +28547,56 @@ function activateGameSettingsTabKeys(element, tabClass){
 }
 
 
-function setMyPlayerTexture(textureTypeNumber){
-	if(isHost()){
-		let player = getMyPlayer();
-		player.textureType = parseInt(textureTypeNumber, 10);
+function setPlayerTexture(textureTypeNumber, player = null){
+	if(!player){
+		// use own player if not set:
+		player = getMyPlayer();
+	}else{
+		if(isHost() || gameStarted()){
+			// use given player if game started or youre the host.
+		}else{
+			// use own player if not host or game not started:
+			player = getMyPlayer();
+		}
+	}
+	
+	player.textureType = parseInt(textureTypeNumber, 10) || 0; // ensure zero if NaN
+	// update localstorage only if its your player edited:
+	if(player.playerIndex === getMyPlayer().playerIndex){
 		setLocalStorageItem("player_texture", player.textureType);
-		hostTextureType.value = textureTypeNumber;
 		
+		localPlayer.textureType = player.textureType;
+	}
+
+	
+	
+	if(isHost()){
+		//if(player.playerIndex === getMyPlayer().playerIndex){
+			hostTextureType.value = textureTypeNumber;
+		//}
 		broadcastLobbyState();
 	}else{
-		localPlayer.textureType = parseInt(textureTypeNumber, 10);
-		setLocalStorageItem("player_texture", localPlayer.textureType);
-		lobbyTextureType.value = textureTypeNumber;
-		
-		sendToHost({
-			type: ACTION.player_update,
-			textureType: localPlayer.textureType,
-		});
+		//if(player.playerIndex === getMyPlayer().playerIndex){
+			lobbyTextureType.value = textureTypeNumber;
+		//}
+		if(!gameStarted()){
+			sendToHost({
+				type: ACTION.player_update,
+				textureType: localPlayer.textureType,
+			});
+		}else{
+			// silently update the texture, dont send to anyone.
+		}
 	}
 }
 
-function generatePickerTextureHTML(){
+function generatePickerTextureHTML(playerId = ""){
 	let html = "";
 	for(let i = 0; i < landTextures.length; i++){
 		let name = landTextures[i];
 		let path = imageAssets[name].path;
 		let img = `
-			<button class="gamebutton texturebutton" data-texturecode="${i}" data-texturename="${name}" style="background-image:url('${path}')"></button>
+			<button class="gamebutton texturebutton" data-peer="${playerId}" data-texturecode="${i}" data-texturename="${name}" style="background-image:url('${path}')"></button>
 		`;
 		html += img;
 	}
@@ -28395,7 +28614,23 @@ function handleOutside(e) {
 	if (e.target.classList.contains("texturebutton")){
 		console.warn("texturebutton clicked");
 		let texturecode = e.target.dataset.texturecode;
-		setMyPlayerTexture(texturecode);
+		
+		let peer = pickerWrapper.dataset.peer;
+		if(peer){
+			setPlayerTexture(texturecode, getPlayer(peer));
+		}else{
+			setPlayerTexture(texturecode);
+		}
+		updateColorPreview();
+	}
+	
+	if (e.target.classList.contains("texturebutton2")){
+		console.warn("texturebutton2 clicked");
+		//let texturecode = e.target.dataset.texturecode;
+		//setPlayerTexture(texturecode);
+		//updateColorPreview();
+		let peer = e.target.dataset.peer;
+		openColorPicker(peer);
 		updateColorPreview();
 	}
 	
@@ -29376,7 +29611,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 	};
 	
 	lobbyTextureType.onchange = (e) => {
-		localPlayer.textureType = parseInt(e.target.value, 10);
+		localPlayer.textureType = parseInt(e.target.value, 10) || 0; // ensure zero if NaN
 		setLocalStorageItem("player_texture", localPlayer.textureType);
 		sendToHost({
 			type: ACTION.player_update,
