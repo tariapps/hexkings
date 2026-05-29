@@ -258,6 +258,11 @@ button[disabled] {
 	width: 48px;
 	height: 48px;
 }
+.texturebutton2-disabled {
+	width: 48px;
+	height: 48px;
+	cursor: not-allowed;
+}
 
 .largefont {
 	font-size:27px;
@@ -5530,9 +5535,9 @@ pickerPopupSelect.addEventListener("click", () => {
 	}
 	
 	if(isHost()){
-		updateHostPreviewTile(color);
+		updateHostPreviewTile(color, player);
 	}else{
-		updateLobbyPreviewTile(color);
+		updateLobbyPreviewTile(color, player);
 	}
 	
 	// update top players list:
@@ -8046,25 +8051,36 @@ function updatePickerPreviewTile(color, player = null){
 	createHexagonMaskedImage(getImage(textureType), HEX_SIZE, 1, pickerPreviewTile, color);
 	
 	if(player.playerIndex === getMyPlayer().playerIndex){
-		updatePlayerTileIcon(color);
+		console.log("updatePickerPreviewTile");
+		updatePlayerTileIcon(color, player);
 	}
 }
 
-function updateHostPreviewTile(color){
-	let textureType = landTextures[getMyPlayer().textureType ?? 0];
+function updateHostPreviewTile(color, player = null){
+	if(!player) player = getMyPlayer();
+	
+	let textureType = landTextures[player.textureType ?? 0];
 	createHexagonMaskedImage(getImage(textureType), HEX_SIZE, 1, hostPreviewTile, color);
 	
-	updatePlayerTileIcon(color);
+	if(player.playerIndex === getMyPlayer().playerIndex){
+		console.log("updateHostPreviewTile");
+		updatePlayerTileIcon(color, player);
+	}
 }
-function updateLobbyPreviewTile(color){
-	let textureType = landTextures[getMyPlayer().textureType ?? 0];
+function updateLobbyPreviewTile(color, player = null){
+	if(!player) player = getMyPlayer();
+	
+	let textureType = landTextures[player.textureType ?? 0];
 	createHexagonMaskedImage(getImage(textureType), HEX_SIZE, 1, lobbyPreviewTile, color);
 	
-	updatePlayerTileIcon(color);
+	if(player.playerIndex === getMyPlayer().playerIndex){
+		console.log("updateLobbyPreviewTile");
+		updatePlayerTileIcon(color, player);
+	}
 }
 
-function updatePlayerTileIcon(color){
-	let textureType = landTextures[getMyPlayer().textureType ?? 0];
+function updatePlayerTileIcon(color, player){
+	let textureType = landTextures[player.textureType ?? 0];
 	createHexagonMaskedImage(getImage(textureType), HEX_SIZE, 1, playerTileIcon, color);
 }
 
@@ -9098,7 +9114,7 @@ function updateHostPlayerSettingsList() {
 		</div>
 		
 		<div class="player-color-cell cursor-help" title="Change player color and texture" style="width: 60px; flex-shrink: 0;">
-			Color
+			Style
 		</div>
 		
 		<div class="player-grow-cell cursor-help" title="How many extra tiles around starting lands" style="width: 60px; flex-shrink: 0;">
@@ -9143,6 +9159,20 @@ function updateHostPlayerSettingsList() {
 			let textureName = landTextures[p.textureType ?? 0];
 			let texturePath = imageAssets[textureName].path;
 			
+			let texButClass = "texturebutton2-disabled";
+			let texButTitle = "Game must be started to edit other colors/textures";
+			
+			let isMyPlayer = (p.playerIndex === getMyPlayer().playerIndex);
+			
+			if(isHost() || gameStarted() || isMyPlayer){
+				texButClass = "texturebutton2";
+				if(isMyPlayer){
+					texButTitle = "Edit your color/texture";
+				}else{
+					texButTitle = "Edit player color/texture";
+				}
+			}
+			
 			//player.startMoneyAdd = startMoneyAdd;
 			// player.teamIndex = teamIndex;
 			// player.totalSpots = totalSpots;
@@ -9174,7 +9204,7 @@ function updateHostPlayerSettingsList() {
 				</div>
 				
 				<div class="player-grow-cell" style="width: 60px;">
-					<button class="gamebutton texturebutton2" data-peer="${p.id}" style="background-image:url('${texturePath}'); background-color: ${p.color}; background-blend-mode: multiply;"></button>
+					<button class="gamebutton ${texButClass}" title="${texButTitle}" data-peer="${p.id}" style="background-image:url('${texturePath}'); background-color: ${p.color}; background-blend-mode: multiply;"></button>
 				</div>
 				
 				<div class="player-grow-cell" style="width: 60px;">
@@ -12045,11 +12075,20 @@ function drawHexagonPathRotated(px, py, padding = 0, rotationRad = 0) {
 
 let GM = 20;
 
+
+
 function drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight, miplevel = -1){
 	const imgObj = imageAssets[imageName];
 	if(miplevel == -1) miplevel = zoomMipLevel;
 	const mip = getMipmapForZoom(imgObj, miplevel);
-	ctx.drawImage(mip, dx, dy, dWidth, dHeight);
+	
+	if(imageName === "land-c4"){
+		// set scale/offsets for brick texture so it is more seamless.
+		const [texscalex, texscaley, texoffx, texoffy] = [1.1, 0.867, -5, 5];
+		ctx.drawImage(mip, dx+texoffx, dy+texoffy, dWidth*texscalex, dHeight*texscaley);
+	}else{
+		ctx.drawImage(mip, dx, dy, dWidth, dHeight);
+	}
 	//ctx.drawImage(mip, dx, dy, dWidth, dHeight);
 }
 
@@ -13062,6 +13101,7 @@ function drawMapTiles(){
 						}
 						
 						
+						
 						drawImageMipped(ctx, textureName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
 
 
@@ -13312,17 +13352,34 @@ function drawHighlights(){
 						
 						
 
-
+						
+						
 						ctx.setLineDash([12.5, 15]);
+						ctx.lineCap = 'round';
+						
+						
 						if(isSelectedPool){
-							ctx.strokeStyle = 'rgba(255,255,0, 1)';
 							ctx.lineWidth = 4;
+							ctx.lineDashOffset = 12.5;
+							ctx.strokeStyle = 'rgba(0,0,0, 1)';
+							ctx.stroke();
+						
+							ctx.strokeStyle = 'rgba(255,255,0, 1)';
+							//ctx.lineWidth = 4;
 						}else{
-							ctx.strokeStyle = 'rgba(255,255,255, 1)';
 							ctx.lineWidth = 3;
+							ctx.lineDashOffset = 12.5;
+							ctx.strokeStyle = 'rgba(0,0,0, 1)';
+							ctx.stroke();
+							
+							// unselected your pool as white dash:
+							ctx.strokeStyle = 'rgba(255,255,255, 1)';
+							//ctx.lineWidth = 3;
 						}
 						
-						ctx.lineCap = 'round';
+						ctx.lineDashOffset = 0;
+						
+						//ctx.lineCap = 'round';
 						ctx.stroke();
 						ctx.lineCap = 'butt'; // reset to default
 						ctx.setLineDash([]);
@@ -13339,10 +13396,27 @@ function drawHighlights(){
 							if(poolSelected){
 								pulse = pulseScale(0.3, 1.0, 0.008);
 							}
+							let pulsecolor = null;
+							
 							if(isSelectedEnemyPool){
+								ctx.lineWidth = 3;
+								ctx.lineDashOffset = 12.5;
+								ctx.strokeStyle = 'rgba(0,0,0, 1)';
+								ctx.stroke();
+								
 								ctx.setLineDash([12.5, 15]);
+								ctx.lineDashOffset = 0;
+								
+								pulsecolor = darkenHexColor(color, pulseScale(0, 0.8, 0.008));
+							}else{
+								if(poolSelected){
+									pulsecolor = darkenHexColor(color, pulseScale(0, 0.8, 0.008));
+								}else{
+									pulsecolor = hexToRgba(color, opacity*pulse);
+								}
 							}
-							ctx.strokeStyle = hexToRgba(color, opacity*pulse);
+							
+							ctx.strokeStyle = pulsecolor;//hexToRgba(color, opacity*pulse);
 							ctx.lineWidth = 3;
 							ctx.lineCap = 'round';
 							ctx.stroke();
@@ -22937,7 +23011,21 @@ function handleHostData(data) {
 		break;
 		case ACTION.lobby_update: { // client side
 			gameState.settings = data.settings;
-			gameState.players = data.players;
+			
+			if(data.updateColors){
+				gameState.players = data.players;
+			}else{
+				// avoid copying host color/texture settings for players:
+				// copy players list to retain edited colors:
+				let tempPlayers = deepClone(gameState.players);
+				gameState.players = data.players;
+				for(let i = 0; i < tempPlayers.length; i++){
+					if(gameState.players[i] && tempPlayers[i]){
+						gameState.players[i].color = tempPlayers[i].color;
+						gameState.players[i].textureType = tempPlayers[i].textureType;
+					}
+				}
+			}
 
 			gameState.map = data.map;
 			
@@ -24987,7 +25075,9 @@ function updatePlayerColor(color, textColor, textureType = -1, player = null){
 	
 	if(isHost()){
 		// host updating any color:
-		broadcastLobbyState();
+		if(!gameStarted()){
+			broadcastLobbyState();
+		}
 	}else{
 		// client updating his own color:
 		// only update/send changes if game not started yet:
@@ -25149,11 +25239,16 @@ function broadcastLobbyState(settings = gameState.settings, players = gameState.
 	if (!isHost()) return;
 	// Update host's own UI
 	updateHostLobbyUI();
+	let updateColors = true;
+	if(gameStarted()){
+		updateColors = false;
+	}
 	// Send to all clients
 	broadcast({
 		type: ACTION.lobby_update,
 		settings: gameState.settings,
 		players: gameState.players,
+		updateColors: updateColors,
 		map: gameState.map,
 	});
 }
@@ -28574,7 +28669,9 @@ function setPlayerTexture(textureTypeNumber, player = null){
 		//if(player.playerIndex === getMyPlayer().playerIndex){
 			hostTextureType.value = textureTypeNumber;
 		//}
-		broadcastLobbyState();
+		if(!gameStarted()){
+			broadcastLobbyState();
+		}
 	}else{
 		//if(player.playerIndex === getMyPlayer().playerIndex){
 			lobbyTextureType.value = textureTypeNumber;
