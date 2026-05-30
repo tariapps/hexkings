@@ -11459,14 +11459,20 @@ function addSystemChatMessage(message, color = '#FFF', addTopChat = true) {
 	*/
 
 	const item = document.createElement('div');
+	
+	const time = document.createElement('span');
+	time.textContent = getHHii()+" "; // "23:45 "
 
 	const strong = document.createElement('strong');
 	strong.style.color = color;
 	strong.textContent = message; // SAFE
+	
 
+	item.appendChild(time);
 	item.appendChild(strong);
 	chatMessages.appendChild(item);
 	chatMessages.scrollTop = chatMessages.scrollHeight;
+	
 	
 	limitChatUIMessages();
 	
@@ -15206,7 +15212,7 @@ function drawTileOwnerTooltip(){
 			if(tile.ownerIndex !== myPlayerIndex && tile.ownerIndex !== -1){
 				
 				let enemyPlayer = getPlayerByIndex(tile.ownerIndex);
-				let enemyName = enemyPlayer.name;
+				let enemyName = enemyPlayer.name.slice(0, 8); // show max 8 letters from the player name.
 				let enemyColor = lightenHexColor(enemyPlayer.color, 0.6);
 
 				if(focusedPoint){
@@ -22956,7 +22962,7 @@ function handleHostData(data) {
 				spectatorUiMode();
 				console.log("localPlayer");
 				console.log(localPlayer);
-				addSystemChatMessage("Joined as spectator");
+				addSystemChatMessage("Joined as a spectator");
 				
 				//alert("Game in progress. Joining as spectator.");
 			}
@@ -23045,6 +23051,10 @@ function handleHostData(data) {
 
 			
 			updateLobbyUI();
+			
+			if(gameStarted()){
+				updateGameUI();
+			}
 		}
 		break;
 		case ACTION.map_update: { // client side
@@ -23066,15 +23076,11 @@ function handleHostData(data) {
 			if(data.fromPlayerIndex !== undefined){
 				let fromPlayer = getPlayerByIndex(data.fromPlayerIndex);
 				
-				addChatMessage(fromPlayer.name, data.message, data.isSpectator, data.textColor);
+				addChatMessage(fromPlayer.name, data.message, data.isSpectator, fromPlayer.textColor);
 				
 				if(fromPlayer.playerIndex !== getMyPlayer().playerIndex){
 					playSound("message");
 				}
-			}else{
-				// not sure if this else is even possible...
-				addChatMessage("", data.message, data.isSpectator, data.textColor);
-				playSound("message");
 			}
 		}
 		break;
@@ -24105,6 +24111,8 @@ function handleClientData(peerId, data) {
 				playSound("join");
 				//addLobbySystemChatMessage(`${player.name} has joined${specflag}.`);
 			}
+			updateGameUI();
+			
 			break;
 		case ACTION.player_update:
 			if(data.name !== undefined){
@@ -24582,7 +24590,7 @@ function joinGame(isSpectator) {
 		localPlayer.textColor = SPECTATOR_COLOR;
 		localPlayer.colorName = hexToColorName(SPECTATOR_COLOR);
 		spectatorUiMode();
-		addSystemChatMessage("Joined as spectator");
+		addSystemChatMessage("Joined as a spectator");
 	}
 	
 	hostPeerId = sanitizePeerId(gameNameInput.value.trim());
@@ -29845,7 +29853,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 			chatInput.value = message; // avoid leaving empty message if pressed space in accident.
 			
 			if(chatInput.value !== ''){
-				// send only the needed info, host handles adding colors etc.
+				// send only the needed info, clients handles adding colors etc.
 				sendToHost({
 					type: ACTION.chat, 
 					message: message,
