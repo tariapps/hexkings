@@ -22293,6 +22293,20 @@ const uiRightTopRow = document.getElementById('ui-right-top-row-id');
 const uiRightButtonRow1 = document.getElementById('ui-right-button-row1-id');
 
 
+function normalUiMode(){
+	uiRight.classList.add('ui-panel');
+	uiRight.classList.remove('ui-panel-trans');
+	
+	// hide unnecessary buttons and ui elements:
+	uiRightTopRow.style.display = "flex";
+	uiRightButtonRow1.style.display = "flex";
+	undoBtn.style.display = "block";
+	endTurnBtn.style.display = "block";
+	nextUnitBtn.style.display = "block";
+	previousUnitBtn.style.display = "block";
+	cycleUnitType.style.display = "block";
+}
+
 function spectatorUiMode(){
 	//uiRight.style.display = "none";
 	// make transparent panel:
@@ -24591,6 +24605,8 @@ function joinGame(isSpectator) {
 		localPlayer.colorName = hexToColorName(SPECTATOR_COLOR);
 		spectatorUiMode();
 		addSystemChatMessage("Joined as a spectator");
+	}else{
+		normalUiMode();
 	}
 	
 	hostPeerId = sanitizePeerId(gameNameInput.value.trim());
@@ -24645,6 +24661,8 @@ function hostGame() {
 			myPeerId = id;
 			localPlayer.id = id;
 			localPlayer.isHost = true;
+			localPlayer.isSpectator = false;
+			
 			localPlayer.name = sanitizeName(playerNameInput.value);
 			
 			let colors = getNextFreeColors();
@@ -24722,6 +24740,8 @@ function hostGame() {
 			updateHostLobbyUI();
 			showPage('host');
 			connectionStatus.textContent = `Hosting at ${gameName}. Ready for players.`;
+			
+			normalUiMode();
 		});
 		
 		// Host MUST listen for connections
