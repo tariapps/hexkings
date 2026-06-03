@@ -16218,9 +16218,12 @@ function zoomAtPointPercent(x, y, percent) {
 }
 
 
+let zoomMultiShift = 1.1;
+
 function handleWheel(e) {
 	e.preventDefault();
-	const zoomFactor = (e.deltaY < 0) ? 1.1 : (1 / 1.1);
+	let fac = zoomMultiShift;
+	const zoomFactor = (e.deltaY < 0) ? fac : (1 / fac);
 	zoomAtPoint(e.clientX, e.clientY, zoomFactor);
 }
 
@@ -28304,6 +28307,8 @@ document.addEventListener('keydown', (event) => {
 					// otherwise toggle ui:
 					toggleUiTopLeft();
 				}
+			}else if(key === 'Shift'){
+				zoomMultiShift = 1.02;
 			}
 			
 			if(code === 'Escape'){
@@ -28422,6 +28427,8 @@ document.addEventListener('keydown', (event) => {
 
 
 document.addEventListener('keyup', (event) => {
+	zoomMultiShift = 1.1;
+	
 	// dont handle enter if it came from chat input.
 	if(event.target.id !== 'chat-input'){
 		const key = event.key;
