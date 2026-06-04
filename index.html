@@ -2852,6 +2852,17 @@ input.disabled {
 					</div>
 				</div>
 				<br>
+				<div class="settings-title-oneline">
+					Sound effects volume:
+				</div>
+				<div class="sound-volume-wrapper">
+					<div class="input-group-nogap" style="align-items: center; gap:5px">
+						<div style="flex: 1;">
+							<input type="range" id="sound-volume2" min="0" max="200" value="1">
+						</div>
+					</div>
+				</div>
+				<br>
 
 			</div>
 			
@@ -6077,6 +6088,8 @@ let musicMuted = getLocalStorageItem("musicMuted") === "true";
 
 
 let musicVolumeInput2 = document.getElementById('music-volume2');
+let soundVolumeInput2 = document.getElementById('sound-volume2');
+let defaultSoundVolume = 1;
 
 let currentTrackIndex = random(0, musicPlaylist.length-1);
 let audio = null;
@@ -6088,6 +6101,7 @@ let musicVolumePower = 2.5; // power curve
 let currentMusicVolume = defaultMusicVolume;
 
 musicVolumeInput2.value = volumeToSlider(defaultMusicVolume, musicVolumeInput2);
+soundVolumeInput2.value = volumeToSlider(defaultSoundVolume, soundVolumeInput2);
 
 
 function volumeToSlider(volume, slider) {
@@ -6122,6 +6136,11 @@ function sliderToValue(slider) {
 musicVolumeInput2.addEventListener('input', e => {
 	let adjustedValue = sliderToVolume(e.target);
 	setMusicVolume(adjustedValue);
+});
+
+soundVolumeInput2.addEventListener('input', e => {
+	let adjustedValue = sliderToVolume(e.target);
+	setSoundVolume(adjustedValue);
 });
 
 
@@ -6209,6 +6228,9 @@ function setMusicVolume(value) {
 		audio.volume = currentMusicVolume;
 	}
 }
+function setSoundVolume(value) {
+	masterGain.gain.value = value;
+}
 
 
 
@@ -6217,7 +6239,10 @@ function setMusicVolume(value) {
 const soundContext = new (window.AudioContext || window.webkitAudioContext)();
 const soundBuffers = {}; // store multiple decoded sounds
 
+const masterGain = soundContext.createGain();
+masterGain.gain.value = 1.0; // global volume (0.0 - 1.0)
 
+masterGain.connect(soundContext.destination);
 
 
 // Add gainNode (and optionally filterNode) to each sound object
@@ -6225,7 +6250,9 @@ for (const key in gameSounds) {
 	const sound = gameSounds[key];
 	sound.gainNode = soundContext.createGain();
 	sound.gainNode.gain.value = sound.gain; // 1.0 = 100%, 0.5 = 50%, etc.
-	sound.gainNode.connect(soundContext.destination);
+	//sound.gainNode.connect(soundContext.destination);
+	// connect to master instead of destination
+    sound.gainNode.connect(masterGain);
 
 	if (sound.filter) {
 		const filter = soundContext.createBiquadFilter();
@@ -11954,50 +11981,77 @@ function drawWaterShading(px, py, drawLines, color = "rgba(0,0,0, 0.6)"){
 
 
 
-function drawBigHexagonPathLines(){
-	if(!focusedHex){
-		return;
+function drawBigHexagonPathLines(tile = null, drawAnimatedLines = true, drawFilledHex = true){
+	let hex = {q:0,r:0};
+	if(!tile){
+		if(!focusedHex){
+			return;
+		}else{
+			hex.q = focusedHex.q;
+			hex.r = focusedHex.r;
+		}
+	}else{
+		hex.q = tile.q;
+		hex.r = tile.r;
 	}
 	// only render if it has defend radius:
 	if(getDefendRadiusByType(placingUnit.type) < 1){
 		return;
 	}
-	let neigh = getHexNeighbors(focusedHex.q, focusedHex.r);
+	let neigh = getHexNeighbors(hex.q, hex.r);
 
 	//ctx.save(); // probably not needed.
+	let fillColor = "rgba(255,255,0, 0.2)";
 
+	if(drawFilledHex){
+		const x = axialToPixelX(hex.q, hex.r);
+		const y = axialToPixelY(hex.q, hex.r);
+		drawHexagonPath(x, y);
+		ctx.fillStyle = fillColor;
+		ctx.fill();
+	}
+	
 	for(let i = 0; i < neigh.length; i++){
 		let q = neigh[i].q;
 		let r = neigh[i].r;
 		const x = axialToPixelX(q, r);
 		const y = axialToPixelY(q, r);
 		
-		// defined bottom part lines, and rotate them each neighbour hex:
-		let drawLines = [
-			(0+i) % 6, // bottom
-			(1+i) % 6, // bottom left
-			(5+i) % 6  // bottom right
-		];
+		if(drawFilledHex){
+			drawHexagonPath(x, y);
+			ctx.fillStyle = fillColor;
+			ctx.fill();
+		}
 		
-		// create lines to draw:
-		drawHexagonPathLines(x, y, drawLines);
+		if(drawAnimatedLines){
+			// defined bottom part lines, and rotate them each neighbour hex:
+			let drawLines = [
+				(0+i) % 6, // bottom
+				(1+i) % 6, // bottom left
+				(5+i) % 6  // bottom right
+			];
+			
+			// create lines to draw:
+			drawHexagonPathLines(x, y, drawLines);
+			
+			// draw black under it:
+			ctx.strokeStyle = "#000000";
+			ctx.lineWidth = 2;
+			ctx.lineCap = 'round';
+			ctx.stroke();
+			
+			// draw colored dash on the black:
+			ctx.lineDashOffset = currentRenderFrame;
+			ctx.setLineDash([12.5, 15]);
+			ctx.strokeStyle = "#FFFF00";
+			ctx.lineWidth = 2;
+			ctx.lineCap = 'round';
+			ctx.stroke();
+			
+			ctx.lineCap = 'butt'; // reset to default
+			ctx.setLineDash([]);
 		
-		// draw black under it:
-		ctx.strokeStyle = "#000000";
-		ctx.lineWidth = 2;
-		ctx.lineCap = 'round';
-		ctx.stroke();
-		
-		// draw colored dash on the black:
-		ctx.lineDashOffset = currentRenderFrame;
-		ctx.setLineDash([12.5, 15]);
-		ctx.strokeStyle = "#FFFF00";
-		ctx.lineWidth = 2;
-		ctx.lineCap = 'round';
-		ctx.stroke();
-		
-		ctx.lineCap = 'butt'; // reset to default
-		ctx.setLineDash([]);
+		}
 		
 		
 	}
@@ -13557,7 +13611,7 @@ function getImageOffsets(img, imageKey){
 
 
 // draw only specific type of units; "soldier" or "castle"
-function drawUnitsByInternalType(unitType){
+function drawUnitsByInternalType(unitType, onlyRanges = false){
 	for (const unit of gameState.units) {
 		if(unit.internalType !== unitType){
 			continue;
@@ -13577,6 +13631,12 @@ function drawUnitsByInternalType(unitType){
 		const owner = getPlayerByIndex(unit.ownerIndex);
 		if (!owner){
 			//console.log("owner not found: "+unit.ownerIndex);
+			continue;
+		}
+		
+		// draw unit defense radiuses:
+		if(onlyRanges && unit.ownerIndex === localPlayer.playerIndex){
+			drawBigHexagonPathLines(unit, false);
 			continue;
 		}
 		
@@ -13752,6 +13812,12 @@ function drawUnits(){
 	drawUnitsByInternalType("soldier");
 	drawUnitsByInternalType("boat");
 	drawUnitsByInternalType("mine");
+	
+	// draw ranges:
+	if(placingUnit && isTypeCastle(placingUnit.type)){
+		drawUnitsByInternalType("castle", true);
+	}
+	
 	//drawUnitsByInternalType("cannon"); // todo: make the code.
 	
 	let pulseOffsetX = 10+(-8*pulseScale(0,2, PULSE_SPEED));
@@ -14724,9 +14790,10 @@ function getNearestValidHex(point){
 }
 
 
+// drawcastlehighlight castlehighlights
 function drawBuildRanges(){
 	if(placingUnit){
-		drawBigHexagonPathLines(placingUnit);
+		drawBigHexagonPathLines();
 	}
 }
 
