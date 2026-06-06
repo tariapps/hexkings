@@ -10795,6 +10795,15 @@ function pushChatMessage(from, message, isSpectator, color = '#FFF') {
 }
 
 function limitTopFloatUIMessages(){
+	// Remove death messages older than 2 turns
+	for (const item of [...topFloatUiChatMessages.children]) {
+		const turn = Number(item.dataset.turn);
+
+		if (!isNaN(turn) && gameState.turn.turnNumber - turn > 1) {
+			item.remove();
+		}
+	}
+
 	// trim old items for the floating UI
 	while (topFloatUiChatMessages.children.length > 3) {
 		topFloatUiChatMessages.removeChild(topFloatUiChatMessages.firstElementChild);
@@ -11473,7 +11482,7 @@ function throttledMarkUserActive(e) {
 
 
 // pushsystemchat
-function addSystemChatMessage(message, color = '#FFF', addTopChat = true) {
+function addSystemChatMessage(message, color = '#FFF', addTopChat = true, isDeathMessage = false) {
 	
 	// moved on top here so it will be ready for rendering chat.
 	// show chat messages on top if topleft ui is not open
@@ -11489,6 +11498,11 @@ function addSystemChatMessage(message, color = '#FFF', addTopChat = true) {
 	*/
 
 	const item = document.createElement('div');
+	if(isDeathMessage){
+		item.dataset.type = "starvation";
+		item.dataset.time = Math.floor(performance.now());
+		item.dataset.turn = gameState.turn.turnNumber;
+	}
 	
 	const time = document.createElement('span');
 	time.textContent = getHHii()+" "; // "23:45 "
@@ -16612,7 +16626,7 @@ function updateGameUI() {
 
 	// Update turn info
 	let turnDate = getTurnDate('week-day');
-	turnInfo.textContent = `${turnDate}`;
+	turnInfo.textContent = `${turnDate} (Day number ${gameState.turn.turnNumber})`;
 	
 	if(!REPLAY_ENABLED){
 		// Update buttons
@@ -21420,6 +21434,7 @@ function processEndOfDay(){
 	
 	console.warn("processEndOfDay");
 
+
 	
 	let weekChanged = false;
 
@@ -21428,6 +21443,8 @@ function processEndOfDay(){
 	gameState.turn.turnNumber++;
 	
 
+	// remove old starvation messages:
+	limitTopFloatUIMessages();
 
 	let weekAfter = 1+Math.floor((gameState.turn.turnNumber - 1) / 7);
 	
@@ -22171,7 +22188,11 @@ function executeEndTurn(playerIndex, surrender = false) {
 				let starvedPlayer = getPlayerByIndex(starvedUnitPlayerIndex);
 				if(starvedPlayer){
 					const skullListStr = "☠️ ".repeat(starvedUnitsCount);
-					broadcast({ type: ACTION.system_message, message: `${skullListStr} Player ${starvedPlayer.name} has lost ${starvedUnitsCount} soldiers to starvation.`});
+					broadcast({
+						type: ACTION.system_message, 
+						message: `${skullListStr} Player ${starvedPlayer.name} has lost ${starvedUnitsCount} soldiers to starvation.`, 
+						isDeathMessage: true,
+					});
 				}
 			}
 		}
@@ -23211,7 +23232,13 @@ function handleHostData(data) {
 		break;
 		
 		case ACTION.system_message: // client side
-			addSystemChatMessage(data.message);
+		
+			if(data.isDeathMessage){
+				addSystemChatMessage("Day "+gameState.turn.turnNumber+": "+data.message, "#FFF", true, data.isDeathMessage);
+			}else{
+				addSystemChatMessage(data.message);
+			}
+			
 			if(data.quittedPlayerIndex !== undefined){
 				let player = getPlayerByIndex(data.quittedPlayerIndex);
 				if(!player.isSpectator){
