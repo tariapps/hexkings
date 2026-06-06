@@ -718,7 +718,7 @@ label {
 
 .ui-panel {
 	pointer-events: auto;
-	background: rgba(0, 0, 0, 0.8);
+	background: rgba(0, 0, 0, 1);
 	---backdrop-filter: blur(5px);
 	padding: 2px 6px 2px 6px;
 	---max-height: 90vh;
@@ -753,6 +753,8 @@ label {
 	bottom:0;
 	right:0;
 	--overflow-y: hidden;
+	padding: 0;
+	border-top-left-radius: 8px;
 }
 
 /* Top row: texts side by side */
@@ -780,7 +782,7 @@ label {
 	align-items: flex-start; /* don't stretch vertically */
 	box-sizing: border-box;
 	width: 100%;
-	border-top-left-radius: 10px;
+	border-top-left-radius: 8px;
 	padding-top: 7px;
 	height:100%;
 }
@@ -3476,7 +3478,8 @@ input.disabled {
 
 	position: absolute;
 	bottom: 100%;
-	width:100%;
+	right:0;
+	---width:98%;
 	
 	margin-bottom: 4px;
 }
@@ -16415,7 +16418,15 @@ function isMyTurn() {
 
 
 function hasPoolsWithNegativeBalance(playerIndex){
-	let pools = findEconomyPools(playerIndex);
+	let pools = null;
+	if(isHost()){
+		pools = findEconomyPools(playerIndex);
+		console.warn("findEconomyPools here", pools);
+	}else{
+		pools = localPlayerPools; // doesnt seem to fix the bug where client always gets warning....
+		console.warn("localPlayerPools here", pools);
+	}
+	//let pools = findEconomyPools(playerIndex);
 	for(let i = 0; i < pools.length; i++){
 		let pool = pools[i];
 		let balance = pool.totalIncome + pool.totalSavings - pool.totalWages;
@@ -21489,7 +21500,7 @@ function processEndOfDay(){
 	
 				if(tile.object === 'dead'){
 					// turn crosses into grass after 4 turns:
-					if(turnDiff >= 4){
+					if(turnDiff >= 2){
 						tile.object = 'grass';
 						tile.actionTurnNumber = gameState.turn.turnNumber;
 						
@@ -21734,6 +21745,14 @@ function getPlayingPlayers(){
 }
 
 
+// current functionality:
+// - give money to the player in turn (when he ends his turn).
+// - check deaths every turn for all players.
+//   - but not for first day, nobody dies at first day.
+// desired functionality:
+// - give money and take wages to all players at end of DAY.
+// - check deaths every time a player ends their turn.
+// 
 function calculateBalanceAndKillSoldiersAllPlayers(curPlayerIndex, allowKilling){
 	let batchActions = [];
 	let playingPlayers = getPlayingPlayers();
