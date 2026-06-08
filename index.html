@@ -11027,7 +11027,7 @@ class Tantrix {
 			}
 		}
 		this.pack = shuffle(this.pack);
-		console.warn(this.pack);
+		//console.warn(this.pack);
 	}
 	
 	getColorByCode(code){
@@ -16489,14 +16489,20 @@ function hasUnmovedUnits(playerIndex = -1){
 	return false;
 }
 
+
+
 function updateProgressBarsUI(){
 	const myPlayer = getMyPlayer();
 	const currentTurnPlayer = getCurrentTurnPlayer();
 	
 	// Update player list (on top)
 	topFloatUiPlayers.innerHTML = '';
-
-	gameState.players.forEach(p => {
+	
+	//gameState.players.forEach(p => {
+	for(let i = 0; i < gameState.players.length; i++){
+		let curindex = (gameState.turn.startPlayerIndex+i) % gameState.players.length;
+		let p = gameState.players[curindex];
+		
 		const item = document.createElement('div');
 		item.className = 'player-list-item-top';
 		item.title = "Player color: "+ucfirst(p.colorName);
@@ -16510,17 +16516,12 @@ function updateProgressBarsUI(){
 		
 		let color = p.textColor;
 		let specTag = "";
-		if(p.isSpectator){
-			color = "white";
-			specTag = "(spec)";
-		}
-
 		if(p.isAI){
 			specTag = "(AI)";
 		}
 		
 
-		if(!p.quitted && !p.isDead && !p.isSpectator){
+		if(isPlayingPlayer(p)){
 			// <span class="player-turn-indicator-top"></span>
 			const nameitem = document.createElement('div');
 			nameitem.classList.add('namevals');
@@ -16575,7 +16576,7 @@ function updateProgressBarsUI(){
 			topFloatUiPlayers.appendChild(item);
 			
 		}
-	});
+	}
 }
 
 // updateui update ui
@@ -19206,7 +19207,7 @@ function executeAction(playerId, action) {
 			addCost(actionPool, sellPrice, poolHex, action.type);
 			
 			// remove unit:
-			updates.push({ type: ACTION.unit_removed, unitId: unit.id, FText: sellPrice });
+			updates.push({ type: ACTION.unit_removed, unitId: unit.id, FText: sellPrice, actionFrom: "action_sell" });
 			
 			if(!isAiPlayer(playerIndex)){
 				sounds.push({name:'sell', q: unit.q, r: unit.r, action: action.type, level: unit.level});
@@ -19305,7 +19306,7 @@ function executeAction(playerId, action) {
 						const targetUnit = moveCheck.target;
 						actionForUndo.killedUnit = { ...targetUnit }; // Store copy
 						//gameState.units = gameState.units.filter(u => u.id !== targetUnit.id);
-						updates.push({ type: ACTION.unit_removed, unitId: targetUnit.id });
+						updates.push({ type: ACTION.unit_removed, unitId: targetUnit.id, actionFrom: "action_move/attack" });
 						if(!isAiPlayer(playerIndex)){
 							if(targetUnit.internalType === 'castle'){ // CASTLE_DATA[targetUnit.type]
 								sounds.push({name:'killCastle', q: targetUnit.q, r: targetUnit.r, action: action.type, level:targetUnit.level});
@@ -19427,7 +19428,7 @@ function executeAction(playerId, action) {
 					
 					if(killMovedUnit){
 						actionForUndo.killedUnit = unitCopy; // Store copy
-						updates.push({ type: ACTION.unit_removed, unitId: unitCopy.id });
+						updates.push({ type: ACTION.unit_removed, unitId: unitCopy.id, actionFrom: "action_move/killMovedUnit" });
 						
 						// clear undo stack when unit died by move:
 						preventUndo();
@@ -19538,7 +19539,7 @@ function executeAction(playerId, action) {
 						const targetUnit = moveCheck.target;
 						actionForUndo.killedUnit = { ...targetUnit }; // Store copy
 						//gameState.units = gameState.units.filter(u => u.id !== targetUnit.id);
-						updates.push({ type: ACTION.unit_removed, unitId: targetUnit.id });
+						updates.push({ type: ACTION.unit_removed, unitId: targetUnit.id, actionFrom: "action_unload_unit/attack" });
 						
 						if(!isAiPlayer(playerIndex)){
 							if(targetUnit.internalType === 'castle'){
@@ -19654,7 +19655,7 @@ function executeAction(playerId, action) {
 					
 					if(killAddedUnit){
 						// dont add killed unit or it will create that unit after undo...
-						updates.push({ type: ACTION.unit_removed, unitId: unitCopy.id });
+						updates.push({ type: ACTION.unit_removed, unitId: unitCopy.id, actionFrom: "action_unload_unit/killAddedUnit" });
 						
 						// clear undo stack when unit died by move:
 						// note: currently no undo possible for boats at all. this line is redundant.
@@ -19731,7 +19732,7 @@ function executeAction(playerId, action) {
 				
 				updates.push({ type: ACTION.unit_loaded, unitId: unitId, targetUnitId: targetUnitId});
 				
-				updates.push({ type: ACTION.unit_removed, unitId: unitId });
+				updates.push({ type: ACTION.unit_removed, unitId: unitId, actionFrom: "action_load_unit" });
 				//updates.push({ type: ACTION.unit_move_reset, hasMoved: true, unitId: targetUnitId});
 				
 				sounds.push({name:'moveunit', q: unit.q, r: unit.r, action: action.type});
@@ -20149,7 +20150,7 @@ function executeAction(playerId, action) {
 							const targetUnit = buildCheck.target;
 							actionForUndo.killedUnit = { ...targetUnit }; // Store copy
 							//gameState.units = gameState.units.filter(u => u.id !== targetUnit.id);
-							updates.push({ type: ACTION.unit_removed, unitId: targetUnit.id });
+							updates.push({ type: ACTION.unit_removed, unitId: targetUnit.id, actionFrom: "action_build/attack" });
 							
 							if(!isAiPlayer(playerIndex)){
 								if(targetUnit.internalType === 'castle'){ // CASTLE_DATA[targetUnit.type]
@@ -20195,7 +20196,7 @@ function executeAction(playerId, action) {
 						if(killAddedUnit){
 
 							
-							updates.push({ type: ACTION.unit_removed, unitId: unitCopy.id });
+							updates.push({ type: ACTION.unit_removed, unitId: unitCopy.id, actionFrom: "action_build/killAddedUnit" });
 							
 							// clear undo stack when unit died by move:
 							preventUndo();
@@ -20337,7 +20338,7 @@ function executeAction(playerId, action) {
 				
 			} else if (lastAction.type === 'build') {
 				//if(!lastAction.addedUnitWasKilled){
-					updates.push({ type: ACTION.unit_removed, unitId: lastAction.unit.id });
+					updates.push({ type: ACTION.unit_removed, unitId: lastAction.unit.id, actionFrom: "action_undo/build" });
 					unitActionHex = {q: lastAction.unit.q, r: lastAction.unit.r};
 				//}
 				
@@ -21455,6 +21456,60 @@ function processEndOfDay(){
 	let batchActions = [];
 	console.warn("Day ended, new day starts. process trees, grasses etc.");
 	
+
+/*
+	// BUGGED: gets error at action.unit_removed, getUnitById() returns null.
+	// possibly tries to remove the same unit twice...
+	// disabled this for now.
+	
+	// give money to players:
+	let allowKilling = true;
+	// dont allow starvation deaths for the first day:
+	if(gameState.turn.turnNumber < 2){
+		allowKilling = false;
+		console.warn("processEndOfDay: Disabling starvation deaths for other than current player for the first day.");
+	}
+	
+
+	let killdata = calculateBalanceAndKillSoldiersAllPlayers(-1, "processEndOfDay", allowKilling, true, true, true);
+	//let batchActions = killdata.batchActions;
+	batchActions.push(...killdata.batchActions);
+	//let pools = killdata.curPlayerPools;
+	let killedPlayers = killdata.killedPlayers;
+	
+
+	// send sound for died soldiers just once:
+	if(batchActions.length > 0){
+		let starvedUnitsList = killdata.playerUnitsKilledCount;
+		if(starvedUnitsList){
+			
+			for (const [starvedUnitPlayerIndex, starvedUnitsCount] of Object.entries(starvedUnitsList)) {
+				let starvedPlayer = getPlayerByIndex(starvedUnitPlayerIndex);
+				if(starvedPlayer){
+					const skullListStr = "☠️ ".repeat(starvedUnitsCount);
+					broadcast({
+						type: ACTION.system_message, 
+						message: `${skullListStr} Player ${starvedPlayer.name} has lost ${starvedUnitsCount} soldiers to starvation.`, 
+						isDeathMessage: true,
+					});
+				}
+			}
+			
+			batchActions.push({ type: ACTION.sound, name: "diedByStarving", q:0, r:0, playerIndex: -1, action: ACTION.action_end_turn});
+		}
+	}
+	
+	// distribute changed pools:
+	// update savings to everyone:
+	let playingPlayers = getPlayingPlayers();
+	for(let p = 0; p < playingPlayers.length; p++){
+		distributePoolSavings(findEconomyPools(playingPlayers[p].playerIndex));
+		updatePlayerSavings(playingPlayers[p].playerIndex);
+	}
+	*/
+	
+	
+	
 	
 	
 	// kill boats after they run out of time:
@@ -21498,7 +21553,7 @@ function processEndOfDay(){
 	// - grass spreading randomly.
 	// - new trees spawning randomly.
 	
-	// cross becomes grass in... 4 turns
+	// cross becomes grass in... 2 turns
 	// grass ´grows 1-3 pieces per turn, chance is 50 for one piece?
 	// trees grow more the more land there is, i think max is 2 per turn.
 	let grassGrow = {};
@@ -21761,6 +21816,13 @@ function getPlayingPlayers(){
 	return gameState.players.filter(p => !p.isSpectator && !p.isDead);
 }
 
+function isPlayingPlayer(player){
+	if(!player.isSpectator && !player.isDead){
+		return true;
+	}
+	return false;
+}
+
 
 // current functionality:
 // - give money to the player in turn (when he ends his turn).
@@ -21770,7 +21832,7 @@ function getPlayingPlayers(){
 // - give money and take wages to all players at end of DAY.
 // - check deaths every time a player ends their turn.
 // 
-function calculateBalanceAndKillSoldiersAllPlayers(curPlayerIndex, allowKilling){
+function calculateBalanceAndKillSoldiersAllPlayers(curPlayerIndex, actionFrom, allowKilling, allowAddMoney = true, overrideAddMoney = false, distributeSavings = false){
 	let batchActions = [];
 	let playingPlayers = getPlayingPlayers();
 	let killedPlayers = [];
@@ -21782,12 +21844,17 @@ function calculateBalanceAndKillSoldiersAllPlayers(curPlayerIndex, allowKilling)
 		let pools = findEconomyPools(player.playerIndex);
 		let addMoney = false;
 		if(player.playerIndex === curPlayerIndex){
-			addMoney = true;
+			if(allowAddMoney){
+				addMoney = true;
+			}
 			//pools = curPlayerPools;
 		}else{
 			//pools = findEconomyPools(player.playerIndex);
 		}
-		let killdata = calculateBalanceAndKillSoldiers(pools, null, addMoney, player.playerIndex, allowKilling);
+		if(overrideAddMoney){
+			addMoney = true;
+		}
+		let killdata = calculateBalanceAndKillSoldiers(pools, actionFrom, null, addMoney, player.playerIndex, allowKilling);
 		if(killdata.batchActions){
 			batchActions.push(...killdata.batchActions);
 		}
@@ -21796,6 +21863,10 @@ function calculateBalanceAndKillSoldiersAllPlayers(curPlayerIndex, allowKilling)
 		}
 		if(player.playerIndex === curPlayerIndex){
 			curPlayerPools = killdata.curPlayerPools;
+		}
+		// make sure to save pool changes to tiles:
+		if(distributeSavings){
+			distributePoolSavings(pools);
 		}
 		if(killdata.playerUnitsKilledCount){
 			for (const [key, value] of Object.entries(killdata.playerUnitsKilledCount)) {
@@ -21818,7 +21889,7 @@ function calculateBalanceAndKillSoldiersAllPlayers(curPlayerIndex, allowKilling)
 }
 
 
-function calculateBalanceAndKillSoldiers(pools, addedUnit = null, addMoney = true, playerIndex = -1, allowKilling = true){
+function calculateBalanceAndKillSoldiers(pools, actionFrom, addedUnit = null, addMoney = true, playerIndex = -1, allowKilling = true){
 	// check if soldiers will be killed.
 	
 	console.warn("calculateBalanceAndKillSoldiers");
@@ -21940,6 +22011,7 @@ function calculateBalanceAndKillSoldiers(pools, addedUnit = null, addMoney = tru
 					type: ACTION.unit_removed, 
 					unitId: soldier.id,
 					unit: soldier, // only used for undoing.
+					actionFrom: actionFrom,
 				});
 				
 				
@@ -22166,8 +22238,10 @@ function executeEndTurn(playerIndex, surrender = false) {
 		allowKilling = false;
 		console.warn("Disabling starvation deaths for other than current player for the first day.");
 	}
-	
-	let killdata = calculateBalanceAndKillSoldiersAllPlayers(playerIndex, allowKilling);
+	//curPlayerIndex, allowKilling, allowAddMoney = true, overrideAddMoney = false){
+	let allowAddMoney = true;
+
+	let killdata = calculateBalanceAndKillSoldiersAllPlayers(playerIndex, "executeEndTurn", allowKilling, allowAddMoney);
 	let batchActions = killdata.batchActions;
 	let pools = killdata.curPlayerPools;
 	let killedPlayers = killdata.killedPlayers;
@@ -22195,9 +22269,11 @@ function executeEndTurn(playerIndex, surrender = false) {
 					});
 				}
 			}
+			
+			batchActions.push({ type: ACTION.sound, name: "diedByStarving", q:0, r:0, playerIndex: -1, action: ACTION.action_end_turn});
 		}
 		
-		batchActions.push({ type: ACTION.sound, name: "diedByStarving", q:0, r:0, playerIndex: -1, action: ACTION.action_end_turn});
+		
 	}
 	
 	
@@ -22775,7 +22851,7 @@ function makeExplosionBySoundMessage(data){
 
 function killUnit(unit){
 	let arr = [];
-	arr.push({ type: ACTION.unit_removed, unitId: unit.id, explosion: "boatExplosion" });
+	arr.push({ type: ACTION.unit_removed, unitId: unit.id, explosion: "boatExplosion", actionFrom: "killUnit" });
 	arr.push({ type: ACTION.sound, name: "killBoat", q:0, r:0, playerIndex: -1, action: ACTION.unit_removed});
 	return arr;
 }
@@ -22797,7 +22873,7 @@ function killPlayerUnits(playerIndex){
 				explosion = "killSimple";
 				soldiersKilled++;
 			}
-			arr.push({ type: ACTION.unit_removed, unitId: unit.id, explosion: explosion });
+			arr.push({ type: ACTION.unit_removed, unitId: unit.id, explosion: explosion, actionFrom: "killPlayerUnits" });
 			//makeExplosionBySoundMessage
 		}
 	}
@@ -23663,8 +23739,17 @@ function handleHostData(data) {
 		case ACTION.unit_removed: { // client side
 			
 			
+			
+			// data.unit only exists in killsoldiersallplayers function.
 			let unit = getUnitById(data.unitId);
+			//let unit = data.unit ? data.unit : getUnitById(data.unitId);//getUnitById(data.unitId); // broken suddenly.. maybe because of new way of using calculateBalanceAndKillSoldiersAllPlayers() at processEndOfDay().
+			console.warn("ACTION.unit_removed id = "+data.unitId, "data:", data, "unit:", unit);
+			//if(!getUnitById(data.unitId) && !data.unit){
+			//	console.error("ACTION.unit_removed id = "+data.unitId, "UNIT WAS REMOVED ALREADY?");
+			//}
+			
 			let ownerIndex = unit.ownerIndex;
+			
 			
 			// if sold an unit; spawn Floating Text:
 			if(data.FText !== undefined && data.FText > 0){ // only show non-zero values.
