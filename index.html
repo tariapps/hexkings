@@ -2700,6 +2700,9 @@ input.disabled {
 			
 			
 			<div class="tab tab-other">
+			
+
+			
 				<div class="settings-title-oneline">
 					Autosave (at end of day):
 				</div>
@@ -2719,6 +2722,12 @@ input.disabled {
 						Enable
 					</label>
 				</div>
+				
+				
+				<div class="settings-title-oneline" style="margin-top:20px">
+					Version:
+				</div>
+				<div id="version-hash4" style="color:#666;"></div>
 			</div>
 			
 			
@@ -3104,6 +3113,7 @@ input.disabled {
 		<div id="server-wakeup-status" style="text-align: center; margin-top: 10px; font-size: 14px;"></div>
 		<div id="connection-status" style="text-align: center; margin-top: 10px; font-size: 14px;">Initializing...</div>
 		<div id="clients-count" style="text-align: center; margin-top: 10px; font-size: 14px;"></div>
+		<div id="version-hash" style="color:#666; text-align: center; margin-top: 10px; font-size: 14px;"></div>
 	</div>
 </div>
 
@@ -3246,6 +3256,7 @@ input.disabled {
 		</div>
 		
 	</div>
+	
 </div>
 
 
@@ -3359,6 +3370,8 @@ input.disabled {
 		
 		<p id="lobby-status" style="text-align: center;">Waiting for host to start...</p>
 	</div>
+	
+
 </div>
 
 
@@ -3970,6 +3983,70 @@ input.disabled {
 
 
 <script>
+
+const crcTable = (() => {
+	const table = new Uint32Array(256);
+	for (let n = 0; n < 256; n++) {
+		let c = n;
+		for (let k = 0; k < 8; k++) {
+			c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+		}
+		table[n] = c >>> 0;
+	}
+	return table;
+})();
+
+function crc32(str) {
+	let crc = 0xFFFFFFFF;
+	for (let i = 0; i < str.length; i++) {
+		crc = crcTable[(crc ^ str.charCodeAt(i)) & 0xFF] ^ (crc >>> 8);
+	}
+	return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+function crc32ToBase64(crc) {
+	const bytes = new Uint8Array(4);
+
+	bytes[0] = (crc >>> 24) & 0xFF;
+	bytes[1] = (crc >>> 16) & 0xFF;
+	bytes[2] = (crc >>> 8) & 0xFF;
+	bytes[3] = crc & 0xFF;
+
+	let binary = "";
+	for (let i = 0; i < bytes.length; i++) {
+		binary += String.fromCharCode(bytes[i]);
+	}
+
+	return btoa(binary);
+}
+
+async function hashIndexHtml() {
+	const response = await fetch("/index.html");
+	const text = await response.text();
+	return crc32(text).toString(16).padStart(8, "0").toUpperCase();
+}
+
+async function hashIndexHtmlSimple() {
+	const response = await fetch("/index.html");
+	const text = await response.text();
+	return crc32(text);
+}
+
+const versionHashElem = document.getElementById("version-hash");
+const versionHashElem4 = document.getElementById("version-hash4");
+
+function generatePageHash(){
+	hashIndexHtml().then(hash => {
+		let str = "Version: "+hash;
+		versionHashElem.textContent = str; // front page
+		versionHashElem4.textContent = hash; // settings page
+		setSetting("version", hash);
+	});
+}
+
+
+
+
 const playerTileIcon = document.getElementById("player-tile-icon");
 const playerTileIconBtn = document.getElementById("player-tile-icon-btn");
 const playerTileEmptyCount = document.getElementById("player-tile-empty-count");
@@ -7192,6 +7269,7 @@ let gameSettings = {
 	
 	autosave: true,
 	country: null, // {code:"FI", name:"Finland"} etc.
+	version: null,
 	
 	mapThemeOverride: 0, // 0 = no override, 1 = summer, 2 = winter
 };
@@ -9169,6 +9247,10 @@ function updateHostPlayerSettingsList() {
 			let specTag = p.isSpectator ? ' (spec)' : '';
 			let safePlayerName = escapeHTML(`${p.name}${specTag}`);
 			let nameColor = escapeHTML(p.isSpectator ? SPECTATOR_COLOR : p.textColor);
+			let version = p.version ?? "unknown";
+			if(p.isAI){
+				version = "(AI)";
+			}
 
 			// 2. Generate flag HTML if applicable
 			let flagHTML = '';
@@ -9213,7 +9295,7 @@ function updateHostPlayerSettingsList() {
 			<div class="player-list-item" data-peer="${p.id}" style="display: flex; align-items: center; gap: 8px;">
 				
 				<div class="player-name-cell" style="flex-grow: 1; display: flex; align-items: center; overflow: hidden;">
-					<span style="max-width: 160px; color: ${nameColor}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+					<span style="max-width: 160px; color: ${nameColor}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="Version: ${version}">
 						${safePlayerName}
 					</span>
 				</div>
@@ -16577,6 +16659,14 @@ function updateProgressBarsUI(){
 			
 		}
 	}
+	
+	if(enemyHighlightedPool && enemyHighlightedPool.length > 0){
+		let tile = getTileAt(enemyHighlightedPool[0].q, enemyHighlightedPool[0].r);
+		if(tile && tile.ownerIndex !== -1){
+			highlightPlayer(tile.ownerIndex); // remove all other highlights
+			console.warn("highlightPlayer", tile.ownerIndex);
+		}
+	}
 }
 
 // updateui update ui
@@ -22945,6 +23035,10 @@ function updateProgressbar(playerIndex, from, data = null){
 	
 	playerProgressBars[playerIndex] = {percent: percent, style: style};
 	
+
+
+	
+	
 	//addSystemChatMessage(`percent: ${percent}% (${from})`);
 }
 
@@ -24268,6 +24362,8 @@ function handleClientData(peerId, data) {
 		case ACTION.join:
 			player.name = sanitizeName(data.name);
 			
+			player.version = data.version;
+			
 			if (!gameStarted()) {
 				let colors = getNextFreeColors();
 				
@@ -24754,6 +24850,7 @@ function executeJoin(hostPeerId) {
 			isSpectator: localPlayer.isSpectator,
 			country: getSetting('country'),
 			userAgent: navigator.userAgent,
+			version: getSetting("version"),
 		};
 		playerData.color = savedColor ?? colors.color;
 		playerData.customColorSet = savedColor ? true : false;
@@ -24863,6 +24960,7 @@ function hostGame() {
 			localPlayer.id = id;
 			localPlayer.isHost = true;
 			localPlayer.isSpectator = false;
+			localPlayer.version = getSetting("version");
 			
 			localPlayer.name = sanitizeName(playerNameInput.value);
 			
@@ -30269,6 +30367,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 	initPeerJS();
 	
+	generatePageHash();
 	
 
 	console.log("DOMContentLoaded finished");
