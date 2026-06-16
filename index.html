@@ -7782,6 +7782,7 @@ let possibleMoveHexes = []; // the hexes with all possible moves even when the m
 let invalidMoveHexes = []; // [{q, r}] for red move highlight
 let selectedPool = null;
 let enemySelectedPool = null;
+let selectedEnemyTopBar = -1;
 
 let myCurrentSavings = 0; // Client-side savings
 
@@ -8884,6 +8885,8 @@ topFloatUiPlayers.addEventListener('click', (e) => {
 			let pool = pools[0];
 			if(pool){
 				enemyHighlightedPool = pool.hexes;
+				
+				selectedEnemyTopBar = item.dataset.playerIndex;
 				
 				highlightPlayer(item.dataset.playerIndex); // remove all other highlights
 				
@@ -13840,6 +13843,30 @@ function drawUnitsByInternalType(unitType, onlyRanges = false){
 				}
 			}
 			
+			let secondaryOffsetY = 0;
+			
+			if(unitType === 'boat'){
+				//secondaryOffsetY -= waterShadingHeight;
+			}
+			
+			if(unitType === 'boat'){
+				//drawHexagonPath(x, y);
+				//ctx.fillStyle = "rgba(255,255,0, 0.3)";
+				//ctx.fill();
+				
+				// create lines to draw:
+				drawHexagonPathLines(x, y-secondaryOffsetY, null, 0.7);
+				
+				// draw black under it:
+				ctx.strokeStyle = owner.color;
+				ctx.lineWidth = 2;
+				ctx.globalAlpha = 0.3;
+				ctx.lineCap = 'round';
+				ctx.stroke();
+				ctx.globalAlpha = 1;
+			}
+
+			
 			ctx.save();
 			
 			// move to object position
@@ -13849,8 +13876,10 @@ function drawUnitsByInternalType(unitType, onlyRanges = false){
 			// now apply screen-space offsets
 			ctx.translate(-xoff, -yoff);
 			
+
+			
 			// draw unit:
-			drawImageMippedCropped(ctx, imageKey, 0, -buildOffsetY, dw, dh, -1, cropBottomPercent);
+			drawImageMippedCropped(ctx, imageKey, 0, -buildOffsetY-secondaryOffsetY, dw, dh, -1, cropBottomPercent);
 			
 			if(unitType === 'boat'){
 				// show extra info only for the owner of the boat:
@@ -15749,6 +15778,8 @@ function cancelAll(){
 	enemySelectedPool = null;
 	updateSelectedPoolUi();
 	
+	selectedEnemyTopBar = -1;
+	
 	// remove top bar player highlight:
 	highlightPlayer(-1);
 	
@@ -16660,11 +16691,32 @@ function updateProgressBarsUI(){
 		}
 	}
 	
+	if(selectedEnemyTopBar !== -1){
+		// quick fix to keep highlighted player active:
+		//highlightPlayer(selectedEnemyTopBar);
+		
+		
+		// todo: make it highlight the tiles also...
+		// does not work here:
+		//let enemypools = findEconomyPools(selectedEnemyTopBar);
+		//if(enemypools && enemypools.length > 0){
+		//	enemyHighlightedPool = enemypools[0].hexes;
+		//}
+		
+		//enemySelectedPool = findEnemySelectedPool(poolStartHex);
+		//if(enemySelectedPool){
+		//	enemyHighlightedPool = enemySelectedPool.hexes;
+		//}
+	
+
+		
+	}
+	
 	if(enemyHighlightedPool && enemyHighlightedPool.length > 0){
 		let tile = getTileAt(enemyHighlightedPool[0].q, enemyHighlightedPool[0].r);
 		if(tile && tile.ownerIndex !== -1){
-			highlightPlayer(tile.ownerIndex); // remove all other highlights
-			console.warn("highlightPlayer", tile.ownerIndex);
+			//highlightPlayer(tile.ownerIndex); // remove all other highlights
+			//console.warn("highlightPlayer", tile.ownerIndex);
 		}
 	}
 }
@@ -18206,10 +18258,13 @@ function highlightPlayer(playerIndex) {
 	const players = document.querySelectorAll(
 		'#top-float-ui-players .player-list-item-top'
 	);
+	
+	selectedEnemyTopBar = -1;
 
 	players.forEach(player => {
 		if (player.dataset.playerIndex == playerIndex) {
 			player.classList.add('highlight');
+			selectedEnemyTopBar = playerIndex;
 		} else {
 			player.classList.remove('highlight');
 		}
@@ -18226,6 +18281,10 @@ function updateHighlights() {
 	enemySelectedPool = null;
 	
 
+	if(selectedEnemyTopBar !== -1){
+		// quick fix to keep highlighted player active:
+		//highlightPlayer(selectedEnemyTopBar);
+	}
 	
 	enemyHighlightedPool = [];
 	
@@ -19770,9 +19829,10 @@ function executeAction(playerId, action) {
 		case ACTION.action_edit_tile: {
 			if(gameState.settings.gameOver) return;
 			
+			if(!gameState.settings.editorEnabled) return;
 			
 			//console.warn("action_edit_tile");
-			if(!player.isSpectator){
+			if(!player.isSpectator && !player.isDead){
 				updates.push({
 					type: ACTION.tile_edited, 
 					subtype: action.subtype,
@@ -21978,6 +22038,15 @@ function calculateBalanceAndKillSoldiersAllPlayers(curPlayerIndex, actionFrom, a
 	};
 }
 
+let turnlog = {};
+
+function addTurnLog(data){
+	if(!turnlog[gameState.turn.turnNumber]){
+		turnlog[gameState.turn.turnNumber] = [];
+	}
+	turnlog[gameState.turn.turnNumber].push(data);
+
+}
 
 function calculateBalanceAndKillSoldiers(pools, actionFrom, addedUnit = null, addMoney = true, playerIndex = -1, allowKilling = true){
 	// check if soldiers will be killed.
@@ -22004,6 +22073,18 @@ function calculateBalanceAndKillSoldiers(pools, actionFrom, addedUnit = null, ad
 		let incomeBefore = pool.totalIncome;
 		let balanceBefore = savingsBefore+incomeBefore-wagesBefore;
 		
+		let turndata = {
+			msg: "",
+			d: null,
+			pl: playerIndex,
+			po: p,
+			balance: balanceBefore,
+			savings: savingsBefore, 
+			income: incomeBefore, 
+			wages: wagesBefore,
+			pool: pool,
+		};
+		
 		// kill units BEFORE adding money to their pools:
 
 		// avoid -0.000001 negative values or 0.000001 positive values (EPSILON):
@@ -22011,17 +22092,22 @@ function calculateBalanceAndKillSoldiers(pools, actionFrom, addedUnit = null, ad
 		if(addMoney){
 			console.warn("adding savings to player", playerIndex);
 
+			turndata.msg = "M-W";
 			
 			pool.totalSavings += pool.totalIncome;
 			pool.totalSavings -= pool.totalWages;
 			
 			pool.totalSavings = clampMoney(pool.totalSavings);
 			
+
+			
+			
 			if (pool.totalSavings < 0) {
 			//if (pool.totalSavings-pool.totalWages < 0) {
 				// Bankrupt!
 				pool.totalSavings = 0;
 				
+
 				// remember which pools savings should be distributed later:
 				killedPlayers.push({
 					playerIndex: playerIndex, 
@@ -22036,15 +22122,25 @@ function calculateBalanceAndKillSoldiers(pools, actionFrom, addedUnit = null, ad
 				for (const soldier of pool.soldiers) {
 					allSoldiersKilled.push(soldier);
 				}
+				
+				turndata.d = pool.soldiers.length;
 			}
+			
+			addTurnLog(turndata);
+			
 		}else{
 			// note: first day wont allow killing by starvation.
 			if(allowKilling){
 				let tempCalc = clampMoney(pool.totalSavings+pool.totalIncome-pool.totalWages);
 				
+				turndata.msg = "mt";
+				
+				
 				if (tempCalc < 0) {
 					// Bankrupt!
 					pool.totalSavings = 0;
+					
+					
 					
 					killedPlayers.push({
 						playerIndex: playerIndex, 
@@ -22060,7 +22156,11 @@ function calculateBalanceAndKillSoldiers(pools, actionFrom, addedUnit = null, ad
 					for (const soldier of pool.soldiers) {
 						allSoldiersKilled.push(soldier);
 					}
+					
+					turndata.d = pool.soldiers.length;
 				}
+				
+				addTurnLog(turndata);
 			}
 		}
 		
@@ -23035,9 +23135,18 @@ function updateProgressbar(playerIndex, from, data = null){
 	
 	playerProgressBars[playerIndex] = {percent: percent, style: style};
 	
-
-
+	if(selectedEnemyTopBar !== -1){
+		// quick fix to keep highlighted player active:
+		//highlightPlayer(selectedEnemyTopBar);
+	}
 	
+	if(enemyHighlightedPool && enemyHighlightedPool.length > 0){
+		let tile = getTileAt(enemyHighlightedPool[0].q, enemyHighlightedPool[0].r);
+		if(tile && tile.ownerIndex !== -1){
+			//highlightPlayer(tile.ownerIndex); // remove all other highlights
+			//console.warn("highlightPlayer", tile.ownerIndex);
+		}
+	}
 	
 	//addSystemChatMessage(`percent: ${percent}% (${from})`);
 }
@@ -23058,7 +23167,7 @@ function handleHostData(data) {
 		case ACTION.ping: { // client side
 			// respond to ping for the host:
 			sendToHost({ type: ACTION.pong, time: Date.now(), playerIndex: getMyPlayer().playerIndex });
-			console.warn("received ping from host.");
+			console.debug("received ping from host.");
 		}
 		break;
 		case ACTION.day_changed: { // client side
@@ -23479,6 +23588,7 @@ function handleHostData(data) {
 		break;
 		case ACTION.tile_edited: { // client side
 			//console.warn("tile_edited");
+			
 			let centerHex = data.hex;
 			let newType = data.tileType;
 			let radius = data.brushSize;
@@ -24356,7 +24466,7 @@ function handleClientData(peerId, data) {
 			// received answer from ACTION.ping
 			let player = getPlayerByIndex(data.playerIndex);
 			player.lastPong = data.time;
-			console.warn("received pong from player "+player.name);
+			console.debug("received pong from player "+player.name);
 		}
 		break;
 		case ACTION.join:
