@@ -685,6 +685,16 @@ label {
 	text-decoration: line-through;
 }
 
+#stars-background {
+	position: absolute;
+	
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    top: 0;
+    left: 0;
+}
+
 /* --- GAME PAGE --- */
 #game-page {
 	padding: 0;
@@ -2743,6 +2753,7 @@ input.disabled {
 								<option value="0">Default</option>
 								<option value="1">Summer</option>
 								<option value="2">Winter</option>
+								<option value="3">Space</option>
 							</select>
 						</div>
 						<div style="flex: 1;">
@@ -2900,6 +2911,7 @@ input.disabled {
 							<select id="map-theme" disabled>
 								<option value="1">Summer</option>
 								<option value="2">Winter</option>
+								<option value="3">Space</option>
 							</select>
 						</div>
 					</div>
@@ -3042,8 +3054,9 @@ input.disabled {
 
 <div id="start-page" class="page active">
 	<div class="container">
-		<div class="game-logo">
-		</div>
+		
+		<div class="game-logo"></div>
+		
 		<!-- <h1 style="color:yellow">👑 Hex Kings 👑</h1> -->
 		<label for="player-name">Your Name:</label>
 		
@@ -3378,6 +3391,9 @@ input.disabled {
 
 
 <div id="game-page" class="page">
+
+    <img id="stars-background" src="images/galaxy.jpg" style="display:none">
+	
 	<canvas id="game-canvas"></canvas>
 	
 	<div id="debug-info" style="display:none; background-color:black;z-index: 1; position: absolute; left: 0; top: 0;background-color: rgba(0, 0, 0, 0.5);padding: 5px;margin-top: 206px;">
@@ -3495,6 +3511,7 @@ input.disabled {
 	---width:98%;
 	
 	margin-bottom: 4px;
+	pointer-events:none;
 }
 
 .userEventsListWrap {
@@ -3514,7 +3531,9 @@ input.disabled {
 	
     position: absolute;
     bottom: 100%;
-    width: 100%;
+	right:0;
+    ---width: 100%;
+	
 }
 	
 	
@@ -7435,7 +7454,12 @@ function getPlayerStats(playerIndex = -1){
 }
 
 
-
+function getMapTheme(){
+	if(getSetting('mapThemeOverride')){
+		return getSetting('mapThemeOverride');
+	}
+	return gameState.settings.mapTheme;
+}
 
 function isSummer(){
 	if(getSetting('mapThemeOverride')){
@@ -12800,7 +12824,13 @@ let overrideWaterShading = null;
 function drawMapShading(type){
 	let pulse = pulseScale(0.8, 1, 0.002);
 	
-	
+	let edgeColor1 = "rgba(0,0,0, 0.3)";
+	let edgeColor2 = "rgba(0,0,0, 0.1)";
+	if(getMapTheme() === 3){
+		edgeColor1 = "rgba(255,255,0, 0.5)";
+		edgeColor2 = "rgba(255,255,0, 0.3)";
+	}
+		
 	for(let t = 0; t < gameState.map.tilesData.length; t++){
 		const tile = gameState.map.tilesData[t];
 		const q = tile.q;
@@ -12836,10 +12866,11 @@ function drawMapShading(type){
 					color = overrideWaterShading;
 				}
 				
+				
 				if(type === 0){ // water 3d
 					drawWaterShading(x, y, tile.outline, color);
 				}else if(type === 2){ // land shading
-					drawLandShading(x, y, tile.outline, 1, 0.9, 0.6, "rgba(0,0,0, 0.3)", "rgba(0,0,0, 0.1)");
+					drawLandShading(x, y, tile.outline, 1, 0.9, 0.6, edgeColor1, edgeColor2);
 				}
 			}
 		}else{
@@ -13004,6 +13035,8 @@ let tileZoomMipLevel = 1; // updated at drawMapTiles()
 function drawMapTiles(){
 	
 	TILES_DRAWN = 0;
+	
+	let mapTheme = getMapTheme();
 
 	tileZoomMipLevel = getZoomMipLevel(0.5); // use normal. smaller = earlier switch to smaller image
 	
@@ -13302,20 +13335,35 @@ function drawMapTiles(){
 					// draw dirt image:
 					
 					if(getSetting('drawLandTextures')){
+						// image drawing enabled:
 						if(use_fill){
 							// slower... todo: think how to speed up.
 							fillPattern(ctx, imageName);
 						}else{
-							drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
+							switch(mapTheme){
+								default: // 1 = summer
+									drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
+								break;
+								case 3: // 3 = space
+									ctx.fillStyle = "rgba(255,255,255, 0.3)";
+									ctx.fillRect(dx, dy, dWidth, dHeight);
+								break;
+							}
 						}
 
 					}else{
-						if(isSummer()){
-							ctx.fillStyle = "#705D4A";
-						}else{
-							ctx.fillStyle = "#B8B8BF";
+						// no image drawing:
+						switch(mapTheme){
+							default: // 1 = summer
+								ctx.fillStyle = "#705D4A";
+							break;
+							case 2: // 2 = winter
+								ctx.fillStyle = "#B8B8BF";
+							break;
+							case 3: // 3 = space
+								ctx.fillStyle = "rgba(255,255,255, 0.3)";
+							break;
 						}
-						
 						ctx.fillRect(dx, dy, dWidth, dHeight);
 					}
 					
@@ -23269,6 +23317,12 @@ function handleHostData(data) {
 			REPLAY_ENABLED = 0;
 			
 
+			const stars = document.getElementById("stars-background");
+			if(getMapTheme() === 3){
+				stars.style.display = "block";
+			}else{
+				stars.style.display = "none";
+			}
 			
 			
 
